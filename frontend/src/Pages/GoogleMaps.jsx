@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import styles from '../Estilos/GoogleMaps.module.css';
+import { useEffect, useState } from "react";
+import styles from "../Estilos/GoogleMaps.module.css";
 import Sidebar from "../Components/Sidebar";
 import { IoReloadCircle } from "react-icons/io5";
 import { MdGpsFixed, MdGpsOff } from "react-icons/md";
@@ -11,8 +11,7 @@ const loadGoogleMapsScript = () => {
       return resolve();
     }
     const script = document.createElement("script");
-    const apiKey = process.env.REACT_APP_Maps_API_KEY;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw`;
     script.async = true;
     script.defer = true;
     script.onload = resolve;
@@ -25,7 +24,9 @@ const loadGoogleMapsScript = () => {
 const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      return reject(new Error("La geolocalización no es soportada por tu navegador"));
+      return reject(
+        new Error("La geolocalización no es soportada por tu navegador")
+      );
     }
     const options = {
       enableHighAccuracy: true,
@@ -51,6 +52,7 @@ export default function GoogleMaps() {
   const [externalGpsLocation, setExternalGpsLocation] = useState(null);
   const [error, setError] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+
   const [usingExternalGps, setUsingExternalGps] = useState(false);
   const [showExternalGpsButton, setShowExternalGpsButton] = useState(false);
   const mapRef = useRef(null);
@@ -58,6 +60,7 @@ export default function GoogleMaps() {
   const wsRef = useRef(null);
   const [lastUpdate, setLastUpdate] = useState(null);
 
+  // Función para solicitar la ubicación
   const requestLocation = async () => {
     setError(null);
     try {
@@ -74,61 +77,61 @@ export default function GoogleMaps() {
     if (wsRef.current) return; // Evitar múltiples conexiones
 
     try {
-      const ws = new WebSocket('ws://localhost:8080');
+      const ws = new WebSocket("ws://localhost:8080");
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('Conectado al WebSocket del servidor para datos GPS');
+        console.log("Conectado al WebSocket del servidor para datos GPS");
         setShowExternalGpsButton(true);
       };
 
       ws.onclose = () => {
-        console.log('Desconectado del WebSocket del GPS');
+        console.log("Desconectado del WebSocket del GPS");
         wsRef.current = null;
         setShowExternalGpsButton(false);
-        
+
         // Revertir a GPS del dispositivo si estábamos usando GPS externo
         if (usingExternalGps) {
           setUsingExternalGps(false);
         }
-        
+
         // Reintentar conexión después de 5 segundos
         setTimeout(connectWebSocket, 5000);
       };
 
       ws.onerror = (error) => {
-        console.error('Error en WebSocket del GPS:', error);
+        console.error("Error en WebSocket del GPS:", error);
         setShowExternalGpsButton(false);
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
-          if (message.type === 'gps_update' && message.payload) {
+
+          if (message.type === "gps_update" && message.payload) {
             const { lat, lng } = message.payload;
-            console.log('Datos GPS recibidos:', message.payload);
-            
+            console.log("Datos GPS recibidos:", message.payload);
+
             setExternalGpsLocation({
               lat: parseFloat(lat),
               lng: parseFloat(lng),
-              timestamp: new Date().toLocaleTimeString()
+              timestamp: new Date().toLocaleTimeString(),
             });
-            
+
             setLastUpdate(new Date());
             setShowExternalGpsButton(true);
-            
+
             // Si estamos usando GPS externo, actualizar la vista del mapa
             if (usingExternalGps && mapRef.current) {
               updateMarker(parseFloat(lat), parseFloat(lng), true);
             }
           }
         } catch (error) {
-          console.error('Error al procesar mensaje WebSocket:', error);
+          console.error("Error al procesar mensaje WebSocket:", error);
         }
       };
     } catch (error) {
-      console.error('Error al conectar con WebSocket:', error);
+      console.error("Error al conectar con WebSocket:", error);
       setShowExternalGpsButton(false);
     }
   }, [usingExternalGps]);
@@ -136,17 +139,17 @@ export default function GoogleMaps() {
   // Función para desconectar WebSocket
   const disconnectWebSocket = useCallback(() => {
     if (wsRef.current) {
-      console.log('Cerrando WebSocket del GPS manualmente');
+      console.log("Cerrando WebSocket del GPS manualmente");
       wsRef.current.close();
       wsRef.current = null;
     }
-    
+
     // Limpiar estados del GPS externo
     setShowExternalGpsButton(false);
     if (usingExternalGps) {
       setUsingExternalGps(false);
     }
-    
+
     // Mostrar el marcador del GPS del dispositivo si está disponible
     if (location && mapRef.current) {
       updateMarker(location.lat, location.lng, false);
@@ -157,36 +160,42 @@ export default function GoogleMaps() {
   // Función unificada para actualizar el marcador según la fuente de ubicación
   const updateMarker = (lat, lng, isExternalGps) => {
     if (!mapRef.current || !window.google?.maps) return;
-    
+
     const position = { lat, lng };
     const isExternal = isExternalGps || usingExternalGps;
-    
+
     // Eliminar el marcador existente si hay uno
     if (activeMarkerRef.current) {
       activeMarkerRef.current.setMap(null);
       activeMarkerRef.current = null;
     }
-    
+
     // Crear un nuevo marcador con el estilo correspondiente
     activeMarkerRef.current = new window.google.maps.Marker({
       position,
       map: mapRef.current,
-      title: isExternal ? 'GPS Externo' : 'Mi ubicación actual',
+      title: isExternal ? "GPS Externo" : "Mi ubicación actual",
       icon: {
-        url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+        url:
+          "data:image/svg+xml;charset=UTF-8," +
+          encodeURIComponent(`
           <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-            <circle cx="20" cy="20" r="5" fill="${isExternal ? '#FF3300' : '#0033FF'}"/>
+            <circle cx="20" cy="20" r="5" fill="${
+              isExternal ? "#FF3300" : "#0033FF"
+            }"/>
             <circle cx="20" cy="20" r="7" fill="none" stroke="#ffffff" stroke-width="4"/>
-            <circle cx="20" cy="20" r="20" fill="${isExternal ? '#FFCCCC' : '#AECBFA'}" fill-opacity="0.4"/>
+            <circle cx="20" cy="20" r="20" fill="${
+              isExternal ? "#FFCCCC" : "#AECBFA"
+            }" fill-opacity="0.4"/>
           </svg>
         `),
         scaledSize: new window.google.maps.Size(40, 40),
         anchor: new window.google.maps.Point(20, 20),
       },
     });
-    
+
     // Crear un infowindow para mostrar datos
-    const infoContent = isExternal 
+    const infoContent = isExternal
       ? `<div>
           <strong>GPS Externo</strong><br>
           Lat: ${lat.toFixed(6)}<br>
@@ -198,13 +207,13 @@ export default function GoogleMaps() {
           Lat: ${lat.toFixed(6)}<br>
           Lng: ${lng.toFixed(6)}
         </div>`;
-    
+
     const infoWindow = new window.google.maps.InfoWindow({
-      content: infoContent
+      content: infoContent,
     });
-    
+
     // Mostrar info al hacer clic
-    activeMarkerRef.current.addListener('click', () => {
+    activeMarkerRef.current.addListener("click", () => {
       infoWindow.open(mapRef.current, activeMarkerRef.current);
     });
   };
@@ -213,12 +222,15 @@ export default function GoogleMaps() {
   const toggleGpsSource = () => {
     const newUsingExternalGps = !usingExternalGps;
     setUsingExternalGps(newUsingExternalGps);
-    
+
     // Actualizar el marcador según la nueva fuente seleccionada
     if (mapRef.current) {
       if (newUsingExternalGps && externalGpsLocation) {
         updateMarker(externalGpsLocation.lat, externalGpsLocation.lng, true);
-        mapRef.current.panTo({ lat: externalGpsLocation.lat, lng: externalGpsLocation.lng });
+        mapRef.current.panTo({
+          lat: externalGpsLocation.lat,
+          lng: externalGpsLocation.lng,
+        });
       } else if (!newUsingExternalGps && location) {
         updateMarker(location.lat, location.lng, false);
         mapRef.current.panTo({ lat: location.lat, lng: location.lng });
@@ -253,7 +265,9 @@ export default function GoogleMaps() {
         wsRef.current.close();
         wsRef.current = null;
       }
-      const googleMapScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
+      const googleMapScript = document.querySelector(
+        `script[src*="maps.googleapis.com"]`
+      );
       if (googleMapScript) {
         googleMapScript.remove();
       }
@@ -266,57 +280,62 @@ export default function GoogleMaps() {
       console.log("Evento de GPS conectado recibido");
       connectWebSocket();
     };
-    
+
     const handleGpsDisconnected = (event) => {
       console.log("Evento de GPS desconectado recibido");
       disconnectWebSocket();
     };
 
-    window.addEventListener('gps-connected', handleGpsConnected);
-    window.addEventListener('gps-disconnected', handleGpsDisconnected);
-    
+    window.addEventListener("gps-connected", handleGpsConnected);
+    window.addEventListener("gps-disconnected", handleGpsDisconnected);
+
     return () => {
-      window.removeEventListener('gps-connected', handleGpsConnected);
-      window.removeEventListener('gps-disconnected', handleGpsDisconnected);
+      window.removeEventListener("gps-connected", handleGpsConnected);
+      window.removeEventListener("gps-disconnected", handleGpsDisconnected);
     };
   }, [connectWebSocket, disconnectWebSocket]);
 
   // Efecto para inicializar y actualizar el mapa
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps) return;
-    
+
     // Usar la ubicación adecuada según el modo seleccionado
     const currentLocation = usingExternalGps ? externalGpsLocation : location;
-    
+
     // Si no hay ubicación disponible para el modo seleccionado, no hacer nada
     if (!currentLocation) return;
-    
+
     // Si el mapa ya está creado, actualizar
     if (mapRef.current) {
       // Actualizar vista si cambió el modo de GPS
-      mapRef.current.panTo({ lat: currentLocation.lat, lng: currentLocation.lng });
-      
+      mapRef.current.panTo({
+        lat: currentLocation.lat,
+        lng: currentLocation.lng,
+      });
+
       // Actualizar el marcador con la ubicación apropiada
       updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
-      
+
       return;
     }
-    
+
     // Crear el mapa por primera vez
-    mapRef.current = new window.google.maps.Map(document.getElementById('map'), {
-      center: { lat: currentLocation.lat, lng: currentLocation.lng },
-      zoom: 16,
-      mapTypeId: window.google.maps.MapTypeId.ROADMAP,
-      fullscreenControl: false,
-      streetViewControl: false,
-      mapTypeControl: false,
-      gestureHandling: 'greedy',
-      disableDoubleClickZoom: true,
-    });
+    mapRef.current = new window.google.maps.Map(
+      document.getElementById("map"),
+      {
+        center: { lat: currentLocation.lat, lng: currentLocation.lng },
+        zoom: 16,
+        mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+        fullscreenControl: false,
+        streetViewControl: false,
+        mapTypeControl: false,
+        gestureHandling: "greedy",
+        disableDoubleClickZoom: true,
+      }
+    );
 
     // Crear marcador inicial
     updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
-    
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps]);
 
   return (
@@ -324,37 +343,52 @@ export default function GoogleMaps() {
       <Sidebar />
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
         {location && (
-          <button onClick={requestLocation} className={styles.mapButton} title="Actualizar ubicación del dispositivo">
+          <button
+            onClick={requestLocation}
+            className={styles.mapButton}
+            title="Actualizar ubicación del dispositivo"
+          >
             <IoReloadCircle className={styles.reload} size={40} />
           </button>
         )}
-        
+
         {/* Botón para cambiar entre GPS del dispositivo y GPS externo */}
         {showExternalGpsButton && externalGpsLocation && (
-          <button 
-            onClick={toggleGpsSource} 
-            className={`${styles.mapButton} ${styles.gpsToggle} ${usingExternalGps ? styles.active : ''}`}
-            title={usingExternalGps ? "Cambiar a GPS del dispositivo" : "Cambiar a GPS externo"}
+          <button
+            onClick={toggleGpsSource}
+            className={`${styles.mapButton} ${styles.gpsToggle} ${
+              usingExternalGps ? styles.active : ""
+            }`}
+            title={
+              usingExternalGps
+                ? "Cambiar a GPS del dispositivo"
+                : "Cambiar a GPS externo"
+            }
           >
-            {usingExternalGps ? <MdGpsFixed size={30} /> : <MdGpsOff size={30} />}
+            {usingExternalGps ? (
+              <MdGpsFixed size={30} />
+            ) : (
+              <MdGpsOff size={30} />
+            )}
             <span className={styles.gpsLabel}>
               {usingExternalGps ? "GPS Externo" : "GPS Dispositivo"}
             </span>
           </button>
         )}
-        
+
         {/* Indicador de última actualización del GPS externo */}
         {showExternalGpsButton && externalGpsLocation && (
           <div className={styles.gpsInfo}>
             <div className={styles.gpsCoords}>
-              {externalGpsLocation.lat.toFixed(6)}, {externalGpsLocation.lng.toFixed(6)}
+              {externalGpsLocation.lat.toFixed(6)},{" "}
+              {externalGpsLocation.lng.toFixed(6)}
             </div>
             <div className={styles.gpsTimestamp}>
               Actualizado: {externalGpsLocation.timestamp}
             </div>
           </div>
         )}
-        
+
         {error && (
           <div className={styles.errorBox}>
             <p>{error}</p>
