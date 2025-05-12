@@ -4,6 +4,35 @@ import Sidebar from "../Components/Sidebar";
 import { IoReloadCircle } from "react-icons/io5";
 import { MdGpsFixed, MdGpsOff } from "react-icons/md";
 
+
+//pruebas de la api para ruta
+const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
+//Ruta de prueba
+const rutatecnologico = [
+    [-98.42483, 18.917694],
+    [-98.428552, 18.919431],
+    [-98.426565, 18.924332],
+    [-98.425542, 18.92498],
+    [-98.423189, 18.923191],
+    [-98.423477, 18.921163],
+    [-98.422767, 18.919978],
+    [-98.422635, 18.920746],
+    [-98.418238, 18.922761],
+    [-98.429907, 18.91491],
+    [-98.433306, 18.915236],
+    [-98.435812, 18.908112],
+    [-98.437376, 18.908615],
+    [-98.436075, 18.90499],
+    [-98.436623, 18.882513],
+    [-98.436935, 18.88094],
+    [-98.437086, 18.882399],
+    [-98.436671, 18.882546]
+];
+const coords = waypoints.map(p => p.join(',')).join(';');
+const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
+
+
+
 // Función que carga el script de Google Maps y devuelve una promesa
 const loadGoogleMapsScript = () => {
   return new Promise((resolve, reject) => {
@@ -337,6 +366,39 @@ export default function GoogleMaps() {
     // Crear marcador inicial
     updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps]);
+  ///USO DE PRUEBA DE RUTA
+  useEffect(() => {
+    if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
+  
+    const coords = rutatecnologico.map(p => p.join(',')).join(';');
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
+  
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (!data.routes || data.routes.length === 0) {
+          console.warn("No se encontraron rutas desde Mapbox.");
+          return;
+        }
+  
+        const route = data.routes[0].geometry.coordinates;
+        const path = route.map(([lng, lat]) => ({ lat, lng }));
+  
+        const polyline = new window.google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: '#0074D9',
+          strokeOpacity: 0.9,
+          strokeWeight: 5,
+        });
+  
+        polyline.setMap(mapRef.current);
+      })
+      .catch(error => {
+        console.error("Error al obtener la ruta desde Mapbox:", error);
+      });
+  }, [mapLoaded]);
+  
 
   return (
     <div className={styles.mapRoot}>
