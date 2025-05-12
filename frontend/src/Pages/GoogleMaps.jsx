@@ -28,9 +28,9 @@ const rutatecnologico = [
     [-98.437086, 18.882399],
     [-98.436671, 18.882546]
 ];
-const coords = rutatecnologico.map(p => p.join(',')).join(';');
+/*const coords = rutatecnologico.map(p => p.join(',')).join(';');
 const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
-
+*/
 
 
 // Función que carga el script de Google Maps y devuelve una promesa
@@ -367,6 +367,8 @@ export default function GoogleMaps() {
     updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps]);
   ///USO DE PRUEBA DE RUTA
+
+  /*
   useEffect(() => {
   if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
 
@@ -399,7 +401,7 @@ export default function GoogleMaps() {
     });
 }, [mapLoaded]);
 
-
+*/
   return (
     <div className={styles.mapRoot}>
       <Sidebar />
