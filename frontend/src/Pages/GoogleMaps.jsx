@@ -6,7 +6,7 @@ import { MdGpsFixed, MdGpsOff } from "react-icons/md";
 
 
 //pruebas de la api para ruta
-const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
+//const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
 //Ruta de prueba
 const rutatecnologico = [
     [-98.42483, 18.917694],
