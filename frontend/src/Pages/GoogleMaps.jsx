@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"; 
+import { useEffect, useState, useRef } from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
 import Sidebar from "../Components/Sidebar";
 import { IoReloadCircle } from "react-icons/io5";
@@ -21,7 +21,10 @@ const loadGoogleMapsScript = () => {
 
 const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error("La geolocalización no es soportada por tu navegador"));
+    if (!navigator.geolocation)
+      return reject(
+        new Error("La geolocalización no es soportada por tu navegador")
+      );
     navigator.geolocation.getCurrentPosition(
       (position) => {
         resolve({
@@ -46,7 +49,8 @@ export default function GoogleMaps() {
   const mapRef = useRef(null);
   const activeMarkerRef = useRef(null);
   const markersRef = useRef([]);
-  const kmlUrl = "https://drive.google.com/uc?export=download&id=1x9QAfgazqKBYU0kmCOCXU6Od1oo_HhLU";
+  const kmlUrl =
+    "https://drive.google.com/uc?export=download&id=1x9QAfgazqKBYU0kmCOCXU6Od1oo_HhLU";
 
   const requestLocation = async () => {
     setError(null);
@@ -73,8 +77,12 @@ export default function GoogleMaps() {
     });
     const infoWindow = new window.google.maps.InfoWindow({
       content: isExternal
-        ? `<div style=" color: #000; font-weight: bold;"><strong>GPS Externo</strong><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}</div>`
-        : `<div style=" color: #000; font-weight: bold;"><strong>GPS Dispositivo</strong><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}</div>`,
+        ? `<div style=" color: #000; font-weight: bold;"><strong>GPS Externo</strong><br>Lat: ${lat.toFixed(
+            6
+          )}<br>Lng: ${lng.toFixed(6)}</div>`
+        : `<div style=" color: #000; font-weight: bold;"><strong>GPS Dispositivo</strong><br>Lat: ${lat.toFixed(
+            6
+          )}<br>Lng: ${lng.toFixed(6)}</div>`,
     });
     activeMarkerRef.current.addListener("click", () => {
       infoWindow.open(mapRef.current, activeMarkerRef.current);
@@ -113,8 +121,8 @@ export default function GoogleMaps() {
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
       const data = querySnapshot.docs
-        .map(doc => doc.data())
-        .filter(lugar => lugar.tipo === tipo);
+        .map((doc) => doc.data())
+        .filter((lugar) => lugar.tipo === tipo);
       setLugares(data);
     } catch (error) {
       console.error("Error al obtener lugares:", error);
@@ -127,16 +135,19 @@ export default function GoogleMaps() {
     if (!currentLocation) return;
 
     if (!mapRef.current) {
-      mapRef.current = new window.google.maps.Map(document.getElementById("map"), {
-        center: currentLocation,
-        zoom: 15,
-        mapTypeId: window.google.maps.MapTypeId.ROADMAP,
-        fullscreenControl: false,
-        streetViewControl: false,
-        mapTypeControl: false,
-        gestureHandling: "greedy",
-        disableDoubleClickZoom: true,
-      });
+      mapRef.current = new window.google.maps.Map(
+        document.getElementById("map"),
+        {
+          center: currentLocation,
+          zoom: 15,
+          mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+          fullscreenControl: false,
+          streetViewControl: false,
+          mapTypeControl: false,
+          gestureHandling: "greedy",
+          disableDoubleClickZoom: true,
+        }
+      );
 
       new window.google.maps.KmlLayer({
         url: kmlUrl,
@@ -150,11 +161,11 @@ export default function GoogleMaps() {
     updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
 
     // Limpiar marcadores anteriores
-    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
 
     // Agregar nuevos marcadores
-    lugares.forEach(lugar => {
+    lugares.forEach((lugar) => {
       if (!lugar.ubicacion?.lat || !lugar.ubicacion?.lng) return;
       const marker = new window.google.maps.Marker({
         position: { lat: lugar.ubicacion.lat, lng: lugar.ubicacion.lng },
@@ -184,11 +195,19 @@ export default function GoogleMaps() {
       <Sidebar />
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
         {location && (
-          <button onClick={requestLocation} className={styles.mapButton} title="Actualizar ubicación del dispositivo">
+          <button
+            onClick={requestLocation}
+            className={styles.mapButton}
+            title="Actualizar ubicación del dispositivo"
+          >
             <IoReloadCircle className={styles.reload} size={40} />
           </button>
         )}
-        <button onClick={toggleGpsSource} className={`${styles.mapButton} ${styles.gpsToggle}`} title="Cambiar fuente GPS">
+        <button
+          onClick={toggleGpsSource}
+          className={`${styles.mapButton} ${styles.gpsToggle}`}
+          title="Cambiar fuente GPS"
+        >
           {usingExternalGps ? <MdGpsFixed size={30} /> : <MdGpsOff size={30} />}
         </button>
       </div>
@@ -198,9 +217,19 @@ export default function GoogleMaps() {
       </div>
 
       <div className={styles.footerButtons}>
-        {["Museos", "Monumentos Históricos", "Naturaleza", "Gastronomía", "Hospedaje"].map((tipo) => (
-          <button key={tipo} onClick={() => fetchLugaresPorTipo(tipo)} className={styles.categoryButton}>
-            {tipo}
+        {[
+          { tipo: "Museos", emoji: "🏛️" },
+          { tipo: "Monumentos Históricos", emoji: "🗿" },
+          { tipo: "Naturaleza", emoji: "🌿" },
+          { tipo: "Gastronomía", emoji: "🍽️" },
+          { tipo: "Hospedaje", emoji: "🏨" },
+        ].map(({ tipo, emoji }) => (
+          <button
+            key={tipo}
+            onClick={() => fetchLugaresPorTipo(tipo)}
+            className={styles.categoryButton}
+          >
+            <span>{emoji}</span> {tipo}
           </button>
         ))}
       </div>

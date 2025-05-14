@@ -450,3 +450,43 @@
   width: auto;
   padding-right: 1rem;
 }
+
+/*Botones de lugares por categoría*/
+.footerButtons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem; /* Menor separación entre botones */
+  margin: 0.5rem auto; /* Menor margen exterior */
+  padding: 0.4rem; /* Menor padding interior */
+  width: 100%;
+  z-index: 100;
+  background-color: rgba(18, 18, 18, 0.9);
+}
+
+.categoryButton {
+  background-color: rgba(37, 99, 235, 0.8);
+  color: var(--text-light);
+  font-weight: 600;
+  padding: 0.3rem 0.8rem; /* Botones más pequeños */
+  border-radius: 1.5rem;
+  border: none;
+  font-size: 0.75rem; /* Letra más pequeña */
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.categoryButton:hover {
+  background-color: var(--primary-hover);
+  transform: scale(1.05);
+}
+
+.categoryButton:active {
+  background-color: var(--primary-active);
+  transform: scale(0.97);
+}
