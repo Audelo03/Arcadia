@@ -6,11 +6,13 @@ import { MdGpsFixed, MdGpsOff } from "react-icons/md";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config";
 
+// Cargar el script de Google Maps
 const loadGoogleMapsScript = () => {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw`;
+    script.src =
+      "https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw";
     script.async = true;
     script.defer = true;
     script.onload = resolve;
@@ -19,21 +21,19 @@ const loadGoogleMapsScript = () => {
   });
 };
 
+// Obtener ubicación del dispositivo
 const getCurrentLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation)
-      return reject(
-        new Error("La geolocalización no es soportada por tu navegador")
-      );
+      return reject(new Error("Geolocalización no soportada"));
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      (position) =>
         resolve({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy,
-        });
-      },
-      () => reject(new Error("Ubicación no obtenida")),
+        }),
+      () => reject(new Error("No se pudo obtener la ubicación")),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
@@ -46,12 +46,15 @@ export default function GoogleMaps() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [usingExternalGps, setUsingExternalGps] = useState(false);
   const [lugares, setLugares] = useState([]);
+
   const mapRef = useRef(null);
   const activeMarkerRef = useRef(null);
   const markersRef = useRef([]);
+
   const kmlUrl =
     "https://drive.google.com/uc?export=download&id=1x9QAfgazqKBYU0kmCOCXU6Od1oo_HhLU";
 
+  // Solicita la ubicación del dispositivo
   const requestLocation = async () => {
     setError(null);
     try {
@@ -62,45 +65,50 @@ export default function GoogleMaps() {
     }
   };
 
-  const updateMarker = (lat, lng, isExternalGps) => {
+  // Muestra el marcador principal (GPS interno o externo)
+  const updateMarker = (lat, lng, isExternal = usingExternalGps) => {
     if (!mapRef.current || !window.google?.maps) return;
+
+    // Elimina marcador anterior
+    activeMarkerRef.current?.setMap(null);
+
     const position = { lat, lng };
-    const isExternal = isExternalGps || usingExternalGps;
-    if (activeMarkerRef.current) {
-      activeMarkerRef.current.setMap(null);
-      activeMarkerRef.current = null;
-    }
-    activeMarkerRef.current = new window.google.maps.Marker({
+    const label = isExternal ? "GPS Externo" : "Mi ubicación actual";
+
+    // Crea marcador nuevo
+    const marker = new window.google.maps.Marker({
       position,
       map: mapRef.current,
-      title: isExternal ? "GPS Externo" : "Mi ubicación actual",
+      title: label,
     });
+
     const infoWindow = new window.google.maps.InfoWindow({
-      content: isExternal
-        ? `<div style=" color: #000; font-weight: bold;"><strong>GPS Externo</strong><br>Lat: ${lat.toFixed(
-            6
-          )}<br>Lng: ${lng.toFixed(6)}</div>`
-        : `<div style=" color: #000; font-weight: bold;"><strong>GPS Dispositivo</strong><br>Lat: ${lat.toFixed(
-            6
-          )}<br>Lng: ${lng.toFixed(6)}</div>`,
+      content: `
+        <div style="color: #000; font-weight: bold;">
+          <strong>${label}</strong><br/>
+          Lat: ${lat.toFixed(6)}<br/>
+          Lng: ${lng.toFixed(6)}
+        </div>`,
     });
-    activeMarkerRef.current.addListener("click", () => {
-      infoWindow.open(mapRef.current, activeMarkerRef.current);
-    });
+
+    marker.addListener("click", () => infoWindow.open(mapRef.current, marker));
+    activeMarkerRef.current = marker;
   };
 
+  // Cambia entre GPS interno y externo
   const toggleGpsSource = () => {
-    const newUsingExternalGps = !usingExternalGps;
-    setUsingExternalGps(newUsingExternalGps);
-    const current = newUsingExternalGps ? externalGpsLocation : location;
-    if (current && mapRef.current) {
-      updateMarker(current.lat, current.lng, newUsingExternalGps);
-      mapRef.current.panTo({ lat: current.lat, lng: current.lng });
+    const useExternal = !usingExternalGps;
+    setUsingExternalGps(useExternal);
+    const current = useExternal ? externalGpsLocation : location;
+    if (current) {
+      updateMarker(current.lat, current.lng, useExternal);
+      mapRef.current?.panTo({ lat: current.lat, lng: current.lng });
     }
   };
 
+  // Carga inicial del mapa y obtiene ubicación
   useEffect(() => {
-    const initializeMap = async () => {
+    const initMap = async () => {
       try {
         await loadGoogleMapsScript();
         setMapLoaded(true);
@@ -110,13 +118,11 @@ export default function GoogleMaps() {
       }
     };
 
-    if (!window.google?.maps) {
-      initializeMap();
-    } else {
-      setMapLoaded(true);
-    }
+    if (!window.google?.maps) initMap();
+    else setMapLoaded(true);
   }, []);
 
+  // Trae los lugares de Firebase filtrando por tipo
   const fetchLugaresPorTipo = async (tipo) => {
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
@@ -124,23 +130,25 @@ export default function GoogleMaps() {
         .map((doc) => doc.data())
         .filter((lugar) => lugar.tipo === tipo);
       setLugares(data);
-    } catch (error) {
-      console.error("Error al obtener lugares:", error);
+    } catch (err) {
+      console.error("Error al obtener lugares:", err);
     }
   };
 
+  // Carga el mapa y agrega marcadores cuando cambian datos relevantes
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps) return;
     const currentLocation = usingExternalGps ? externalGpsLocation : location;
     if (!currentLocation) return;
 
+    // Inicializa mapa si no existe
     if (!mapRef.current) {
       mapRef.current = new window.google.maps.Map(
         document.getElementById("map"),
         {
           center: currentLocation,
           zoom: 15,
-          mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+          mapTypeId: "roadmap",
           fullscreenControl: false,
           streetViewControl: false,
           mapTypeControl: false,
@@ -153,39 +161,40 @@ export default function GoogleMaps() {
         url: kmlUrl,
         map: mapRef.current,
         preserveViewport: true,
-        suppressInfoWindows: false,
       });
     }
 
     mapRef.current.panTo(currentLocation);
-    updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
+    updateMarker(currentLocation.lat, currentLocation.lng);
 
-    // Limpiar marcadores anteriores
+    // Elimina marcadores anteriores
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
 
-    // Agregar nuevos marcadores
+    // Agrega marcadores de lugares
     lugares.forEach((lugar) => {
       if (!lugar.ubicacion?.lat || !lugar.ubicacion?.lng) return;
+
       const marker = new window.google.maps.Marker({
-        position: { lat: lugar.ubicacion.lat, lng: lugar.ubicacion.lng },
+        position: lugar.ubicacion,
         map: mapRef.current,
         title: lugar.nombre,
       });
+
       const infoWindow = new window.google.maps.InfoWindow({
         content: `
-          <div style=" color: #000; font-weight: bold;">
+          <div style="color: #000; width: 200px;">
             <strong>${lugar.nombre}</strong><br/>
             ${lugar.descripcion}<br/>
             Tipo: ${lugar.tipo}<br/>
             Costo: ${lugar.costo_entrada || "Gratis"}<br/>
             Horario: ${lugar.horario || "No especificado"}
-          </div>
-        `,
+          </div>`,
       });
-      marker.addListener("click", () => {
-        infoWindow.open(mapRef.current, marker);
-      });
+
+      marker.addListener("click", () =>
+        infoWindow.open(mapRef.current, marker)
+      );
       markersRef.current.push(marker);
     });
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps, lugares]);
