@@ -222,6 +222,7 @@ export default function GoogleMaps() {
           { tipo: "Monumentos Históricos", emoji: "🗿" },
           { tipo: "Naturaleza", emoji: "🌿" },
           { tipo: "Gastronomía", emoji: "🍽️" },
+          { tipo: "Dependencias de Gobierno", emoji: "🏢" },
           { tipo: "Hospedaje", emoji: "🏨" },
         ].map(({ tipo, emoji }) => (
           <button
