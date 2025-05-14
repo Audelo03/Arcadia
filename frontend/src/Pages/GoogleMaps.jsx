@@ -6,40 +6,39 @@ import { MdGpsFixed, MdGpsOff } from "react-icons/md";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config";
 
-// Cargar el script de Google Maps
-const loadGoogleMapsScript = () => {
-  return new Promise((resolve, reject) => {
+// Carga el script de Google Maps solo si aún no está cargado
+const loadGoogleMapsScript = () =>
+  new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
     script.src =
-      "https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw";
+      "https://maps.googleapis.com/maps/api/js?key=AIzaSyC0c5g5slnWygHkivX_GRNxynCExzdUfew";
     script.async = true;
     script.defer = true;
     script.onload = resolve;
     script.onerror = () => reject(new Error("Error al cargar Google Maps"));
     document.head.appendChild(script);
   });
-};
 
-// Obtener ubicación del dispositivo
-const getCurrentLocation = () => {
-  return new Promise((resolve, reject) => {
+// Obtiene la ubicación actual del usuario
+const getCurrentLocation = () =>
+  new Promise((resolve, reject) => {
     if (!navigator.geolocation)
       return reject(new Error("Geolocalización no soportada"));
     navigator.geolocation.getCurrentPosition(
-      (position) =>
+      (pos) =>
         resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
         }),
       () => reject(new Error("No se pudo obtener la ubicación")),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
-};
 
 export default function GoogleMaps() {
+  // Estados principales
   const [location, setLocation] = useState(null);
   const [externalGpsLocation, setExternalGpsLocation] = useState(null);
   const [error, setError] = useState(null);
@@ -47,6 +46,7 @@ export default function GoogleMaps() {
   const [usingExternalGps, setUsingExternalGps] = useState(false);
   const [lugares, setLugares] = useState([]);
 
+  // Referencias para mapa y marcadores
   const mapRef = useRef(null);
   const activeMarkerRef = useRef(null);
   const markersRef = useRef([]);
@@ -54,7 +54,7 @@ export default function GoogleMaps() {
   const kmlUrl =
     "https://drive.google.com/uc?export=download&id=1x9QAfgazqKBYU0kmCOCXU6Od1oo_HhLU";
 
-  // Solicita la ubicación del dispositivo
+  // Solicita ubicación y actualiza estado
   const requestLocation = async () => {
     setError(null);
     try {
@@ -65,27 +65,26 @@ export default function GoogleMaps() {
     }
   };
 
-  // Muestra el marcador principal (GPS interno o externo)
+  // Agrega marcador de GPS (interno o externo)
   const updateMarker = (lat, lng, isExternal = usingExternalGps) => {
     if (!mapRef.current || !window.google?.maps) return;
 
-    // Elimina marcador anterior
-    activeMarkerRef.current?.setMap(null);
+    activeMarkerRef.current?.setMap(null); // elimina marcador anterior
 
-    const position = { lat, lng };
-    const label = isExternal ? "GPS Externo" : "Mi ubicación actual";
-
-    // Crea marcador nuevo
     const marker = new window.google.maps.Marker({
-      position,
+      position: { lat, lng },
       map: mapRef.current,
-      title: label,
+      title: isExternal ? "GPS Externo" : "Mi ubicación actual",
+      icon: {
+        url: isExternal ? "/icons/gps_externo.png" : "/icons/gps_interno.png",
+        scaledSize: new window.google.maps.Size(32, 32),
+      },
     });
 
     const infoWindow = new window.google.maps.InfoWindow({
       content: `
-        <div style="color: #000; font-weight: bold;">
-          <strong>${label}</strong><br/>
+        <div style="color: #000;">
+          <h3>${marker.title}</h3><br/>
           Lat: ${lat.toFixed(6)}<br/>
           Lng: ${lng.toFixed(6)}
         </div>`,
@@ -95,18 +94,19 @@ export default function GoogleMaps() {
     activeMarkerRef.current = marker;
   };
 
-  // Cambia entre GPS interno y externo
+  // Alterna entre GPS interno y externo
   const toggleGpsSource = () => {
     const useExternal = !usingExternalGps;
     setUsingExternalGps(useExternal);
+
     const current = useExternal ? externalGpsLocation : location;
     if (current) {
       updateMarker(current.lat, current.lng, useExternal);
-      mapRef.current?.panTo({ lat: current.lat, lng: current.lng });
+      mapRef.current?.panTo(current);
     }
   };
 
-  // Carga inicial del mapa y obtiene ubicación
+  // Carga Google Maps y solicita ubicación al montar el componente
   useEffect(() => {
     const initMap = async () => {
       try {
@@ -117,36 +117,35 @@ export default function GoogleMaps() {
         setError(err.message);
       }
     };
-
     if (!window.google?.maps) initMap();
     else setMapLoaded(true);
   }, []);
 
-  // Trae los lugares de Firebase filtrando por tipo
+  // Consulta lugares de Firebase por tipo
   const fetchLugaresPorTipo = async (tipo) => {
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
       const data = querySnapshot.docs
         .map((doc) => doc.data())
-        .filter((lugar) => lugar.tipo === tipo);
+        .filter((l) => l.tipo === tipo);
       setLugares(data);
     } catch (err) {
       console.error("Error al obtener lugares:", err);
     }
   };
 
-  // Carga el mapa y agrega marcadores cuando cambian datos relevantes
+  // Actualiza el mapa y los marcadores cuando cambian datos clave
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps) return;
-    const currentLocation = usingExternalGps ? externalGpsLocation : location;
-    if (!currentLocation) return;
+    const current = usingExternalGps ? externalGpsLocation : location;
+    if (!current) return;
 
-    // Inicializa mapa si no existe
+    // Crea el mapa si no existe aún
     if (!mapRef.current) {
       mapRef.current = new window.google.maps.Map(
         document.getElementById("map"),
         {
-          center: currentLocation,
+          center: current,
           zoom: 15,
           mapTypeId: "roadmap",
           fullscreenControl: false,
@@ -157,6 +156,7 @@ export default function GoogleMaps() {
         }
       );
 
+      // Agrega capa KML
       new window.google.maps.KmlLayer({
         url: kmlUrl,
         map: mapRef.current,
@@ -164,50 +164,101 @@ export default function GoogleMaps() {
       });
     }
 
-    mapRef.current.panTo(currentLocation);
-    updateMarker(currentLocation.lat, currentLocation.lng);
+    mapRef.current.panTo(current);
+    updateMarker(current.lat, current.lng);
 
     // Elimina marcadores anteriores
-    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    // Agrega marcadores de lugares
+    // Agrega nuevos marcadores de lugares
     lugares.forEach((lugar) => {
-      if (!lugar.ubicacion?.lat || !lugar.ubicacion?.lng) return;
+      const iconosPorTipo = {
+        Museos: "/icons/museo.png",
+        "Monumentos Históricos": "/icons/monumento.png",
+        Naturaleza: "/icons/naturaleza.png",
+        Gastronomía: "/icons/gastronomia.png",
+        "Dependencias de Gobierno": "/icons/gobierno.png",
+        Hospedaje: "/icons/hospedaje.png",
+      };
 
+      const { lat, lng } = lugar.ubicacion || {};
+      if (!lat || !lng) return;
+
+      //marcador con imagen
       const marker = new window.google.maps.Marker({
-        position: lugar.ubicacion,
+        position: { lat, lng },
         map: mapRef.current,
         title: lugar.nombre,
+        icon: {
+          url: iconosPorTipo[lugar.tipo] || undefined,
+          scaledSize: new window.google.maps.Size(32, 32),
+        },
       });
+
+      // Crea carrusel de imágenes
+      const id = `carrusel-${Math.random().toString(36).substr(2, 9)}`;
+      const imagenes = lugar.imagenes;
 
       const infoWindow = new window.google.maps.InfoWindow({
         content: `
-          <div style="color: #000; width: 200px;">
-            <strong>${lugar.nombre}</strong><br/>
-            ${lugar.descripcion}<br/>
-            Tipo: ${lugar.tipo}<br/>
-            Costo: ${lugar.costo_entrada || "Gratis"}<br/>
-            Horario: ${lugar.horario || "No especificado"}
+          <div style="color: #000; width: 220px; font-family: sans-serif;">
+            <h3>${lugar.nombre}</h3><br/>
+            <div id="${id}" style="text-align: center;">
+              <div style="width: 100%; height: 150px; overflow: hidden; border-radius: 8px;">
+                <img src="${
+                  imagenes[0]
+                }" id="${id}-img" style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+              <div style="margin-top: 5px;">
+                <button id="${id}-prev">⬅️</button>
+                <button id="${id}-next">➡️</button>
+              </div>
+            </div>
+            <p style="margin-top: 10px;">${lugar.descripcion}</p>
+            <strong>Tipo:</strong> ${lugar.tipo}<br/>
+            <strong>Costo:</strong> ${lugar.costo_entrada || "Gratis"}<br/>
+            <strong>Horario:</strong> ${lugar.horario || "No especificado"}
           </div>`,
+      });
+
+      infoWindow.addListener("domready", () => {
+        let index = 0;
+        const imgEl = document.getElementById(`${id}-img`);
+        const prev = document.getElementById(`${id}-prev`);
+        const next = document.getElementById(`${id}-next`);
+
+        prev.onclick = () => {
+          index = (index - 1 + imagenes.length) % imagenes.length;
+          imgEl.src = imagenes[index];
+        };
+
+        next.onclick = () => {
+          index = (index + 1) % imagenes.length;
+          imgEl.src = imagenes[index];
+        };
       });
 
       marker.addListener("click", () =>
         infoWindow.open(mapRef.current, marker)
       );
+
       markersRef.current.push(marker);
     });
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps, lugares]);
 
+  // Interfaz del componente
   return (
     <div className={styles.mapRoot}>
       <Sidebar />
+
+      {/* Botones de control (GPS y actualizar ubicación) */}
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
         {location && (
           <button
             onClick={requestLocation}
             className={styles.mapButton}
-            title="Actualizar ubicación del dispositivo"
+            title="Actualizar ubicación"
           >
             <IoReloadCircle className={styles.reload} size={40} />
           </button>
@@ -221,10 +272,12 @@ export default function GoogleMaps() {
         </button>
       </div>
 
+      {/* Contenedor del mapa */}
       <div className={styles.mapContainer}>
         <div id="map" className={styles.mapElement}></div>
       </div>
 
+      {/* Botones de categoría */}
       <div className={styles.footerButtons}>
         {[
           { tipo: "Museos", emoji: "🏛️" },
