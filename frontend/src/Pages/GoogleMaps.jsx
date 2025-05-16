@@ -6,10 +6,9 @@ import { MdGpsFixed, MdGpsOff } from "react-icons/md";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config";
 
-<<<<<<< HEAD
 
 //pruebas de la api para ruta
-//const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
+const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
 //Ruta de prueba
 const rutatecnologico = [
     [-98.42483, 18.917694],
@@ -31,14 +30,63 @@ const rutatecnologico = [
     [-98.437086, 18.882399],
     [-98.436671, 18.882546]
 ];
-/*const coords = rutatecnologico.map(p => p.join(',')).join(';');
+const rutacerril =[
+  [-98.43664211358958,18.88343376854101],
+  [-98.437347,18.889894],
+  [-98.43607,18.904877],
+  [-98.435046,18.912657],
+  [-98.431145,18.913152],
+  [-98.42504,18.91748],
+  [-98.425156,18.930683],
+  [-98.424464,18.934194],
+  [-98.425,18.917646],
+  [-98.430655,18.91435],
+  [-98.432399,18.914944],
+  [-98.435805,18.908088],
+  [-98.43735,18.90861],
+  [-98.438398,18.905788],
+  [-98.436673,18.883449]
+
+];
+const geo =[
+  [-98.43664211358958,18.88343376854101],
+  [-98.437347,18.889894],
+  [-98.43607,18.904877],
+  [-98.435046,18.912657],
+  [-98.431145,18.913152],
+  [-98.42504,18.91748],
+  [-98.426693,18.942462],
+  [-98.425473,18.931599],
+  [-98.425,18.917646],
+  [-98.430655,18.91435],
+  [-98.432399,18.914944],
+  [-98.435805,18.908088],
+  [-98.43735,18.90861],
+  [-98.438398,18.905788],
+  [-98.436673,18.883449]
+];
+const nieves=[
+  [-98.429681, 18.886328],
+  [-98.435244, 18.87893],
+  [-98.437116, 18.907201],
+  [-98.411041, 18.925793],
+  [-98.427224, 18.917614],
+  [-98.434205, 18.912553],
+  [-98.436818, 18.905187],
+  [-98.436118, 18.88018],
+  [-98.429765, 18.886228]
+];
+
+const homex=[
+
+
+];
+
+const coords = rutatecnologico.map(p => p.join(',')).join(';');
 const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
-*/
 
 
 // Función que carga el script de Google Maps y devuelve una promesa
-=======
->>>>>>> 47156c7a6fbde43d6a559a1a31f6387b2cf99a4e
 const loadGoogleMapsScript = () => {
   return new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
@@ -181,43 +229,9 @@ export default function GoogleMaps() {
 
     mapRef.current.panTo(currentLocation);
     updateMarker(currentLocation.lat, currentLocation.lng, usingExternalGps);
-<<<<<<< HEAD
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps]);
   ///USO DE PRUEBA DE RUTA
-=======
 
-    // Limpiar marcadores anteriores
-    markersRef.current.forEach(marker => marker.setMap(null));
-    markersRef.current = [];
-
-    // Agregar nuevos marcadores
-    lugares.forEach(lugar => {
-      if (!lugar.ubicacion?.lat || !lugar.ubicacion?.lng) return;
-      const marker = new window.google.maps.Marker({
-        position: { lat: lugar.ubicacion.lat, lng: lugar.ubicacion.lng },
-        map: mapRef.current,
-        title: lugar.nombre,
-      });
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: `
-          <div style=" color: #000; font-weight: bold;">
-            <strong>${lugar.nombre}</strong><br/>
-            ${lugar.descripcion}<br/>
-            Tipo: ${lugar.tipo}<br/>
-            Costo: ${lugar.costo_entrada || "Gratis"}<br/>
-            Horario: ${lugar.horario || "No especificado"}
-          </div>
-        `,
-      });
-      marker.addListener("click", () => {
-        infoWindow.open(mapRef.current, marker);
-      });
-      markersRef.current.push(marker);
-    });
-  }, [location, externalGpsLocation, mapLoaded, usingExternalGps, lugares]);
->>>>>>> 47156c7a6fbde43d6a559a1a31f6387b2cf99a4e
-
-  /*
   useEffect(() => {
   if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
 
@@ -250,7 +264,6 @@ export default function GoogleMaps() {
     });
 }, [mapLoaded]);
 
-*/
   return (
     <div className={styles.mapRoot}>
       <Sidebar />
