@@ -4,6 +4,9 @@
   --sidebar-collapsed-width: 60px; /* Ancho del sidebar colapsado */
   --sidebar-mobile-button-size: 50px; /* Botón toggle en móvil */
   /* --sidebar-mobile-color: #333; /* No parece usarse */
+  --primary-color: #2563eb; /* Asegúrate de que esta variable esté definida si la usas abajo */
+  --primary-hover: #4f46e5;
+  --text-light: #ffffff;
 }
 
 /* Sidebar Base */
@@ -48,9 +51,10 @@
 .sidebar.open .logo {
   opacity: 1;
 }
-.logoPng {
+.logoPng { /* Estilo general para la imagen del logo */
   max-height: 30px; /* Tamaño del logo imagen */
-  margin-right: 10px;
+  margin-right: 10px; /* Margen aplicado generalmente */
+  object-fit: contain; /* Asegura que la imagen se escale bien sin distorsión */
 }
 
 .bars { /* Botón de toggle en desktop */
@@ -71,7 +75,7 @@
   color: #b0b0b0;
   padding: 12px 18px; /* Padding ajustado (top/bottom, left/right) */
   gap: 18px; /* Espacio entre ícono y texto */
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease; /* Añadido padding-left a la transición */
   text-decoration: none;
   white-space: nowrap; /* Evita que el texto se rompa */
   overflow: hidden; /* Esconde texto cuando está colapsado */
@@ -80,17 +84,20 @@
 .link.active { /* 'active' es la clase por defecto de NavLink */
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  border-left: 3px solid var(--primary-color); /* Indicador visual de activo/hover */
+  border-left: 3px solid var(--primary-color, #2563eb); 
   padding-left: 15px; /* Ajusta padding para compensar el borde */
 }
 .link .icon {
   font-size: 20px; /* Tamaño de los iconos */
   min-width: 24px; /* Asegura espacio para el icono incluso si el texto no está */
   text-align: center;
+  display: flex; 
+  align-items: center;
+  justify-content: center;
 }
 .link_text {
   font-size: 0.95rem;
-  opacity: 0; /* Oculto cuando está colapsado */
+  opacity: 0; 
   transition: opacity 0.3s ease;
 }
 .sidebar.open .link_text {
@@ -105,44 +112,41 @@
   background-color: rgba(0,0,0,0.15);
 }
 .submenu_container.open {
-  max-height: 500px; /* Altura máxima para el submenú desplegado */
+  max-height: 500px; 
   padding-top: 5px;
   padding-bottom: 5px;
 }
 .sublink {
-  padding-left: 28px !important; /* Mayor indentación para sublinks */
-  /* background-color: transparent; /* Quitar fondo individual si .submenu_container tiene uno */
+  padding-left: 28px !important; 
 }
 .sublink .icon {
-  font-size: 18px; /* Iconos de submenú un poco más pequeños */
+  font-size: 18px; 
 }
-.submenu_text { /* El texto dentro de .link_text, pero específico para submenú */
+.submenu_text { 
   font-size: 0.9rem;
 }
 .sidebar.open .submenu_text {
-   opacity: 1; /* Asegurar que el texto del submenú sea visible cuando el sidebar está abierto */
+   opacity: 1; 
 }
 
 
 /* Sidebar Responsivo (Móvil) */
 @media screen and (max-width: 768px) {
   .sidebar {
-    /* En móvil, el sidebar está oculto por defecto fuera de la pantalla */
-    transform: translateX(calc(-1 * var(--sidebar-width))); /* Oculto a la izquierda */
-    /* width: var(--sidebar-width); /* Siempre usa el ancho completo cuando se abre en móvil */
+    transform: translateX(calc(-1 * var(--sidebar-width))); 
     transition: transform 0.3s ease-in-out;
-    z-index: 1050; /* Más alto para superponerse en móvil */
+    z-index: 1050; 
   }
   .sidebar.open {
-    transform: translateX(0); /* Se desliza a la vista */
-    width: var(--sidebar-width); /* Asegura que tenga el ancho completo al abrirse */
+    transform: translateX(0); 
+    width: var(--sidebar-width); 
   }
 
-  .mobile-menu-toggle { /* Botón flotante para abrir/cerrar en móvil */
+  .mobile-menu-toggle { 
     display: flex;
     position: fixed;
-    bottom: 25px; /* Ajusta según necesidad */
-    left: 25px;  /* Ajusta según necesidad */
+    bottom: 25px; 
+    left: 25px;  
     width: var(--sidebar-mobile-button-size);
     height: var(--sidebar-mobile-button-size);
     border-radius: 50%;
@@ -151,25 +155,32 @@
     justify-content: center;
     align-items: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    z-index: 1100; /* Encima de todo */
+    z-index: 1100; 
     cursor: pointer;
     border: 1px solid rgba(255,255,255,0.2);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out; /* <<< NUEVO: Transición para el efecto de clic */
   }
-  .mobile-menu-toggle .logoPng { /* Icono dentro del botón móvil */
-    max-height: 60%; /* Ajusta el tamaño del logo */
+  .mobile-menu-toggle:active { /* <<< NUEVO: Estilo cuando el botón está presionado */
+    transform: scale(0.9); /* Encoge el botón al 90% de su tamaño */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Sombra más pequeña al presionar */
   }
 
-  /* Ocultar el botón de barras y el logo del top en móvil, ya que usamos el mobile-menu-toggle */
+  .mobile-menu-toggle .logoPng { 
+    max-height: 60%; 
+    margin-right: 0; 
+    display: block; 
+  }
+
   .sidebar .top .bars, .sidebar .top .logo {
     display: none; 
   }
-  .sidebar .link_text, .sidebar .submenu_text { /* El texto siempre es visible en móvil cuando el sidebar está abierto */
+  .sidebar.open .link_text, .sidebar.open .submenu_text { 
     opacity: 1;
   }
 }
 
 @media screen and (min-width: 769px) {
-  .mobile-menu-toggle { /* Ocultar el botón de toggle móvil en desktop */
+  .mobile-menu-toggle { 
     display: none;
   }
 }
@@ -185,17 +196,17 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1070; /* Encima del sidebar móvil */
+  z-index: 1070; 
 }
 .route-selection-modal {
-  background-color: #2c2c3e; /* Color de fondo oscuro para el modal */
+  background-color: #2c2c3e; 
   color: #e0e0e0;
   padding: 25px;
   border-radius: 10px;
   box-shadow: 0 8px 25px rgba(0,0,0,0.5);
   width: 90%;
-  max-width: 450px; /* Ancho máximo del modal */
-  max-height: 85vh; /* Altura máxima */
+  max-width: 450px; 
+  max-height: 85vh; 
   display: flex;
   flex-direction: column;
 }
@@ -211,8 +222,8 @@
   list-style: none;
   padding: 0;
   margin: 0 0 20px 0;
-  overflow-y: auto; /* Scroll para la lista de rutas */
-  flex-grow: 1; /* Permite que la lista ocupe el espacio disponible */
+  overflow-y: auto; 
+  flex-grow: 1; 
 }
 .route-selection-modal li {
   padding: 10px 5px;
@@ -234,18 +245,18 @@
 .route-selection-modal input[type="checkbox"] {
   margin-right: 12px;
   transform: scale(1.1);
-  accent-color: var(--primary-color); /* Colorea el checkbox */
+  accent-color: var(--primary-color, #2563eb); 
 }
 .route-modal-actions {
   display: flex;
-  justify-content: flex-end; /* Alinea botones a la derecha */
+  justify-content: flex-end; 
   gap: 10px;
   padding-top: 15px;
   border-top: 1px solid #444;
 }
 .route-selection-modal button {
-  background-color: var(--primary-color);
-  color: var(--text-light);
+  background-color: var(--primary-color, #2563eb);
+  color: var(--text-light, #ffffff);
   border: none;
   padding: 10px 18px;
   border-radius: 6px;
@@ -254,33 +265,33 @@
   transition: background-color 0.2s ease;
 }
 .route-selection-modal button:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--primary-hover, #4f46e5);
 }
 .route-selection-modal button[disabled] {
   background-color: #555;
   cursor: not-allowed;
   opacity: 0.7;
 }
-.route-selection-modal button.cancel-button { /* Clase específica para el botón de cancelar */
+.route-selection-modal button.cancel-button { 
   background-color: #4a4a5a;
 }
 .route-selection-modal button.cancel-button:hover {
   background-color: #666;
 }
 
-/* Estados GPS (sin cambios de tu CSS original) */
+/* Estados GPS */
 .gps-status-message {
-  position: absolute; /* O 'fixed' si quieres que sea relativo al viewport */
-  bottom: 10px; /* Ajustado para que no choque con el mobile toggle */
+  position: absolute; 
+  bottom: 10px; 
   left: 15px;
   right: 15px;
-  width: calc(100% - 30px); /* Para que no se salga del sidebar colapsado */
+  width: calc(100% - 30px); 
   box-sizing: border-box;
   padding: 8px 12px;
   border-radius: 5px;
   background-color: rgba(0,0,0,0.8);
   font-size: 0.85rem;
-  z-index: 1100; /* Visible sobre otros elementos del sidebar */
+  z-index: 1100; 
   text-align: center;
   transition: all 0.3s ease;
   opacity: 0.9;
@@ -294,3 +305,8 @@
 
 .link.connecting { opacity: 0.7; pointer-events: none; }
 .link.connected .icon, .link.connected .link_text { color: #4caf50 !important; }
+
+.sidebar:not(.open) .link_text,
+.sidebar:not(.open) .submenu_text {
+  opacity: 0;
+}
