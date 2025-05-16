@@ -85,7 +85,6 @@ const homex=[
 const coords = rutatecnologico.map(p => p.join(',')).join(';');
 const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
 
-
 // Función que carga el script de Google Maps y devuelve una promesa
 const loadGoogleMapsScript = () => {
   return new Promise((resolve, reject) => {
@@ -128,6 +127,38 @@ export default function GoogleMaps() {
   const activeMarkerRef = useRef(null);
   const markersRef = useRef([]);
   const kmlUrl = "https://drive.google.com/uc?export=download&id=1x9QAfgazqKBYU0kmCOCXU6Od1oo_HhLU";
+  const drawRouteFromMapbox = async (coordsArray, color = '#0074D9') => {
+  if (!mapRef.current || !window.google?.maps) return;
+
+  const coords = coordsArray.map(p => p.join(',')).join(';');
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.routes || data.routes.length === 0) {
+      console.warn("No se encontraron rutas desde Mapbox.");
+      return;
+    }
+
+    const route = data.routes[0].geometry.coordinates;
+    const path = route.map(([lng, lat]) => ({ lat, lng }));
+
+    const polyline = new window.google.maps.Polyline({
+      path,
+      geodesic: true,
+      strokeColor: color,
+      strokeOpacity: 0.9,
+      strokeWeight: 4,
+    });
+
+    polyline.setMap(mapRef.current);
+  } catch (error) {
+    console.error("Error al obtener la ruta desde Mapbox:", error);
+  }
+};
+
 
   const requestLocation = async () => {
     setError(null);
@@ -263,6 +294,16 @@ export default function GoogleMaps() {
       console.error("Error al obtener la ruta desde Mapbox:", error);
     });
 }, [mapLoaded]);
+
+useEffect(() => {
+  if (!mapLoaded) return;
+
+  drawRouteFromMapbox(rutatecnologico, '#0074D9'); // Azul
+  drawRouteFromMapbox(rutacerril, '#2ECC40');       // Verde
+  drawRouteFromMapbox(geo, '#FF4136');              // Rojo
+  drawRouteFromMapbox(nieves, '#B10DC9');           // Morado
+}, [mapLoaded]);
+
 
   return (
     <div className={styles.mapRoot}>
