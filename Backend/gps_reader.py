@@ -5,6 +5,9 @@ import time
 import sys
 import re
 import json
+import os
+import ctypes # Importar ctypes
+from dotenv import load_dotenv
 
 # Configuración global
 BAUD_RATE = 9600
