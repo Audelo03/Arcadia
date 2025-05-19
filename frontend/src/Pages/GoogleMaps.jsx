@@ -19,7 +19,7 @@ const loadGoogleMapsScript = () =>
   new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=TU_API_KEY&libraries=places`; // REEMPLAZA TU_API_KEY
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw&libraries=places`; // REEMPLAZA TU_API_KEY
     script.async = true;
     script.defer = true;
     script.onload = resolve;
