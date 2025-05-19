@@ -347,13 +347,13 @@ export default function GoogleMaps() {
 
         wsRef.current.onclose = () => {
             console.log('GoogleMaps WebSocket disconnected');
-            // setMapStatusMessage('Conexión con el servidor GPS perdida.');
+            // ¿setMapStatusMessage('Conexión con el servidor GPS perdida.');
             // setExternalGpsLocation(null);
         };
 
         wsRef.current.onerror = (error) => {
             console.error('GoogleMaps WebSocket error:', error);
-            setMapStatusMessage('Error de conexión con el servidor GPS.');
+            
             setExternalGpsLocation(null);
         };
     }
