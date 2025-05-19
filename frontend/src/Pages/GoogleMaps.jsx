@@ -90,7 +90,7 @@ const homex=[
 ];
 
 const coords = rutatecnologico.map(p => p.join(',')).join(';');
-const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
+const url = 'https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}';
 
 // Carga el script de Google Maps solo si aún no está cargado
 const loadGoogleMapsScript = () =>
@@ -344,7 +344,7 @@ export default function GoogleMaps() {
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(null);
 
-const drawRouteFromMapbox = async (coordsArray, color = '#0074D9') => {
+  const drawRouteFromMapbox = async (coordsArray, color = '#0074D9') => {
   if (!mapRef.current || !window.google?.maps) return;
 
   const coords = coordsArray.map(p => p.join(',')).join(';');
@@ -1208,8 +1208,6 @@ useEffect(() => {
   drawRouteFromMapbox(geo, '#FF4136');              // Rojo
   drawRouteFromMapbox(nieves, '#B10DC9');           // Morado
 }, [mapLoaded]);
-
-
 
   const togglePoiMenu = useCallback(() => {
     setIsPoiMenuOpen(prev => !prev);
