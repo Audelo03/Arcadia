@@ -7,6 +7,7 @@ import logoGoogle from "../Images/g-logo.png";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { app, db } from "./firebase-config";
+import logopng from "../Images/logopng.png";
 
 const auth = getAuth(app);
 
@@ -163,7 +164,17 @@ export default function Registro() {
         </div>
 
         <div className={styles["signup-form-panel"]}>
-          <h2>Crear Cuenta</h2>
+           <div> {/* Contenedor del título y el logo */}
+              <h2 className={styles["login-title-container"]}>
+            <img
+              src={logopng} // Asegúrate que la ruta sea correcta
+              alt="Logo"
+              className={styles["login-logo"]}
+              loading="lazy"
+            />
+            <span>Crear Cuenta</span>
+          </h2>
+            </div>
           <p>Ingresa tus datos personales para crear tu cuenta.</p>
 
           <form onSubmit={handleSubmit}>

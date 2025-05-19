@@ -44,6 +44,28 @@ body {
     padding-bottom: 2rem; /* Espacio por si el contenido es muy alto */
 }
 
+
+
+.login-title-container {
+  display: flex;         /* Activa Flexbox */
+  align-items: center;   /* Alinea verticalmente los ítems al centro */
+  justify-content: flex-start; /* ALINEA LOS ELEMENTOS AL INICIO (IZQUIERDA) DEL CONTENEDOR */
+  gap: 10px;             /* Espacio entre el logo y el texto */
+  margin-bottom: 10px;   /* Espacio debajo del título */
+  /* Si el contenedor del h2 no ocupa todo el ancho y quieres que lo haga,
+     puedes añadir width: 100%; pero dependerá de tu layout general. */
+}
+
+.login-logo {
+  display: none;   /* Buena práctica para imágenes */
+}
+
+/* Estilos para el texto, si necesitas diferenciarlos */
+.login-title-container span {
+  font-size: 1.5rem; /* O el tamaño que desees */
+  font-weight: bold;
+  color: #333;
+}
 /* Contenedor principal mejorado */
 .login-container {
     display: flex;
@@ -520,6 +542,29 @@ body {
 
 /* Media Queries mejoradas */
 @media (max-width: 1024px) {
+    .login-title-container {
+  display: flex;         /* Activa Flexbox */
+  align-items: center;   /* Alinea verticalmente los ítems al centro */
+  justify-content: flex-start; /* ALINEA LOS ELEMENTOS AL INICIO (IZQUIERDA) DEL CONTENEDOR */
+  gap: 10px;             /* Espacio entre el logo y el texto */
+  margin-bottom: 10px;   /* Espacio debajo del título */
+  /* Si el contenedor del h2 no ocupa todo el ancho y quieres que lo haga,
+     puedes añadir width: 100%; pero dependerá de tu layout general. */
+}
+
+.login-logo {
+  max-width: 100%;    /* Asegura que el logo no exceda el contenedor si es muy grande */
+  height: 40px;       /* Ajusta la altura deseada para el logo, ej: 40px o 50px como tenías */
+  width: auto;        /* Mantiene la proporción del logo */
+  display: block;     /* Buena práctica para imágenes */
+}
+
+/* Estilos para el texto, si necesitas diferenciarlos */
+.login-title-container span {
+  font-size: 1.5rem; /* O el tamaño que desees */
+  font-weight: bold;
+  color: #333;
+}
     .login-image-panel { /* Ocultar panel de imagen en tablets y móviles para más espacio */
        display: none;
     }
@@ -534,6 +579,29 @@ body {
 }
 
 @media (max-width: 768px) {
+    .login-title-container {
+  display: flex;         /* Activa Flexbox */
+  align-items: center;   /* Alinea verticalmente los ítems al centro */
+  justify-content: flex-start; /* ALINEA LOS ELEMENTOS AL INICIO (IZQUIERDA) DEL CONTENEDOR */
+  gap: 10px;             /* Espacio entre el logo y el texto */
+  margin-bottom: 10px;   /* Espacio debajo del título */
+  /* Si el contenedor del h2 no ocupa todo el ancho y quieres que lo haga,
+     puedes añadir width: 100%; pero dependerá de tu layout general. */
+}
+
+.login-logo {
+  max-width: 100%;    /* Asegura que el logo no exceda el contenedor si es muy grande */
+  height: 40px;       /* Ajusta la altura deseada para el logo, ej: 40px o 50px como tenías */
+  width: auto;        /* Mantiene la proporción del logo */
+  display: block;     /* Buena práctica para imágenes */
+}
+
+/* Estilos para el texto, si necesitas diferenciarlos */
+.login-title-container span {
+  font-size: 1.5rem; /* O el tamaño que desees */
+  font-weight: bold;
+  color: #333;
+}
     /* .login-wrapper se mantiene flex-direction: row, pero login-image-panel ya está display: none */
     /* Si se quisiera mostrar la imagen arriba y el form abajo:
     .login-wrapper {
@@ -564,6 +632,29 @@ body {
 }
 
 @media (max-width: 600px) {
+    .login-title-container {
+  display: flex;         /* Activa Flexbox */
+  align-items: center;   /* Alinea verticalmente los ítems al centro */
+  justify-content: flex-start; /* ALINEA LOS ELEMENTOS AL INICIO (IZQUIERDA) DEL CONTENEDOR */
+  gap: 10px;             /* Espacio entre el logo y el texto */
+  margin-bottom: 10px;   /* Espacio debajo del título */
+  /* Si el contenedor del h2 no ocupa todo el ancho y quieres que lo haga,
+     puedes añadir width: 100%; pero dependerá de tu layout general. */
+}
+
+.login-logo {
+  max-width: 100%;    /* Asegura que el logo no exceda el contenedor si es muy grande */
+  height: 40px;       /* Ajusta la altura deseada para el logo, ej: 40px o 50px como tenías */
+  width: auto;        /* Mantiene la proporción del logo */
+  display: block;     /* Buena práctica para imágenes */
+}
+
+/* Estilos para el texto, si necesitas diferenciarlos */
+.login-title-container span {
+  font-size: 1.5rem; /* O el tamaño que desees */
+  font-weight: bold;
+  color: #333;
+}
     body { /* Menos padding en body para pantallas muy pequeñas */
         padding-top: 1rem;
         padding-bottom: 1rem;
@@ -661,6 +752,29 @@ body {
 }
 
 @media (max-width: 400px) {
+    .login-title-container {
+  display: flex;         /* Activa Flexbox */
+  align-items: center;   /* Alinea verticalmente los ítems al centro */
+  justify-content: flex-start; /* ALINEA LOS ELEMENTOS AL INICIO (IZQUIERDA) DEL CONTENEDOR */
+  gap: 10px;             /* Espacio entre el logo y el texto */
+  margin-bottom: 10px;   /* Espacio debajo del título */
+  /* Si el contenedor del h2 no ocupa todo el ancho y quieres que lo haga,
+     puedes añadir width: 100%; pero dependerá de tu layout general. */
+}
+
+.login-logo {
+  max-width: 100%;    /* Asegura que el logo no exceda el contenedor si es muy grande */
+  height: 40px;       /* Ajusta la altura deseada para el logo, ej: 40px o 50px como tenías */
+  width: auto;        /* Mantiene la proporción del logo */
+  display: block;     /* Buena práctica para imágenes */
+}
+
+/* Estilos para el texto, si necesitas diferenciarlos */
+.login-title-container span {
+  font-size: 1.5rem; /* O el tamaño que desees */
+  font-weight: bold;
+  color: #333;
+}
     /* .login-container { padding: 0.75rem; } Ya cubierto por la regla de 600px body padding */
     
     .login-form-panel {
@@ -697,6 +811,8 @@ body {
         transition: none !important; /* Desactivar transiciones completamente */
     }
 }
+
+
 
 /* Estados de enfoque mejorados para accesibilidad */
 /* :focus-visible es preferible a :focus para no mostrar outlines en clicks de ratón */
