@@ -14,6 +14,84 @@ import { FaLandmark, FaBuilding, FaMapMarkerAlt } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config";
 
+//pruebas de la api para ruta
+const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
+//Ruta de prueba
+const rutatecnologico = [
+    [-98.42483, 18.917694],
+    [-98.428552, 18.919431],
+    [-98.426565, 18.924332],
+    [-98.425542, 18.92498],
+    [-98.423189, 18.923191],
+    [-98.423477, 18.921163],
+    [-98.422767, 18.919978],
+    [-98.422635, 18.920746],
+    [-98.418238, 18.922761],
+    [-98.429907, 18.91491],
+    [-98.433306, 18.915236],
+    [-98.435812, 18.908112],
+    [-98.437376, 18.908615],
+    [-98.436075, 18.90499],
+    [-98.436623, 18.882513],
+    [-98.436935, 18.88094],
+    [-98.437086, 18.882399],
+    [-98.436671, 18.882546]
+];
+const rutacerril =[
+  [-98.43664211358958,18.88343376854101],
+  [-98.437347,18.889894],
+  [-98.43607,18.904877],
+  [-98.435046,18.912657],
+  [-98.431145,18.913152],
+  [-98.42504,18.91748],
+  [-98.425156,18.930683],
+  [-98.424464,18.934194],
+  [-98.425,18.917646],
+  [-98.430655,18.91435],
+  [-98.432399,18.914944],
+  [-98.435805,18.908088],
+  [-98.43735,18.90861],
+  [-98.438398,18.905788],
+  [-98.436673,18.883449]
+
+];
+const geo =[
+  [-98.43664211358958,18.88343376854101],
+  [-98.437347,18.889894],
+  [-98.43607,18.904877],
+  [-98.435046,18.912657],
+  [-98.431145,18.913152],
+  [-98.42504,18.91748],
+  [-98.426693,18.942462],
+  [-98.425473,18.931599],
+  [-98.425,18.917646],
+  [-98.430655,18.91435],
+  [-98.432399,18.914944],
+  [-98.435805,18.908088],
+  [-98.43735,18.90861],
+  [-98.438398,18.905788],
+  [-98.436673,18.883449]
+];
+const nieves=[
+  [-98.429681, 18.886328],
+  [-98.435244, 18.87893],
+  [-98.437116, 18.907201],
+  [-98.411041, 18.925793],
+  [-98.427224, 18.917614],
+  [-98.434205, 18.912553],
+  [-98.436818, 18.905187],
+  [-98.436118, 18.88018],
+  [-98.429765, 18.886228]
+];
+
+const homex=[
+
+
+];
+
+const coords = rutatecnologico.map(p => p.join(',')).join(';');
+const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
+
 // Carga el script de Google Maps solo si aún no está cargado
 const loadGoogleMapsScript = () =>
   new Promise((resolve, reject) => {
@@ -265,6 +343,38 @@ export default function GoogleMaps() {
 
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(null);
+
+const drawRouteFromMapbox = async (coordsArray, color = '#0074D9') => {
+  if (!mapRef.current || !window.google?.maps) return;
+
+  const coords = coordsArray.map(p => p.join(',')).join(';');
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&access_token=${accessToken}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.routes || data.routes.length === 0) {
+      console.warn("No se encontraron rutas desde Mapbox.");
+      return;
+    }
+
+    const route = data.routes[0].geometry.coordinates;
+    const path = route.map(([lng, lat]) => ({ lat, lng }));
+
+    const polyline = new window.google.maps.Polyline({
+      path,
+      geodesic: true,
+      strokeColor: color,
+      strokeOpacity: 0.9,
+      strokeWeight: 4,
+    });
+
+    polyline.setMap(mapRef.current);
+  } catch (error) {
+    console.error("Error al obtener la ruta desde Mapbox:", error);
+  }
+};
 
 
 
