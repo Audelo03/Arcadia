@@ -226,21 +226,7 @@ export default function Registro() {
               Registrarse
             </button>
 
-            <div className={styles["divider"]}>
-              <div className={styles["divider-line"]}></div>
-              <span>o regístrate con Google.</span>
-              <div className={styles["divider-line"]}></div>
-            </div>
-
-            <button type="button" className={styles["google-button"]}>
-              <img
-                src={logoGoogle}
-                alt="Google"
-                className={styles["google-icon"]}
-                loading="lazy"
-              />
-              Continuar con Google
-            </button>
+            
 
             <div className={styles["login-link"]}>
               <p>
