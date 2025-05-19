@@ -122,36 +122,3 @@ DLL_EXPORT int tokenize_and_extract_gps_fields_asm(
     return fields_found;
 }
 
-/* --- Función de prueba (opcional, para compilación independiente) ---
-int main() {
-    char lat[MAX_TOKEN_LEN], lon[MAX_TOKEN_LEN], hum[MAX_TOKEN_LEN], temp[MAX_TOKEN_LEN];
-    const char* test_str1 = "19.12345,-98.54321,60.5,25.1";
-    const char* test_str2 = "20.001,-99.002";
-    const char* test_str3 = "21.1, -100.2, 70, "; // Humedad con espacio, temperatura vacía
-    const char* test_str4 = "verylongtoken123456789012345678901234567890,next";
-
-    int result;
-
-    printf("Probando: '%s'\n", test_str1);
-    result = tokenize_and_extract_gps_fields_asm(test_str1, ',', lat, lon, hum, temp, MAX_TOKEN_LEN);
-    printf("Campos encontrados: %d\n", result);
-    printf("Lat: '%s', Lon: '%s', Hum: '%s', Temp: '%s'\n\n", lat, lon, hum, temp);
-
-    printf("Probando: '%s'\n", test_str2);
-    result = tokenize_and_extract_gps_fields_asm(test_str2, ',', lat, lon, hum, temp, MAX_TOKEN_LEN);
-    printf("Campos encontrados: %d\n", result);
-    printf("Lat: '%s', Lon: '%s', Hum: '%s', Temp: '%s'\n\n", lat, lon, hum, temp);
-    
-    printf("Probando: '%s'\n", test_str3);
-    result = tokenize_and_extract_gps_fields_asm(test_str3, ',', lat, lon, hum, temp, MAX_TOKEN_LEN);
-    printf("Campos encontrados: %d\n", result);
-    printf("Lat: '%s', Lon: '%s', Hum: '%s', Temp: '%s'\n\n", lat, lon, hum, temp);
-
-    printf("Probando: '%s'\n", test_str4);
-    result = tokenize_and_extract_gps_fields_asm(test_str4, ',', lat, lon, hum, temp, MAX_TOKEN_LEN);
-    printf("Campos encontrados: %d\n", result);
-    printf("Lat: '%s', Lon: '%s', Hum: '%s', Temp: '%s'\n\n", lat, lon, hum, temp);
-
-    return 0;
-}
-*/
