@@ -32,7 +32,10 @@
   width: 100%;
   height: 100%;
 }
-
+.poiMenuItemActive {
+  background-color: rgba(0, 0, 0, 0.15); /* O el color que prefieras */
+  font-weight: bold;
+}
 
 .mapHeader {
   padding: 1rem;

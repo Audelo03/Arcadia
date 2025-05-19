@@ -10,7 +10,7 @@ import {
   MdFastfood,
   MdHotel,
 } from "react-icons/md";
-import { FaLandmark, FaBuilding, FaMapMarkerAlt } from "react-icons/fa";
+import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList } from "react-icons/fa"; // FaThList para "Todos"
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
 
@@ -19,7 +19,7 @@ const loadGoogleMapsScript = () =>
   new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw&libraries=places`; // Añade libraries si usas Places, etc.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=TU_API_KEY&libraries=places`; // REEMPLAZA TU_API_KEY
     script.async = true;
     script.defer = true;
     script.onload = resolve;
@@ -61,8 +61,7 @@ const getCurrentLocation = () =>
     );
   });
 
-// (Los SVG de los iconos (museoIconSvgString, etc.) se mantienen igual que en tu código original)
-// ... (pega aquí tus constantes SVG larguísimas: museoIconSvgString, restauranteIconSvgString, etc.)
+// --- INICIO DE SVGs ---
 const museoIconSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32px" height="32px">
   <defs>
@@ -257,8 +256,11 @@ const hospedajeIconSvgString = `
   <circle fill="#8D6E63" cx="55" cy="112" r="0.8" opacity="0.8"/>
   <circle fill="#8D6E63" cx="71" cy="112" r="0.8" opacity="0.8"/>
 </svg>`;
+// --- FIN DE SVGs ---
+
 
 const poiTypes = [
+  { tipo: "Todos", Icono: FaThList, svgString: null, emoji: "🗺️" }, // Opción para mostrar todos
   { tipo: "Museos", Icono: MdMuseum, svgString: museoIconSvgString, emoji: "🏛️" },
   { tipo: "Monumentos Históricos", Icono: FaLandmark, svgString: monumentoHistoricoIconSvgString, emoji: "🗿" },
   { tipo: "Naturaleza", Icono: MdPark, svgString: naturalezaIconSvgString, emoji: "🌿" },
@@ -281,7 +283,7 @@ export default function GoogleMaps() {
   const openInfoWindowRef = useRef(null);
 
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
-  const [selectedPoiType, setSelectedPoiType] = useState(null);
+  const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]); // Default to "Todos"
 
   const [mapStatusMessage, setMapStatusMessage] = useState(''); // For "Esperando datos validos", etc.
   const wsRef = useRef(null); // WebSocket reference
@@ -307,19 +309,19 @@ export default function GoogleMaps() {
 
         wsRef.current.onopen = () => {
             console.log('GoogleMaps WebSocket connected');
-            setMapStatusMessage(''); // Clear any stale messages
+            setMapStatusMessage(''); 
         };
 
         wsRef.current.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                 // console.log('GoogleMaps WS message:', message); // Debug
+                 // console.log('GoogleMaps WS message:', message); 
 
                 if (message.type === 'gps_status') {
                     const { status, message: statusMessage } = message.payload;
                     if (status === 'waiting_for_valid_data') {
                         setMapStatusMessage(statusMessage || "Esperando datos GPS válidos...");
-                        setExternalGpsLocation(null); // Clear old external GPS data
+                        setExternalGpsLocation(null); 
                     } else if (status === 'disconnected' || status === 'disconnected_error' || status === 'script_launch_error' || status === 'script_error') {
                         setMapStatusMessage(statusMessage || 'GPS desconectado o con error.');
                         setExternalGpsLocation(null);
@@ -328,11 +330,11 @@ export default function GoogleMaps() {
                          }
                     }
                 } else if (message.type === 'gps_update' && message.payload.lat) {
-                    setMapStatusMessage(''); // Clear "waiting" or error message
+                    setMapStatusMessage(''); 
                     setExternalGpsLocation({
                         lat: message.payload.lat,
                         lng: message.payload.lng,
-                        accuracy: 5, // Example accuracy, can be refined
+                        accuracy: 5, 
                         humidity: message.payload.humidity,
                         temperature: message.payload.temperature
                     });
@@ -345,8 +347,7 @@ export default function GoogleMaps() {
 
         wsRef.current.onclose = () => {
             console.log('GoogleMaps WebSocket disconnected');
-            // Consider if a message should be shown here, e.g. "Connection to GPS server lost"
-            // setMapStatusMessage('Conexión con el servidor GPS perdida. Intenta reconectar desde la barra lateral.');
+            // setMapStatusMessage('Conexión con el servidor GPS perdida.');
             // setExternalGpsLocation(null);
         };
 
@@ -357,23 +358,15 @@ export default function GoogleMaps() {
         };
     }
 
-    // Event listeners for Sidebar signals
     const handleGpsDataActive = () => setMapStatusMessage('');
     const handleGpsConnectionLost = () => {
-        // setMapStatusMessage('GPS Externo desconectado.'); // Message can be more specific
         setExternalGpsLocation(null);
     };
 
     window.addEventListener('gps-data-active', handleGpsDataActive);
     window.addEventListener('gps-connection-lost', handleGpsConnectionLost);
 
-    // Cleanup WebSocket and event listeners
     return () => {
-        // Optional: close WebSocket if it should not persist beyond this component's lifecycle
-        // if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        //   wsRef.current.close();
-        //   wsRef.current = null;
-        // }
         window.removeEventListener('gps-data-active', handleGpsDataActive);
         window.removeEventListener('gps-connection-lost', handleGpsConnectionLost);
     };
@@ -383,10 +376,10 @@ export default function GoogleMaps() {
   const updateMarker = useCallback((lat, lng, isExternalSource = usingExternalGps, heading = 0, data = {}) => {
     if (!mapRef.current || !window.google?.maps) return;
 
-    activeMarkerRef.current?.setMap(null); // Remove previous active marker
+    activeMarkerRef.current?.setMap(null); 
 
     const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {
-      const color = isExt ? '#EF4444' : '#1E40AF'; // Rojo para externo, Azul para interno
+      const color = isExt ? '#EF4444' : '#1E40AF'; 
       const outerSize = svgSize;
       const innerSize = svgSize * 0.4;
       const center = outerSize / 2;
@@ -408,7 +401,7 @@ export default function GoogleMaps() {
     };
 
     const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {
-      const minSize = 24; // Ajustado para mejor visibilidad
+      const minSize = 24; 
       const maxSize = 48;
       const minZoom = 10;
       const maxZoom = 20;
@@ -462,30 +455,27 @@ export default function GoogleMaps() {
       openInfoWindowRef.current = infoWindow;
     });
 
-    // Guardar referencia al nuevo marcador activo
     activeMarkerRef.current = newMarker;
 
-  }, [usingExternalGps]); // updateMarker depende de usingExternalGps para el color/título por defecto
+  }, [usingExternalGps]);
 
 
   const toggleGpsSource = useCallback(() => {
     const newUsingExternalGps = !usingExternalGps;
     setUsingExternalGps(newUsingExternalGps);
-    setMapStatusMessage(''); // Clear messages on source toggle
+    setMapStatusMessage(''); 
     setError('');
 
     if (newUsingExternalGps) {
-      // Si se cambia a GPS Externo, y no hay datos, Sidebar mostrará el estado "Conectando (esperando)"
-      // y GoogleMaps.jsx mostrará "Esperando datos..." si el WebSocket así lo indica.
       if (!externalGpsLocation) {
         setMapStatusMessage("Cambiado a GPS Externo. Esperando datos...");
-        activeMarkerRef.current?.setMap(null); // Ocultar marcador si no hay datos externos
+        activeMarkerRef.current?.setMap(null); 
       } else {
-         mapRef.current?.panTo({ lat: externalGpsLocation.lat, lng: externalGpsLocation.lng });
+        mapRef.current?.panTo({ lat: externalGpsLocation.lat, lng: externalGpsLocation.lng });
       }
-    } else { // Cambiando a GPS Interno
+    } else { 
       if (!location) {
-        requestLocation(true); // Solicitar ubicación interna si no existe
+        requestLocation(true); 
         setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación...");
       } else {
         mapRef.current?.panTo({ lat: location.lat, lng: location.lng });
@@ -499,25 +489,24 @@ export default function GoogleMaps() {
       try {
         await loadGoogleMapsScript();
         setMapLoaded(true);
-        // Solicitar ubicación interna al inicio, pero no necesariamente mostrarla si se prefiere la externa
-        await requestLocation(false); // false para no mostrar alerta si falla al inicio
+        await requestLocation(false); 
       } catch (err) {
         setError(err.message);
         setMapStatusMessage(`Error al iniciar mapa: ${err.message}`);
       }
     };
-    if (!window.google?.maps && !mapLoaded) { // Solo llamar una vez
+    if (!window.google?.maps && !mapLoaded) { 
         initMap();
-    } else if (window.google?.maps && !mapLoaded) { // Si el script ya estaba, pero el estado no
+    } else if (window.google?.maps && !mapLoaded) { 
         setMapLoaded(true);
         if(!location) requestLocation(false);
     }
 
-  }, [mapLoaded, location, requestLocation]); // mapLoaded y requestLocation como dependencias
+  }, [mapLoaded, location, requestLocation]); 
 
 
   const fetchLugaresPorTipo = useCallback(async (tipo) => {
-    setLugares([]); // Limpiar lugares anteriores
+    setLugares([]); 
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
       const data = querySnapshot.docs
@@ -527,12 +516,35 @@ export default function GoogleMaps() {
       if (data.length === 0) {
         setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`);
         setTimeout(()=> setMapStatusMessage(''), 3000);
+      } else {
+        setMapStatusMessage('');
       }
     } catch (err) {
       console.error("Error al obtener lugares:", err);
       setError("Error al cargar lugares de interés.");
+      setMapStatusMessage("Error al cargar lugares.");
     }
   }, []);
+
+  const fetchAllLugares = useCallback(async () => {
+    setLugares([]);
+    try {
+        const querySnapshot = await getDocs(collection(db, "lugares"));
+        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setLugares(data);
+        if (data.length === 0) {
+            setMapStatusMessage(`No se encontraron lugares.`);
+            setTimeout(() => setMapStatusMessage(''), 3000);
+        } else {
+            setMapStatusMessage('');
+        }
+    } catch (err) {
+        console.error("Error al obtener todos los lugares:", err);
+        setError("Error al cargar todos los lugares de interés.");
+        setMapStatusMessage("Error al cargar lugares.");
+    }
+  }, []);
+
 
   // Efecto para inicializar el mapa y actualizar el marcador principal
   useEffect(() => {
@@ -548,9 +560,7 @@ export default function GoogleMaps() {
             isExternalSourceForMarker = true;
             markerData = { humidity: externalGpsLocation.humidity, temperature: externalGpsLocation.temperature, accuracy: externalGpsLocation.accuracy };
         } 
-        // Si no hay externalGpsLocation, currentDisplayLocation permanece null, no se muestra marcador activo.
-        // El mensaje "Esperando datos" ya es manejado por mapStatusMessage.
-    } else { // Usando GPS Interno
+    } else { 
         if (location) {
             currentDisplayLocation = location;
             isExternalSourceForMarker = false;
@@ -558,7 +568,7 @@ export default function GoogleMaps() {
         }
     }
     
-    if (!mapRef.current && currentDisplayLocation) { // Inicializar mapa si no existe Y hay una ubicación
+    if (!mapRef.current && currentDisplayLocation) { 
         mapRef.current = new window.google.maps.Map(
             document.getElementById("map"),
             {
@@ -572,32 +582,28 @@ export default function GoogleMaps() {
             disableDoubleClickZoom: true,
             }
         );
-        // Listener para actualizar tamaño de marcador en zoom (solo si es el marcador activo)
         mapRef.current.addListener('zoom_changed', () => {
-            if (activeMarkerRef.current && activeMarkerRef.current.getMap()) { // si el marcador está en el mapa
-                 const pos = activeMarkerRef.current.getPosition();
-                 // Recrear el ícono con el nuevo zoom para el marcador activo
-                 const newZoom = mapRef.current.getZoom();
-                 const currentIsExternal = activeMarkerRef.current.getTitle().includes("Externo"); // Chequeo simple
-                 // Es importante que createMarkerIcon esté disponible en este scope o se pase/redefina
-                 const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {/*...*/}; // Definición debe estar aquí o ser importada
-                 const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {/*...*/}; // Definición debe estar aquí o ser importada
-                 // activeMarkerRef.current.setIcon(createMarkerIcon(currentIsExternal, newZoom, 0)); // Asumiendo que 0 es el heading por defecto
+            if (activeMarkerRef.current && activeMarkerRef.current.getMap()) { 
+                 // const pos = activeMarkerRef.current.getPosition();
+                 // const newZoom = mapRef.current.getZoom();
+                 // const currentIsExternal = activeMarkerRef.current.getTitle().includes("Externo"); 
+                 // const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {/*...*/}; 
+                 // const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {/*...*/}; 
+                 // activeMarkerRef.current.setIcon(createMarkerIcon(currentIsExternal, newZoom, 0)); 
             }
         });
 
 
-    } else if (mapRef.current && currentDisplayLocation) { // Si el mapa existe y hay ubicación, solo panear
+    } else if (mapRef.current && currentDisplayLocation) { 
         if (mapRef.current.getCenter().lat() !== currentDisplayLocation.lat || mapRef.current.getCenter().lng() !== currentDisplayLocation.lng) {
             mapRef.current.panTo({ lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng });
         }
     }
 
-    // Actualizar o limpiar el marcador activo
     if (currentDisplayLocation) {
         updateMarker(currentDisplayLocation.lat, currentDisplayLocation.lng, isExternalSourceForMarker, 0, markerData);
     } else {
-        activeMarkerRef.current?.setMap(null); // Limpiar marcador si no hay ubicación que mostrar
+        activeMarkerRef.current?.setMap(null); 
     }
 
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps, updateMarker]);
@@ -607,13 +613,11 @@ export default function GoogleMaps() {
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
 
-    // Limpiar marcadores de POI anteriores
     poiMarkersRef.current.forEach((m) => m.setMap(null));
     poiMarkersRef.current = [];
-    if (openInfoWindowRef.current) { // Cerrar InfoWindow de POI si está abierta
-        // No cerrar si la InfoWindow es del marcador de posición actual
+    if (openInfoWindowRef.current) { 
         if (activeMarkerRef.current && openInfoWindowRef.current.anchor === activeMarkerRef.current) {
-            // Es la InfoWindow del marcador de posición, no la cerramos aquí.
+          // No cerrar
         } else {
              openInfoWindowRef.current.close();
              openInfoWindowRef.current = null;
@@ -628,7 +632,7 @@ export default function GoogleMaps() {
       const poiDefinition = poiTypes.find(pt => pt.tipo === lugar.tipo);
       let iconOptions = {
         scaledSize: new window.google.maps.Size(32, 32),
-        anchor: new window.google.maps.Point(16, 32), // Ancla común para pines
+        anchor: new window.google.maps.Point(16, 32), 
       };
 
       if (poiDefinition) {
@@ -638,7 +642,7 @@ export default function GoogleMaps() {
             scaledSize: new window.google.maps.Size(32, 32),
             anchor: new window.google.maps.Point(16, 16),
           };
-        } else if (poiDefinition.emoji) {
+        } else if (poiDefinition.emoji && poiDefinition.tipo !== "Todos") { // No usar emoji para "Todos" si no tiene SVG
           const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
           iconOptions = {
             url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgEmoji)}`,
@@ -656,11 +660,8 @@ export default function GoogleMaps() {
       });
 
       const id = `carrusel-${lugar.id || Math.random().toString(36).substr(2, 9)}`;
-      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png']; // Usar un placeholder si no hay imágenes
+      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png']; 
 
-      // Contenido del InfoWindow (sin cambios mayores, se asume que ya es robusto)
-      // ... (pega aquí tu constante infoWindowContent larguísima)
-      // Asegúrate que los IDs dentro de infoWindowContent (ej: ${id}-custom-close-btn) sean únicos.
       const svgArrowLeft = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M257.5 445.1l-22.2 22.2c-9.4 9.4-24.6 9.4-33.9 0L7 273c-9.4-9.4-9.4-24.6 0-33.9L201.4 44.7c9.4-9.4 24.6-9.4 33.9 0l22.2 22.2c9.5 9.5 9.3 25-.4 34.3L136.6 216H424c13.3 0 24 10.7 24 24v32c0 13.3-10.7 24-24 24H136.6l120.5 114.8c9.8 9.3 10 24.8.4 34.3z"></path></svg>`;
       const svgArrowRight = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M190.5 66.9l22.2-22.2c9.4-9.4 24.6-9.4 33.9 0L416 239c9.4 9.4 9.4 24.6 0 33.9L246.6 467.3c-9.4-9.4-24.6-9.4-33.9 0l-22.2-22.2c-9.5-9.5-9.3-25 .4-34.3L311.4 296H24c-13.3 0-24-10.7-24-24v-32c0-13.3 10.7-24 24-24h287.4L190.9 101.2c-9.8-9.3-10-24.8-.4-34.3z"></path></svg>`;
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
@@ -670,7 +671,7 @@ export default function GoogleMaps() {
         .gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; }
         .gm-style .gm-style-iw-d { overflow: hidden !important; }
         .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; }
-        .info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; /* Asegura que el contenedor tenga bordes redondeados */ }
+        .info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; }
         .info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; }
         .info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); }
         .info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; }
@@ -746,17 +747,16 @@ export default function GoogleMaps() {
       const infoWindow = new window.google.maps.InfoWindow({
         content: infoWindowContent,
         ariaLabel: lugar.nombre,
-        disableAutoPan: false, // Ajusta si el autopan es molesto
-        pixelOffset: new window.google.maps.Size(0, -10) // Ajusta según el ancla del ícono
+        disableAutoPan: false, 
+        pixelOffset: new window.google.maps.Size(0, -10) 
       });
 
       marker.addListener("click", () => {
-        openInfoWindowRef.current?.close(); // Cierra la InfoWindow anterior (si existe)
+        openInfoWindowRef.current?.close(); 
         infoWindow.open(mapRef.current, marker);
         openInfoWindowRef.current = infoWindow;
       });
 
-      // Lógica para la galería dentro de InfoWindow
       window.google.maps.event.addListener(infoWindow, 'domready', () => {
         const closeButton = document.getElementById(`${id}-custom-close-btn`);
         if (closeButton) {
@@ -784,7 +784,6 @@ export default function GoogleMaps() {
           if(prevButton) prevButton.onclick = () => { if (currentImageIndex > 0) { currentImageIndex--; updateGallery(); } };
           if(nextButton) nextButton.onclick = () => { if (currentImageIndex < imagenes.length - 1) { currentImageIndex++; updateGallery(); } };
           
-          // Soporte para gestos táctiles (simplificado)
           if (imgElement) {
               let touchStartX = 0;
               imgElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
@@ -807,23 +806,33 @@ export default function GoogleMaps() {
 
 
   const togglePoiMenu = useCallback(() => setIsPoiMenuOpen(prev => !prev), []);
+  
   const handlePoiTypeSelect = useCallback((poi) => {
     setSelectedPoiType(poi);
-    fetchLugaresPorTipo(poi.tipo);
+    if (poi.tipo === "Todos") {
+        fetchAllLugares();
+    } else {
+        fetchLugaresPorTipo(poi.tipo);
+    }
     setIsPoiMenuOpen(false);
-  }, [fetchLugaresPorTipo]);
+  }, [fetchLugaresPorTipo, fetchAllLugares]);
+
+  // Cargar todos los lugares al inicio si "Todos" es la selección por defecto
+  useEffect(() => {
+    if (selectedPoiType && selectedPoiType.tipo === "Todos" && mapLoaded) {
+        fetchAllLugares();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLoaded]); // Solo ejecutar cuando el mapa está cargado y "Todos" es la opción inicial
 
 
   return (
     <div className={styles.mapRoot}>
-      <Sidebar 
-        // Pasa las props necesarias para el Sidebar, si las usa para rutas.
-        // onShowRoutes={...} onClearRoutes={...} isShowingRoutes={...} onToggleRouteList={...}
-      />
+      <Sidebar />
       {error && <div className={styles.errorBox}>{error}</div>}
 
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
-        {location && ( // Solo mostrar si hay ubicación interna disponible
+        {location && ( 
           <button
             onClick={() => requestLocation(true)}
             className={styles.mapButton}
@@ -868,12 +877,12 @@ export default function GoogleMaps() {
               <button
                 key={poi.tipo}
                 onClick={() => handlePoiTypeSelect(poi)}
-                className={styles.poiMenuItem}
+                className={`${styles.poiMenuItem} ${selectedPoiType && selectedPoiType.tipo === poi.tipo ? styles.poiMenuItemActive : ''}`}
                 title={poi.tipo}
-                style={{ animationDelay: `${index * 0.08}s` }} // Efecto de entrada escalonado
+                style={{ animationDelay: `${index * 0.08}s` }} 
               >
                 <poi.Icono size={22} />
-                <span className={styles.poiMenuItemText}>{poi.tipo}</span>
+                <span className={styles.poiMenuItemText}>{poi.tipo === "Todos" ? "Todos los lugares" : poi.tipo}</span>
               </button>
             ))}
           </div>
@@ -881,7 +890,7 @@ export default function GoogleMaps() {
         <button
           onClick={togglePoiMenu}
           className={styles.poiFab}
-          title={selectedPoiType ? `Mostrando: ${selectedPoiType.tipo}` : "Seleccionar tipo de lugar de interés"}
+          title={selectedPoiType ? `Mostrando: ${selectedPoiType.tipo === "Todos" ? "Todos los lugares" : selectedPoiType.tipo}` : "Seleccionar tipo de lugar"}
           aria-expanded={isPoiMenuOpen}
           aria-haspopup="true"
         >
