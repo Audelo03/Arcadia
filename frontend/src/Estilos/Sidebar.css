@@ -183,6 +183,13 @@
   .mobile-menu-toggle { 
     display: none;
   }
+  .bars{
+    display: flex;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 5px; /* Área de click más grande */
+  color: #b0b0b0;
+  }
 }
 
 /* Estilos para el modal de selección de rutas */
@@ -285,7 +292,7 @@
   bottom: 10px; 
   left: 15px;
   right: 15px;
-  width: calc(100% - 30px); 
+  width: calc(var(--sidebar-width) - 30px); /* Ajusta el ancho al sidebar abierto */
   box-sizing: border-box;
   padding: 8px 12px;
   border-radius: 5px;
@@ -309,4 +316,80 @@
 .sidebar:not(.open) .link_text,
 .sidebar:not(.open) .submenu_text {
   opacity: 0;
+}
+
+
+/* En Sidebar.css (ejemplos) */
+.link.connected .icon,
+.link.connected .link_text {
+  color: #4CAF50; /* Verde para conectado */
+}
+
+.link.connecting .icon,
+.link.connecting .link_text {
+  color: #ffc107; /* Amarillo para conectando/esperando */
+}
+
+.link.disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+.rotating-icon {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.gps-status-message.success {
+  background-color: #4CAF50;
+  color: white;
+}
+.gps-status-message.connecting {
+  background-color: #ffc107;
+  color: black;
+}
+.gps-status-message.error {
+  background-color: #f44336;
+  color: white;
+}
+
+.sidebar:not(.open) .gps-status-message {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  overflow: hidden;
+  /* La transición ya está definida arriba, se aplicará aquí también */
+}
+
+.rotating-icon { animation: rotate 0.5s linear infinite; }
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Ajustes para los estados de los links de GPS */
+.link.connecting { 
+  /* Puedes mantener estilos de opacidad o puntero aquí si es necesario,
+     o manejarlos con la clase .disabled como se hizo en Sidebar.jsx */
+}
+.link.connected .icon, 
+.link.connected .link_text { 
+  color: #4caf50 !important; /* Verde para conectado */
+}
+.link.connecting .icon,
+.link.connecting .link_text {
+  color: #ffc107; /* Amarillo para conectando/esperando */
+}
+.link.disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+
+.sidebar:not(.open) .link_text,
+.sidebar:not(.open) .submenu_text {
+  opacity: 0;
+  /* Podrías añadir transition: opacity 0.1s ease; si quieres que desaparezcan un poco más rápido
+     que la expansión del sidebar para evitar que se vea el texto mientras se encoge. */
 }

@@ -452,3 +452,23 @@
   max-width: 180px; 
   margin-left: 0.85rem; 
 }
+
+/* En GoogleMaps.module.css */
+.mapOverlayMessage {
+  position: absolute;
+  top: 70px; /* Ajusta según tu header */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(40, 40, 40, 0.85);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  z-index: 1001; /* Encima del mapa */
+  font-size: 0.9rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+.gpsToggle.externalActive svg { /* Ejemplo para resaltar el botón de GPS Externo activo */
+  color: #EF4444; /* Rojo, por ejemplo */
+}

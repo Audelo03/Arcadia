@@ -1,47 +1,112 @@
 // frontend/src/Components/Sidebar.jsx
-import React, { useState, useEffect } from 'react';
-import { FaBars, FaRoute, FaSignOutAlt, FaListUl, FaTrashAlt } from "react-icons/fa"; // Añadido FaSignOutAlt, FaRoute, FaListUl, FaTrashAlt
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // <--- useRef importado aquí
+import { FaBars, FaRoute, FaSignOutAlt, FaListUl, FaTrashAlt } from "react-icons/fa";
 import { BiLogIn } from "react-icons/bi";
 import { IoPeopleOutline } from "react-icons/io5";
-import { NavLink, useNavigate } from 'react-router-dom'; // Añadido useNavigate
+import { NavLink, useNavigate } from 'react-router-dom';
 import '../Estilos/Sidebar.css';
 import logoPng from '../Images/logopng.png';
 import { MdOutlineDeveloperBoard } from "react-icons/md";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
-// Importaciones de Firebase para autenticación
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from '../Pages/firebase-config'; // Importa tu instancia de auth
+import { auth } from '../Pages/firebase-config';
+// import { db } from '../Pages/firebase-config'; // Descomentar si se usa db directamente aquí
+// import { collection, getDocs } from "firebase/firestore"; // Descomentar si se usa
 
-// Asumiendo que db también se usa para rutas, lo importamos
-import { db } from '../Pages/firebase-config';
-import { collection, getDocs } from "firebase/firestore";
-
-// Props añadidas: onShowRoutes, onClearRoutes, onToggleRouteSelectionMode
 const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteList }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenuIndex, setExpandedMenuIndex] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null); // Estado para el usuario actual
-  const navigate = useNavigate(); // Hook para navegación
+  const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
 
-  // Estados para GPS (existentes)
   const [showGpsMessage, setShowGpsMessage] = useState(false);
   const [gpsMessageText, setGpsMessageText] = useState('');
   const [gpsConnected, setGpsConnected] = useState(false);
-  const [connectingGps, setConnectingGps] = useState(false);
-  const [connectionTimeout, setConnectionTimeout] = useState(null);
+  const [isAttemptingConnection, setIsAttemptingConnection] = useState(false);
+  
+  const [connectionAttemptTimeout, setConnectionAttemptTimeout] = useState(null);
+  const wsRef = useRef(null);
 
-  // ... (otros estados)
-const [showRouteListModal, setShowRouteListModal] = useState(false);
-const [allAvailableRoutes, setAllAvailableRoutes] = useState([]); // [{id, nombre, kmlUrl, colorSugerido}]
-const [selectedRoutesForMap, setSelectedRoutesForMap] = useState(new Set()); // Set de IDs
-const [loadingRoutes, setLoadingRoutes] = useState(false);
-  // Efecto para observar cambios en el estado de autenticación
+  const clearConnectionAttemptTimeout = useCallback(() => {
+    if (connectionAttemptTimeout) {
+      clearTimeout(connectionAttemptTimeout);
+      setConnectionAttemptTimeout(null);
+    }
+  }, [connectionAttemptTimeout]);
+
+  useEffect(() => {
+    if (!wsRef.current) {
+        wsRef.current = new WebSocket('ws://localhost:8080');
+
+        wsRef.current.onopen = () => {
+            console.log('Sidebar WebSocket connected');
+        };
+
+        wsRef.current.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                // console.log('Sidebar WS message:', message); // Debug
+
+                if (message.type === 'gps_status') {
+                    const { status, message: statusMessage } = message.payload;
+                    if (status === 'waiting_for_valid_data') {
+                        setIsAttemptingConnection(true);
+                        setGpsConnected(false);
+                        setGpsMessageText(statusMessage || 'Esperando datos GPS válidos...');
+                        setShowGpsMessage(true);
+                    } else if (status === 'disconnected' || status === 'disconnected_error' || status === 'script_launch_error' || status === 'script_error') {
+                        clearConnectionAttemptTimeout();
+                        setIsAttemptingConnection(false);
+                        setGpsConnected(false);
+                        setGpsMessageText(statusMessage || 'GPS desconectado o error.');
+                        setShowGpsMessage(true);
+                        window.dispatchEvent(new CustomEvent('gps-connection-lost'));
+                        setTimeout(() => setShowGpsMessage(false), 7000);
+                    }
+                } else if (message.type === 'gps_update' && message.payload.lat) {
+                    clearConnectionAttemptTimeout();
+                    if (!gpsConnected) { 
+                        setGpsMessageText("GPS conectado y recibiendo datos.");
+                        setShowGpsMessage(true);
+                        setTimeout(() => setShowGpsMessage(false), 5000);
+                    }
+                    setGpsConnected(true);
+                    setIsAttemptingConnection(false);
+                    window.dispatchEvent(new CustomEvent('gps-data-active')); 
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message in Sidebar:', error);
+            }
+        };
+
+        wsRef.current.onclose = () => {
+            console.log('Sidebar WebSocket disconnected');
+            // No cambiar estado aquí directamente si el cierre es inesperado
+        };
+
+        wsRef.current.onerror = (error) => {
+            console.error('Sidebar WebSocket error:', error);
+            setGpsMessageText("Error de conexión con el servidor GPS.");
+            setShowGpsMessage(true);
+            setIsAttemptingConnection(false);
+            setGpsConnected(false);
+            clearConnectionAttemptTimeout();
+            setTimeout(() => setShowGpsMessage(false), 7000);
+        };
+    }
+    
+    return () => {
+        clearConnectionAttemptTimeout();
+    };
+  }, [gpsConnected, clearConnectionAttemptTimeout]);
+
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
     });
-    return () => unsubscribe(); // Limpieza al desmontar
+    return () => unsubscribe();
   }, []);
 
   const toggle = () => {
@@ -64,159 +129,166 @@ const [loadingRoutes, setLoadingRoutes] = useState(false);
     try {
       await signOut(auth);
       console.log("Sesión cerrada");
-      navigate('/login'); // Redirige al login después de cerrar sesión
+      setGpsConnected(false); 
+      setIsAttemptingConnection(false);
+      // No hay 'pythonProcess' que verificar aquí, eso es del backend.
+      // Si es necesario, la acción de desconectar GPS se haría a través de una llamada API a disconnectGps()
+      // si el GPS estuviera activo.
+      if (gpsConnected || isAttemptingConnection) {
+        disconnectGps(); // Intenta desconectar si estaba activo o intentando.
+      }
+      navigate('/login');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
-      // Aquí podrías mostrar un mensaje de error al usuario
     }
   };
+  
+  const handleExternalGpsClick = useCallback(() => {
+    clearConnectionAttemptTimeout(); 
 
-  // Lógica de GPS (existente - sin cambios relevantes aquí, solo se muestra por completitud)
-  useEffect(() => {
-    return () => {
-      if (connectionTimeout) {
-        clearTimeout(connectionTimeout);
-      }
-    };
-  }, [connectionTimeout]);
-
-  const handleExternalGpsClick = () => {
-    if (gpsConnected) {
+    if (gpsConnected) { 
       disconnectGps();
       return;
     }
-    if (connectingGps) {
-      return;
+
+    if (isAttemptingConnection) {
+      setGpsMessageText("Intentando conectar... Esperando datos GPS válidos.");
+      setShowGpsMessage(true);
+      return; 
     }
-    setConnectingGps(true);
-    setGpsMessageText("Conectando... Asegúrate que los datos GPS (longitud, latitud, [humedad], [temperatura]) estén separados por comas.");
+
+    setIsAttemptingConnection(true);
+    setGpsConnected(false); 
+    setGpsMessageText("Iniciando conexión GPS... Asegúrate que los datos GPS (longitud, latitud, [humedad], [temperatura]) estén separados por comas.");
     setShowGpsMessage(true);
+
     const timeoutId = setTimeout(() => {
-      if (connectingGps) {
-        setGpsMessageText("Error: Tiempo de espera agotado. Verifica que el dispositivo GPS esté disponible.");
-        setConnectingGps(false);
+      if (isAttemptingConnection && !gpsConnected) { 
+        setGpsMessageText("Error: Tiempo de espera agotado. Verifica el dispositivo GPS y la conexión del servidor.");
+        setShowGpsMessage(true);
+        setIsAttemptingConnection(false); 
         setTimeout(() => setShowGpsMessage(false), 7000);
       }
-    }, 10000);
-    setConnectionTimeout(timeoutId);
+    }, 25000); 
+    setConnectionAttemptTimeout(timeoutId);
+
     fetch('http://localhost:3001/api/connect-gps')
       .then(response => {
-        const statusOk = response.ok;
-        return response.json().then(data => ({ data, statusOk }));
-      })
-      .then(({ data, statusOk }) => {
-        clearTimeout(timeoutId);
-        if (statusOk || data.success) {
-          setGpsMessageText(data.message || "GPS conectado correctamente");
-          setGpsConnected(true);
-          window.dispatchEvent(new Event('gps-connected'));
-          setTimeout(() => setShowGpsMessage(false), 5000);
-        } else {
-          throw new Error(data.message || "Error al conectar con GPS");
+        if (!response.ok) {
+          return response.json().then(err => { throw new Error(err.message || `Error del servidor: ${response.status}`) });
         }
+        return response.json();
+      })
+      .then(data => {
+        if (!data.success) {
+          throw new Error(data.message || "Fallo al iniciar la conexión GPS desde el servidor.");
+        }
+        // El estado real (conectado, esperando datos) lo dará el WebSocket.
       })
       .catch(error => {
-        clearTimeout(timeoutId);
-        setGpsMessageText("Error al conectar con GPS. Verifica que el backend esté activo y el dispositivo GPS esté conectado.");
+        clearConnectionAttemptTimeout();
+        setGpsMessageText(error.message || "Error de red o servidor al intentar conectar con GPS.");
+        setShowGpsMessage(true);
+        setIsAttemptingConnection(false);
         setTimeout(() => setShowGpsMessage(false), 7000);
-      })
-      .finally(() => setConnectingGps(false));
-  };
+      });
+  }, [gpsConnected, isAttemptingConnection, clearConnectionAttemptTimeout]);
 
-  const disconnectGps = () => {
+  // Definir disconnectGps usando useCallback para evitar re-creaciones innecesarias si se pasa como prop o dependencia
+  const disconnectGps = useCallback(() => {
+    clearConnectionAttemptTimeout();
     setGpsMessageText("Desconectando GPS...");
     setShowGpsMessage(true);
     fetch('http://localhost:3001/api/disconnect-gps')
       .then(response => response.json())
       .then(data => {
-        setGpsMessageText(data.message || "GPS desconectado correctamente");
-        setGpsConnected(false);
-        window.dispatchEvent(new Event('gps-disconnected'));
-        setTimeout(() => setShowGpsMessage(false), 5000);
+        setGpsMessageText(data.message || "Solicitud de desconexión GPS enviada.");
       })
       .catch(error => {
-        setGpsMessageText("Error al desconectar GPS.");
+        setGpsMessageText("Error al solicitar desconexión del GPS. Forzando estado desconectado localmente.");
+        setIsAttemptingConnection(false); 
         setGpsConnected(false);
-        window.dispatchEvent(new Event('gps-disconnected'));
-        setTimeout(() => setShowGpsMessage(false), 7000);
+        window.dispatchEvent(new CustomEvent('gps-connection-lost'));
+      })
+      .finally(() => {
+        setTimeout(() => setShowGpsMessage(false), 5000);
       });
-  };
+  }, [clearConnectionAttemptTimeout]); // Añadir dependencias si las usa directamente
 
   const getGpsButtonText = () => {
-    if (connectingGps) return 'Conectando GPS...';
+    if (isAttemptingConnection) return 'Conectando (Esperando datos...)';
     if (gpsConnected) return 'Desconectar GPS Externo';
     return 'Agregar GPS Externo';
   };
+
   const getGpsButtonIcon = () => {
-    if (connectingGps) return <AiOutlineLoading3Quarters className="rotating-icon" />;
+    if (isAttemptingConnection) return <AiOutlineLoading3Quarters className="rotating-icon" />;
     return <MdOutlineDeveloperBoard />;
   };
 
-
-  // Nuevos ítems de menú
   const menuItems = [
     {
       name: 'Cuenta',
-      path: '/login', // O a una página de perfil si existe
+      path: '/login',
       icon: <IoPeopleOutline />,
-      // Condicional para mostrar submenú de login solo si no hay usuario
       submenu: !currentUser ? [ 
         { icon: <BiLogIn />, name: 'Iniciar Sesión', path: '/login' }
       ] : null,
-      // Ocultar "Cuenta" si no hay submenú (o sea, si hay usuario logueado y no queremos mostrar nada más aquí)
-      // O podrías tener otras opciones de cuenta aquí cuando está logueado.
-      // Por ahora, si está logueado, esta opción principal no tendrá submenú.
     },
     {
-      name: getGpsButtonText(), // Lógica de GPS existente
-      path: '#',
+      name: getGpsButtonText(),
       icon: getGpsButtonIcon(),
       action: handleExternalGpsClick,
-      className: connectingGps ? 'connecting' : (gpsConnected ? 'connected' : '')
+      className: gpsConnected ? 'connected' : (isAttemptingConnection ? 'connecting' : '')
     },
-    // Nueva opción para Rutas
     {
       name: isShowingRoutes ? 'Eliminar Rutas Mostradas' : 'Mostrar Rutas',
       icon: isShowingRoutes ? <FaTrashAlt /> : <FaRoute />,
       action: () => {
         if (isShowingRoutes) {
-          onClearRoutes(); // Llama a la función de GoogleMaps.jsx
+          onShowRoutes && onShowRoutes(); // Corregido: Llamar onShowRoutes para mostrar, o onClearRoutes para eliminar
         } else {
-          onToggleRouteList(true); // Abre el modal/panel de selección de rutas
+           onToggleRouteList && onToggleRouteList(true); // Esto parece correcto para abrir el modal
         }
+         // Si la lógica es: si está mostrando -> el botón dice "Eliminar Rutas" -> llama onClearRoutes
+         //                   si no está mostrando -> el botón dice "Mostrar Rutas" -> llama onToggleRouteList(true) o onShowRoutes directamente.
+         // La prop onShowRoutes no estaba definida, asumo que es onClearRoutes() la que se llama cuando isShowingRoutes es true.
+         // Reemplazo con onClearRoutes si esa es la intención:
+         if (isShowingRoutes && onClearRoutes) {
+             onClearRoutes();
+         } else if (!isShowingRoutes && onToggleRouteList) {
+             onToggleRouteList(true);
+         }
+
       },
     },
   ];
 
-  // Añadir "Cerrar Sesión" solo si hay un usuario logueado
   if (currentUser) {
     menuItems.push({
       name: 'Cerrar Sesión',
       icon: <FaSignOutAlt />,
       action: handleLogout,
-      path: '#' // Opcional, ya que 'action' maneja el click
+      path: '#' 
     });
   }
 
-  // ... (renderMenuItem y el return JSX se mantienen, pero renderMenuItem usará los nuevos menuItems)
-  // Asegúrate que renderMenuItem maneje bien los items que solo tienen 'action' y no 'path' o 'submenu'
-
   const renderMenuItem = (item, index) => {
     const isExpanded = expandedMenuIndex === index;
-    // Añade item.className a linkClass para el estado 'connecting' o 'connected' del GPS
     const linkClass = `link ${item.submenu && isExpanded ? 'expanded' : ''} ${item.className || ''}`;
+    const isDisabled = item.name === getGpsButtonText() && isAttemptingConnection && !gpsConnected;
 
     if (item.action) {
-      // Es un botón de acción (Logout, GPS, Mostrar/Eliminar Rutas)
       return (
-        <div key={item.name + index} className={linkClass} onClick={item.action} 
-             style={{cursor: (item.name === getGpsButtonText() && connectingGps) ? 'wait' : 'pointer'}}>
+        <div key={item.name + index} 
+             className={`${linkClass} ${isDisabled ? 'disabled' : ''}`} 
+             onClick={!isDisabled ? item.action : undefined} 
+             style={{cursor: isDisabled ? 'not-allowed' : 'pointer'}}>
           <div className="icon">{item.icon}</div>
           <div style={{ display: isOpen ? "block" : "none" }} className="link_text">{item.name}</div>
         </div>
       );
-    } else if (item.submenu && item.submenu.length > 0) { // Verifica que submenu exista y no esté vacío
-      // Es un menú con submenú
+    } else if (item.submenu && item.submenu.length > 0) {
       return (
         <div key={item.name + index}>
           <div className={linkClass} onClick={() => toggleSubMenu(index)} style={{cursor: 'pointer'}}>
@@ -233,8 +305,7 @@ const [loadingRoutes, setLoadingRoutes] = useState(false);
           </div>
         </div>
       );
-    } else if (item.path) { // Solo renderiza como NavLink si tiene un path y no es una acción/submenú
-      // Es un enlace simple
+    } else if (item.path) {
       return (
         <NavLink to={item.path} key={item.name + index} className={linkClass} activeclassname="active">
           <div className="icon">{item.icon}</div>
@@ -242,24 +313,24 @@ const [loadingRoutes, setLoadingRoutes] = useState(false);
         </NavLink>
       );
     }
-    return null; // En caso de que un item no tenga path, action ni submenu válido
+    return null;
   };
 
   return (
     <> 
       <div className={`sidebar ${isOpen ? "open" : ""}`} style={{ width: isOpen ? "var(--sidebar-width)" : "60px" }}>
         <div className="top">
-          <h1 style={{ display: isOpen ? "flex" : "none" }} className="logo">
-            <img src={logoPng} alt="Logo" className="logoPng" />
-          </h1>
-          <div className="bars" onClick={toggle} style={{ display: isOpen && window.innerWidth > 768 ? 'flex' : (window.innerWidth <= 768 ? 'none' : 'flex') }}>
-            <FaBars />
-          </div>
-        </div>
+  <h1 style={{ display: isOpen ? "flex" : "none" }} className="logo">
+    <img src={logoPng} alt="Logo" className="logoPng" />
+  </h1>
+  <div className="bars" onClick={toggle}>
+    <FaBars />
+  </div>
+</div>
         {menuItems.map(renderMenuItem)}
 
         {showGpsMessage && (
-          <div className={`gps-status-message ${connectingGps ? 'connecting' : (gpsConnected ? 'success' : 'error')}`}>
+          <div className={`gps-status-message ${gpsConnected ? 'success' : (isAttemptingConnection ? 'connecting' : 'error')}`}>
             {gpsMessageText}
           </div>
         )}
@@ -271,4 +342,4 @@ const [loadingRoutes, setLoadingRoutes] = useState(false);
   );
 };
 
-export default Sidebar;
+export default Sidebar; 
