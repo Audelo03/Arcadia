@@ -706,7 +706,7 @@ export default function GoogleMaps() {
       <div class="info-window-custom-container" id="${id}-container">
         <div class="info-window-header">
           <h3 class="info-window-custom-title">${lugar.nombre}</h3>
-          <button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar">
+          <button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">
             ${svgClose}
           </button>
         </div>
