@@ -9,41 +9,42 @@ import SplashScreen from "./Components/SplashScreen";
 import './Estilos/SplashScreen.module.css'; // Asegúrate de importar el archivo CSS correcto
 
 // Duraciones (en milisegundos)
-const SPLASH_DISPLAY_TIME = 2000; // Incrementamos el tiempo de visualización del splash
-const FADE_OUT_DURATION = 1500;   // Aumentamos para coincidir con la transición CSS (2.5s)
+const SPLASH_DISPLAY_TIME = 2000;
+const FADE_OUT_DURATION = 1500;
 
 const App = () => {
-  const [isFadingOut, setIsFadingOut] = useState(false); // Estado para iniciar el fade-out
-  const [showSplash, setShowSplash] = useState(true);    // Estado para mantener/quitar el splash del DOM
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [showSplash, setShowSplash] = useState(true); // Controla la visibilidad del splash screen
 
   useEffect(() => {
-    // 1. Iniciar el fade-out después del tiempo de visualización
+    // Este efecto se ejecuta solo una vez después del montaje inicial del componente App
     const fadeOutTimer = setTimeout(() => {
-      setIsFadingOut(true); // Aplica la clase splashContainerHidden
+      setIsFadingOut(true); // Inicia la animación de desvanecimiento
     }, SPLASH_DISPLAY_TIME);
 
-    // 2. Quitar el splash del DOM DESPUÉS de que termine completamente la animación de fade-out
     const removeSplashTimer = setTimeout(() => {
-      setShowSplash(false); // Quita el componente SplashScreen
+      setShowSplash(false); // Oculta el SplashScreen y permite que se muestre la app
     }, SPLASH_DISPLAY_TIME + FADE_OUT_DURATION);
 
-    // Limpieza de todos los temporizadores
+    // Limpieza de los temporizadores si el componente se desmonta prematuramente
     return () => {
       clearTimeout(fadeOutTimer);
       clearTimeout(removeSplashTimer);
     };
-  }, []); // Ejecutar solo una vez
+  }, []); // El array de dependencias vacío asegura que se ejecute solo una vez
 
+  // Si showSplash es true, muestra el SplashScreen
+  if (showSplash) {
+    return (
+      <div className={`splashContainer ${isFadingOut ? 'splashContainerHidden' : ''}`}>
+        <SplashScreen />
+      </div>
+    );
+  }
+
+  // Una vez que showSplash es false, muestra la aplicación principal con las rutas
   return (
     <div className="Todo">
-      {/* Renderiza el SplashScreen solo si showSplash es true */}
-      {showSplash && (
-        <div className={`splashContainer ${isFadingOut ? 'splashContainerHidden' : ''}`}>
-          <SplashScreen />
-        </div>
-      )}
-
-      {/* Renderiza el resto de la app siempre, pero inicialmente oculto por el splash */}
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<InicioSesion />} />

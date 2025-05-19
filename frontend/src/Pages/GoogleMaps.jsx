@@ -20,7 +20,7 @@ const loadGoogleMapsScript = () =>
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
     script.src =
-      "https://maps.googleapis.com/maps/api/js?key=AIzaSyC0c5g5slnWygHkivX_GRNxynCExzdUfew"; // Reemplaza con tu API Key
+      "https://maps.googleapis.com/maps/api/js?key=AIzaSyC0c5g5slnWygHkivX_GRNxynCExzdUfew"; 
     script.async = true;
     script.defer = true;
     script.onload = resolve;
@@ -266,8 +266,7 @@ export default function GoogleMaps() {
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(null);
 
-  const kmlUrl =
-    "https://drive.google.com/uc?export=download&id=1x9QAfgazqKBYU0kmCOCXU6Od1oo_HhLU";
+
 
   const requestLocation = useCallback(async () => {
     setError(null);
@@ -497,11 +496,7 @@ export default function GoogleMaps() {
         }
       );
 
-      new window.google.maps.KmlLayer({
-        url: kmlUrl,
-        map: mapRef.current,
-        preserveViewport: true,
-      });
+     
     }
 
     if (mapRef.current.getCenter().lat() !== current.lat || mapRef.current.getCenter().lng() !== current.lng) {
@@ -1058,7 +1053,7 @@ markersRef.current.push(marker);
     mapLoaded,
     usingExternalGps,
     lugares,
-    kmlUrl,
+    
     updateMarker
   ]);
 

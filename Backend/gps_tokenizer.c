@@ -26,16 +26,7 @@ static int copy_token_asm(const char *src, char delim, char *dest, int max_dest_
         return 0;
     }
 
-    // Ensamblador inline para GCC/Clang (sintaxis AT&T) en x86-64.
-    // %0: copied_len (salida, lectura/escritura) -> edi (como int)
-    // %1: src (entrada, puntero) -> rsi
-    // %2: delim (entrada, caracter) -> bl (como char)
-    // %3: dest (entrada, puntero) -> rdi (sobreescrito por el puntero a dest)
-    // %4: max_dest_len (entrada, int) -> ecx
-    // Nota: Usamos registros específicos para ciertas instrucciones de string si fuera el caso,
-    // pero aquí un bucle manual es más claro para la demostración.
-    // 'count' está en %0 (eax/rax), 'i' (índice de bucle) en rcx.
-
+    
     asm volatile (
         "xorl %%eax, %%eax;"         // eax = 0 (será nuestra longitud copiada, copied_len)
         "movb %2, %%bl;"             // Carga delim en bl
