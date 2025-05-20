@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
-import Sidebar from "../Components/Sidebar"; 
+import Sidebar from "../Components/Sidebar";
+
+import { FaRoute } from "react-icons/fa";
+
 
 import { CiCircleInfo } from "react-icons/ci";
 
@@ -16,12 +19,9 @@ import {
 import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList, FaTrashAlt } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
-import { FaRoute, FaInfoCircle } from "react-icons/fa"; // Elige el que prefieras o importa ambos
 
-
-//pruebas de la api para ruta
 const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
-//Ruta de prueba (coordenadas como [lng, lat])
+
 const rutatecnologico = [
     [-98.42483, 18.917694],[-98.428552, 18.919431],[-98.426565, 18.924332],[-98.425542, 18.92498],[-98.423189, 18.923191],[-98.423477, 18.921163],[-98.422767, 18.919978],[-98.422635, 18.920746],[-98.418238, 18.922761],[-98.429907, 18.91491],[-98.433306, 18.915236],[-98.435812, 18.908112],[-98.437376, 18.908615],[-98.436075, 18.90499],[-98.436623, 18.882513],[-98.436935, 18.88094],[-98.437086, 18.882399],[-98.436671, 18.882546]
 ];
@@ -290,49 +290,91 @@ const hospedajeIconSvgString = `
   <circle fill="#8D6E63" cx="71" cy="112" r="0.8" opacity="0.8"/>
 </svg>`;
 
+const destinationPinSvgString = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+  <defs>
+    <filter id="pinDropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <path fill="#8A2BE2" d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67a24 24 0 0 1-35.464 0z" filter="url(#pinDropShadow)"/>
+  <circle cx="192" cy="192" r="56" fill="#FFFFFF"/>
+  <circle cx="192" cy="192" r="32" fill="#8A2BE2"/>
+</svg>`;
+
 const camionIconSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" fill="#1a75ff">
-  <!-- Cuerpo principal del autobús -->
   <rect x="10" y="20" width="100" height="40" rx="6" ry="6" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
   
-  <!-- Parte inferior del autobús -->
   <rect x="10" y="60" width="100" height="10" rx="2" ry="2" fill="#2c3e50" stroke="#2c3e50" stroke-width="2"/>
   
-  <!-- Ventanas -->
   <rect x="18" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="34" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="50" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="66" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="82" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   
-  <!-- Puerta delantera -->
   <rect x="20" y="42" width="15" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
   <line x1="27.5" y1="42" x2="27.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
   
-  <!-- Puerta trasera -->
   <rect x="65" y="42" width="25" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
   <line x1="77.5" y1="42" x2="77.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
   
-  <!-- Ruedas -->
   <circle cx="30" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
   <circle cx="30" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
   <circle cx="90" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
   <circle cx="90" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
   
-  <!-- Parabrisas delantero -->
   <path d="M10,35 Q10,20 20,20 L20,35 Z" fill="#a8d8ff" stroke="#2c3e50" stroke-width="1.5"/>
   
-  <!-- Parabrisas trasero -->
   <path d="M110,35 Q110,20 100,20 L100,35 Z" fill="#a8d8ff" stroke="#2c3e50" stroke-width="1.5"/>
   
-  <!-- Luces -->
   <rect x="10" y="45" width="4" height="4" rx="1" ry="1" fill="#f1c40f" stroke="#2c3e50" stroke-width="0.5"/>
   <rect x="106" y="45" width="4" height="4" rx="1" ry="1" fill="#e74c3c" stroke="#2c3e50" stroke-width="0.5"/>
   
-  <!-- Señal de transporte público -->
   <rect x="45" y="12" width="30" height="8" rx="4" ry="4" fill="#e74c3c" stroke="#2c3e50" stroke-width="1"/>
   <text x="60" y="18.5" font-family="Arial" font-size="6" font-weight="bold" text-anchor="middle" fill="white">BUS</text>
+  
+  <text x="60" y="48" font-family="Arial" font-size="26" font-weight="bold" text-anchor="middle" fill="#FF0000" stroke="#FFFF00" stroke-width="1">A</text>
 </svg>`;
+
+const camionIconDownSvgString = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" fill="#1a75ff">
+  <rect x="10" y="20" width="100" height="40" rx="6" ry="6" fill="#e74c3c" stroke="#2c3e50" stroke-width="2"/>
+  
+  <rect x="10" y="60" width="100" height="10" rx="2" ry="2" fill="#2c3e50" stroke="#2c3e50" stroke-width="2"/>
+  
+  <rect x="18" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="34" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="50" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="66" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="82" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  
+  <rect x="20" y="42" width="15" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
+  <line x1="27.5" y1="42" x2="27.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
+  
+  <rect x="65" y="42" width="25" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
+  <line x1="77.5" y1="42" x2="77.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
+  
+  <circle cx="30" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
+  <circle cx="30" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
+  <circle cx="90" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
+  <circle cx="90" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
+  
+  <path d="M10,35 Q10,20 20,20 L20,35 Z" fill="#ffd3d3" stroke="#2c3e50" stroke-width="1.5"/>
+  
+  <path d="M110,35 Q110,20 100,20 L100,35 Z" fill="#ffd3d3" stroke="#2c3e50" stroke-width="1.5"/>
+  
+  <rect x="10" y="45" width="4" height="4" rx="1" ry="1" fill="#f1c40f" stroke="#2c3e50" stroke-width="0.5"/>
+  <rect x="106" y="45" width="4" height="4" rx="1" ry="1" fill="#3498db" stroke="#2c3e50" stroke-width="0.5"/>
+  
+  <rect x="45" y="12" width="30" height="8" rx="4" ry="4" fill="#3498db" stroke="#2c3e50" stroke-width="1"/>
+  <text x="60" y="18.5" font-family="Arial" font-size="6" font-weight="bold" text-anchor="middle" fill="white">BUS</text>
+
+  <text x="60" y="48" font-family="Arial" font-size="26" font-weight="bold" text-anchor="middle" fill="#00FF00" stroke="#000000" stroke-width="1">B</text>
+</svg>`;
+
+
 // --- FIN DE SVGs ---
 
 const poiTypes = [
@@ -355,14 +397,16 @@ export default function GoogleMaps() {
 
   const [showPredefinedRoutes, setShowPredefinedRoutes] = useState(false);
   const predefinedPolylinesRef = useRef([]);
-  const dynamicPolylineRef = useRef(null); 
-  const doubleClickedRoutesPolylinesRef = useRef([]); 
+  const dynamicPolylineRef = useRef(null);
+  const doubleClickedRoutesPolylinesRef = useRef([]);
 
   const mapRef = useRef(null);
   const activeMarkerRef = useRef(null);
   const poiMarkersRef = useRef([]);
   const openInfoWindowRef = useRef(null);
-  const truckMarkerRef = useRef(null); // <--- NUEVO: Ref para el marcador del camión
+  const truckMarkerRef = useRef(null);
+  const doubleClickUserMarkerRef = useRef(null); // Marcador para el punto exacto del doble clic
+  const closestRoutePointMarkerRef = useRef(null); // Marcador para el camionIconDownSvgString
 
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]);
@@ -371,23 +415,22 @@ export default function GoogleMaps() {
   const wsRef = useRef(null);
 
   const [visibleRouteLegends, setVisibleRouteLegends] = useState([]);
-  const [activePredefinedRouteDetails, setActivePredefinedRouteDetails] = useState([]); // Array of {id, name, color}
-  const [activeDoubleClickRouteDetails, setActiveDoubleClickRouteDetails] = useState([]); // Array of {id, name, color}
+  const [activePredefinedRouteDetails, setActivePredefinedRouteDetails] = useState([]);
+  const [activeDoubleClickRouteDetails, setActiveDoubleClickRouteDetails] = useState([]);
   const [isTransportInfoPanelOpen, setIsTransportInfoPanelOpen] = useState(false);
 
   const toggleTransportInfoPanel = useCallback(() => {
     setIsTransportInfoPanelOpen(prev => !prev);
   }, []);
+
   useEffect(() => {
     const combinedDetails = [...activePredefinedRouteDetails, ...activeDoubleClickRouteDetails];
     const uniqueLegends = Array.from(new Map(combinedDetails.map(route => [route.id, route])).values())
-                             .sort((a, b) => a.name.localeCompare(b.name)); 
+                                .sort((a, b) => a.name.localeCompare(b.name));
 
     setVisibleRouteLegends(uniqueLegends);
   }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails]);
 
-
-  // <--- NUEVO: Función para actualizar la posición del camión
   const updateTruckPosition = useCallback(() => {
     if (!mapRef.current || !window.google?.maps || !activeMarkerRef.current || !activeMarkerRef.current.getPosition()) {
       if (truckMarkerRef.current) {
@@ -400,14 +443,14 @@ export default function GoogleMaps() {
     let allVisibleRoutePoints = [];
 
     predefinedPolylinesRef.current.forEach(polyline => {
-      if (polyline.getMap()) { 
+      if (polyline.getMap()) {
         const path = polyline.getPath().getArray();
         allVisibleRoutePoints.push(...path);
       }
     });
 
     doubleClickedRoutesPolylinesRef.current.forEach(polyline => {
-      if (polyline.getMap()) { 
+      if (polyline.getMap()) {
         const path = polyline.getPath().getArray();
         allVisibleRoutePoints.push(...path);
       }
@@ -421,7 +464,7 @@ export default function GoogleMaps() {
     }
 
     let overallClosestPoint = null;
-    let minDistanceSq = Infinity; 
+    let minDistanceSq = Infinity;
 
     allVisibleRoutePoints.forEach(pointOnRoute => {
       const distSq =
@@ -434,10 +477,12 @@ export default function GoogleMaps() {
     });
 
     if (overallClosestPoint) {
+      const nuevoAncho = 35;
+      const nuevoAlto = 45;
       const truckIcon = {
         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconSvgString)}`,
-        scaledSize: new window.google.maps.Size(32, 32), 
-        anchor: new window.google.maps.Point(16, 16), 
+        scaledSize: new window.google.maps.Size(nuevoAncho, nuevoAlto),
+        anchor: new window.google.maps.Point(nuevoAncho/2, nuevoAlto/2),
       };
 
       if (!truckMarkerRef.current) {
@@ -446,11 +491,11 @@ export default function GoogleMaps() {
           map: mapRef.current,
           icon: truckIcon,
           title: "Camión en ruta",
-          zIndex: 900 
+          zIndex: 900
         });
       } else {
         truckMarkerRef.current.setPosition(overallClosestPoint);
-        if (!truckMarkerRef.current.getMap()) { 
+        if (!truckMarkerRef.current.getMap()) {
             truckMarkerRef.current.setMap(mapRef.current);
         }
       }
@@ -459,7 +504,7 @@ export default function GoogleMaps() {
         truckMarkerRef.current.setMap(null);
       }
     }
-  }, []); // Dependencias vacías porque usa refs y mapRef, se llamará manualmente
+  }, []);
 
   const drawRouteFromMapbox = useCallback(async (coordsArray, color = '#0074D9') => {
     if (!mapRef.current || !window.google?.maps) return null;
@@ -484,15 +529,15 @@ export default function GoogleMaps() {
         geodesic: true,
         strokeColor: color,
         strokeOpacity: 0.9,
-        strokeWeight: 4, 
+        strokeWeight: 4,
       });
       polyline.setMap(mapRef.current);
-      return polyline; 
+      return polyline;
     } catch (err) {
       console.error("Error al obtener la ruta desde Mapbox:", err);
       return null;
     }
-  }, []); 
+  }, []);
 
   const requestLocation = useCallback(async (showAlert = true) => {
     setError(null);
@@ -519,15 +564,15 @@ export default function GoogleMaps() {
                     const { status, message: statusMessageText } = message.payload;
                     if (status === 'waiting_for_valid_data') {
                         setMapStatusMessage(statusMessageText || "Esperando datos GPS válidos...");
-                        setExternalGpsLocation(null); 
+                        setExternalGpsLocation(null);
                     } else if (status === 'disconnected' || status === 'disconnected_error' || status === 'script_launch_error' || status === 'script_error') {
                         setMapStatusMessage(statusMessageText || 'GPS desconectado o con error.');
                         setExternalGpsLocation(null);
                     }
                 } else if (message.type === 'gps_update' && message.payload.lat) {
-                    setMapStatusMessage(''); 
+                    setMapStatusMessage('');
                     setExternalGpsLocation({
-                        lat: message.payload.lat, lng: message.payload.lng, accuracy: 5, 
+                        lat: message.payload.lat, lng: message.payload.lng, accuracy: 5,
                         humidity: message.payload.humidity, temperature: message.payload.temperature
                     });
                 }
@@ -551,9 +596,9 @@ export default function GoogleMaps() {
 
   const updateMarker = useCallback((lat, lng, isExternalSource = usingExternalGps, heading = 0, data = {}) => {
     if (!mapRef.current || !window.google?.maps) return;
-    activeMarkerRef.current?.setMap(null); 
+    activeMarkerRef.current?.setMap(null);
     const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {
-      const color = isExt ? '#EF4444' : '#1E40AF'; 
+      const color = isExt ? '#EF4444' : '#1E40AF';
       const outerSize = svgSize; const innerSize = svgSize * 0.4; const center = outerSize / 2; const arrowLength = innerSize;
       return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${isExt ? 'External' : 'Internal'}" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${center - 2}" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${isExt ? 'External' : 'Internal'})"/><circle cx="${center}" cy="${center}" r="${innerSize / 2}" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${innerSize/2 + 4} L ${arrowLength/3},-${innerSize/2 - 2} L 0,-${innerSize/2 + 2} L -${arrowLength/3},-${innerSize/2 - 2} Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
     };
@@ -584,30 +629,30 @@ export default function GoogleMaps() {
     setUsingExternalGps(newUsingExternalGps);
     setMapStatusMessage(''); setError('');
     if (newUsingExternalGps) {
-      if (!externalGpsLocation) { setMapStatusMessage("Cambiado a GPS Externo. Esperando datos..."); activeMarkerRef.current?.setMap(null); } 
+      if (!externalGpsLocation) { setMapStatusMessage("Cambiado a GPS Externo. Esperando datos..."); activeMarkerRef.current?.setMap(null); }
       else { mapRef.current?.panTo({ lat: externalGpsLocation.lat, lng: externalGpsLocation.lng }); }
-    } else { 
-      if (!location) { requestLocation(true); setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación..."); } 
+    } else {
+      if (!location) { requestLocation(true); setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación..."); }
       else { mapRef.current?.panTo({ lat: location.lat, lng: location.lng }); }
     }
   }, [usingExternalGps, externalGpsLocation, location, requestLocation]);
 
   useEffect(() => {
     const initMap = async () => {
-      try { await loadGoogleMapsScript(); setMapLoaded(true); await requestLocation(false); } 
+      try { await loadGoogleMapsScript(); setMapLoaded(true); await requestLocation(false); }
       catch (err) { setError(err.message); setMapStatusMessage(`Error al iniciar mapa: ${err.message}`); }
     };
     if (!window.google?.maps && !mapLoaded) initMap();
     else if (window.google?.maps && !mapLoaded) { setMapLoaded(true); if(!location) requestLocation(false); }
-  }, [mapLoaded, location, requestLocation]); 
+  }, [mapLoaded, location, requestLocation]);
 
   const fetchLugaresPorTipo = useCallback(async (tipo) => {
-    setLugares([]); 
+    setLugares([]);
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
       const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter((l) => l.tipo === tipo);
       setLugares(data);
-      if (data.length === 0) { setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`); setTimeout(()=> setMapStatusMessage(''), 3000); } 
+      if (data.length === 0) { setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`); setTimeout(()=> setMapStatusMessage(''), 3000); }
       else { setMapStatusMessage(''); }
     } catch (err) { console.error("Error al obtener lugares:", err); setError("Error al cargar lugares de interés."); setMapStatusMessage("Error al cargar lugares."); }
   }, []);
@@ -618,11 +663,11 @@ export default function GoogleMaps() {
         const querySnapshot = await getDocs(collection(db, "lugares"));
         const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setLugares(data);
-        if (data.length === 0) { setMapStatusMessage(`No se encontraron lugares.`); setTimeout(() => setMapStatusMessage(''), 3000); } 
+        if (data.length === 0) { setMapStatusMessage(`No se encontraron lugares.`); setTimeout(() => setMapStatusMessage(''), 3000); }
         else { setMapStatusMessage(''); }
     } catch (err) { console.error("Error al obtener todos los lugares:", err); setError("Error al cargar todos los lugares de interés."); setMapStatusMessage("Error al cargar lugares."); }
   }, []);
-  
+
   const togglePredefinedRoutes = useCallback(() => {
     setShowPredefinedRoutes(prev => !prev);
   }, []);
@@ -639,16 +684,16 @@ export default function GoogleMaps() {
             currentDisplayLocation = externalGpsLocation;
             isExternalSourceForMarker = true;
             markerData = { humidity: externalGpsLocation.humidity, temperature: externalGpsLocation.temperature, accuracy: externalGpsLocation.accuracy };
-        } 
-    } else { 
+        }
+    } else {
         if (location) {
             currentDisplayLocation = location;
             isExternalSourceForMarker = false;
             markerData = { accuracy: location.accuracy };
         }
     }
-    
-    if (!mapRef.current && currentDisplayLocation) { 
+
+    if (!mapRef.current && currentDisplayLocation) {
         mapRef.current = new window.google.maps.Map(
             document.getElementById("map"),
             {
@@ -657,21 +702,48 @@ export default function GoogleMaps() {
             mapTypeControl: false, gestureHandling: "greedy", disableDoubleClickZoom: true,
             }
         );
-        mapRef.current.addListener('zoom_changed', () => { updateTruckPosition() /* Actualizar también con zoom por si afecta visibilidad de puntos */ });
+        mapRef.current.addListener('zoom_changed', () => { updateTruckPosition() });
 
         mapRef.current.addListener('dblclick', async (event) => {
+          // 1. Limpiar marcadores específicos de doble clic anteriores
+          if (doubleClickUserMarkerRef.current) {
+            doubleClickUserMarkerRef.current.setMap(null);
+            doubleClickUserMarkerRef.current = null;
+          }
+          if (closestRoutePointMarkerRef.current) {
+            closestRoutePointMarkerRef.current.setMap(null);
+            closestRoutePointMarkerRef.current = null;
+          }
+
           const clickedLat = event.latLng.lat();
           const clickedLng = event.latLng.lng();
+          const clickedPositionGoogle = new window.google.maps.LatLng(clickedLat, clickedLng);
+          const destinationIcon = {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(destinationPinSvgString)}`,
+    scaledSize: new window.google.maps.Size(30, 30), // Tamaño del ícono en el mapa (ancho, alto)
+    anchor: new window.google.maps.Point(15, 25),    // Punto de anclaje del ícono (generalmente la punta inferior central del pin)
+    // El origen y el tamaño del SVG original no son necesarios aquí ya que viewBox se encarga.
+};
 
+          // 2. Añadir marcador en el lugar exacto del clic
+          doubleClickUserMarkerRef.current = new window.google.maps.Marker({
+    position: clickedPositionGoogle,
+    map: mapRef.current,
+    title: "Destino seleccionado", // Título actualizado para reflejar "destino"
+    icon: destinationIcon,
+    zIndex: 955 // Puedes ajustar el zIndex si es necesario para el apilamiento visual
+});
+
+          // Lógica existente para limpiar y dibujar rutas por doble clic
           doubleClickedRoutesPolylinesRef.current.forEach(polyline => polyline.setMap(null));
           doubleClickedRoutesPolylinesRef.current = [];
 
           if (dynamicPolylineRef.current) {
             dynamicPolylineRef.current.setMap(null);
-            dynamicPolylineRef.current = null; 
+            dynamicPolylineRef.current = null;
           }
 
-          const radius = 100; 
+          const radius = 100;
           let routesInRadius = [];
           let closestRouteData = { route: null, distance: Infinity };
           let newDoubleClickDetails = []
@@ -680,7 +752,7 @@ export default function GoogleMaps() {
             let isRouteInRadiusForCurrentRoute = false;
             let minDistanceForThisRoute = Infinity;
 
-            routeDef.data.forEach(pointCoords => { 
+            routeDef.data.forEach(pointCoords => {
               const dist = getDistanceFromLatLonInMeters(clickedLat, clickedLng, pointCoords[1], pointCoords[0]);
               if (dist <= radius) {
                 isRouteInRadiusForCurrentRoute = true;
@@ -701,10 +773,10 @@ export default function GoogleMaps() {
 
           if (routesInRadius.length > 0) {
             setMapStatusMessage(`Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m.`);
-            for (const routeDef of routesInRadius) { 
+            for (const routeDef of routesInRadius) {
               const polyline = await drawRouteFromMapbox(routeDef.data, routeDef.color);
               if (polyline) {
-                polyline.setOptions({ strokeWeight: 5, zIndex: 5 }); 
+                polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
                 doubleClickedRoutesPolylinesRef.current.push(polyline);
                 newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
               }
@@ -717,17 +789,58 @@ export default function GoogleMaps() {
               polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
               doubleClickedRoutesPolylinesRef.current.push(polyline);
               newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
-
             }
           } else {
             setMapStatusMessage("No hay rutas predefinidas cerca del punto clickeado.");
           }
-        setActiveDoubleClickRouteDetails(newDoubleClickDetails);
-          updateTruckPosition(); // <--- NUEVO: Actualizar camión después de cambiar rutas por doble click
+          setActiveDoubleClickRouteDetails(newDoubleClickDetails);
+
+          // 3. Encontrar el punto más cercano en las rutas recién sugeridas por este doble clic
+          let pointsFromNewlySuggestedByClickRoutes = [];
+          doubleClickedRoutesPolylinesRef.current.forEach(polyline => {
+            if (polyline.getMap()) { // Asegurarse de que la polilínea está en el mapa
+                const path = polyline.getPath().getArray();
+                pointsFromNewlySuggestedByClickRoutes.push(...path);
+            }
+          });
+
+          let closestPointForCamionDown = null;
+          let minDistanceSqForCamionDown = Infinity;
+
+          if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
+              pointsFromNewlySuggestedByClickRoutes.forEach(pointOnRoute => {
+                  const distSq =
+                      Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
+                      Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
+                  if (distSq < minDistanceSqForCamionDown) {
+                      minDistanceSqForCamionDown = distSq;
+                      closestPointForCamionDown = pointOnRoute;
+                  }
+              });
+          }
+
+          // 4. Colocar el marcador camionIconDownSvgString
+          if (closestPointForCamionDown) {
+              const camionDownIcon = {
+                
+                  url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconDownSvgString)}`,
+                  scaledSize: new window.google.maps.Size(35, 45), // Ajusta según sea necesario (el SVG es 120x80)
+                  anchor: new window.google.maps.Point(35/2, 20/2),    // Centro del icono escalado
+              };
+              closestRoutePointMarkerRef.current = new window.google.maps.Marker({
+                  position: closestPointForCamionDown,
+                  map: mapRef.current,
+                  icon: camionDownIcon,
+                  title: "Parada más cercana en ruta sugerida por click",
+                  zIndex: 960 // Encima del marcador de click, debajo del camión principal
+              });
+          }
+
+          updateTruckPosition();
           setTimeout(() => setMapStatusMessage(''), 7000);
         });
 
-    } else if (mapRef.current && currentDisplayLocation) { 
+    } else if (mapRef.current && currentDisplayLocation) {
         if (mapRef.current.getCenter().lat() !== currentDisplayLocation.lat || mapRef.current.getCenter().lng() !== currentDisplayLocation.lng) {
             mapRef.current.panTo({ lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng });
         }
@@ -736,19 +849,17 @@ export default function GoogleMaps() {
     if (currentDisplayLocation) {
         updateMarker(currentDisplayLocation.lat, currentDisplayLocation.lng, isExternalSourceForMarker, 0, markerData);
     } else {
-        activeMarkerRef.current?.setMap(null); 
+        activeMarkerRef.current?.setMap(null);
     }
-    updateTruckPosition(); // <--- NUEVO: Actualizar camión cuando el marcador de usuario o el mapa cambien
+    updateTruckPosition();
   }, [location, externalGpsLocation, mapLoaded, usingExternalGps, updateMarker, drawRouteFromMapbox, setMapStatusMessage, updateTruckPosition]);
 
 
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) {
-        // Si el mapa no está cargado, y se esperaba mostrar rutas, limpiar los detalles.
         if (showPredefinedRoutes && activePredefinedRouteDetails.length > 0) {
             setActivePredefinedRouteDetails([]);
         }
-        // Limpiar polylines si existen y no se deben mostrar
         if (!showPredefinedRoutes) {
              predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
              predefinedPolylinesRef.current = [];
@@ -758,7 +869,6 @@ export default function GoogleMaps() {
         return;
     }
 
-    // Limpiar polylines predefinidas existentes antes de volver a dibujar
     predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
     predefinedPolylinesRef.current = [];
 
@@ -768,30 +878,27 @@ export default function GoogleMaps() {
             if (polyline) {
                 polyline.setOptions({ zIndex: 3 });
                 predefinedPolylinesRef.current.push(polyline);
-                // Retornar los detalles de la ruta para la leyenda
                 return { id: routeDef.id, name: routeDef.name, color: routeDef.color };
             }
-            return null; // Retornar null si la ruta no se pudo dibujar
+            return null;
         })).then(results => {
-            // Filtrar las rutas que se dibujaron exitosamente (no son null)
             const successfullyDrawnRoutesDetails = results.filter(r => r !== null);
             setActivePredefinedRouteDetails(successfullyDrawnRoutesDetails);
             updateTruckPosition();
         });
     } else {
-        // Si no se deben mostrar rutas predefinidas, limpiar los detalles y las polylines
         setActivePredefinedRouteDetails([]);
         updateTruckPosition();
     }
-}, [showPredefinedRoutes, mapLoaded, drawRouteFromMapbox, updateTruckPosition]);
+  }, [showPredefinedRoutes, mapLoaded, drawRouteFromMapbox, updateTruckPosition, activePredefinedRouteDetails.length]); // Added activePredefinedRouteDetails.length to dependencies
 
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
 
     poiMarkersRef.current.forEach((m) => m.setMap(null));
     poiMarkersRef.current = [];
-    if (openInfoWindowRef.current) { 
-        if (activeMarkerRef.current && openInfoWindowRef.current.anchor === activeMarkerRef.current) { /* No cerrar */ } 
+    if (openInfoWindowRef.current) {
+        if (activeMarkerRef.current && openInfoWindowRef.current.anchor === activeMarkerRef.current) { /* No cerrar */ }
         else { openInfoWindowRef.current.close(); openInfoWindowRef.current = null; }
     }
 
@@ -808,9 +915,13 @@ export default function GoogleMaps() {
           iconOptions = { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgEmoji)}`, scaledSize: new window.google.maps.Size(32, 32), anchor: new window.google.maps.Point(16, 16) };
         }
       }
+
+      if (!iconOptions.url || !iconOptions.url) {
+      return;
+    }
       const marker = new window.google.maps.Marker({ position: { lat, lng }, map: mapRef.current, title: lugar.nombre, icon: iconOptions });
       const id = `carrusel-${lugar.id || Math.random().toString(36).substr(2, 9)}`;
-      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png']; 
+      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png'];
       const svgArrowLeft = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M257.5 445.1l-22.2 22.2c-9.4 9.4-24.6 9.4-33.9 0L7 273c-9.4-9.4-9.4-24.6 0-33.9L201.4 44.7c9.4-9.4 24.6-9.4 33.9 0l22.2 22.2c9.5 9.5 9.3 25-.4 34.3L136.6 216H424c13.3 0 24 10.7 24 24v32c0 13.3-10.7 24-24 24H136.6l120.5 114.8c9.8 9.3 10 24.8.4 34.3z"></path></svg>`;
       const svgArrowRight = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M190.5 66.9l22.2-22.2c9.4-9.4 24.6-9.4 33.9 0L416 239c9.4 9.4 9.4 24.6 0 33.9L246.6 467.3c-9.4-9.4-24.6-9.4-33.9 0l-22.2-22.2c-9.5-9.5-9.3-25 .4-34.3L311.4 296H24c-13.3 0-24-10.7-24-24v-32c0 13.3 10.7-24 24-24h287.4L190.9 101.2c-9.8-9.3-10-24.8-.4-34.3z"></path></svg>`;
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
@@ -835,7 +946,7 @@ export default function GoogleMaps() {
               imgElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
               imgElement.addEventListener('touchend', (e) => {
                   const touchEndX = e.changedTouches[0].screenX; const swipeThreshold = 50;
-                  if (touchStartX - touchEndX > swipeThreshold && currentImageIndex < imagenes.length - 1) { currentImageIndex++; updateGallery(); } 
+                  if (touchStartX - touchEndX > swipeThreshold && currentImageIndex < imagenes.length - 1) { currentImageIndex++; updateGallery(); }
                   else if (touchEndX - touchStartX > swipeThreshold && currentImageIndex > 0) { currentImageIndex--; updateGallery(); }
               });
           }
@@ -844,11 +955,11 @@ export default function GoogleMaps() {
       });
       poiMarkersRef.current.push(marker);
     });
-  }, [lugares, mapLoaded]); 
+  }, [lugares, mapLoaded]);
 
 
   const togglePoiMenu = useCallback(() => setIsPoiMenuOpen(prev => !prev), []);
-  
+
   const handlePoiTypeSelect = useCallback((poi) => {
     setSelectedPoiType(poi);
     if (poi.tipo === "Todos") fetchAllLugares();
@@ -861,7 +972,7 @@ export default function GoogleMaps() {
         fetchAllLugares();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, selectedPoiType]); 
+  }, [mapLoaded, selectedPoiType]);
 
 
   return (
@@ -871,7 +982,7 @@ export default function GoogleMaps() {
         arePredefinedRoutesVisible={showPredefinedRoutes}
       />
 
-    {mapLoaded && ( // Solo mostrar si el mapa está cargado
+    {mapLoaded && (
         <div className={styles.transportInfoContainer}>
           <button
             onClick={toggleTransportInfoPanel}
@@ -880,19 +991,66 @@ export default function GoogleMaps() {
             aria-expanded={isTransportInfoPanelOpen}
             aria-controls="transport-info-panel"
           >
-           <CiCircleInfo size = {30}/>{/* Icono de información de transporte */}
+           <CiCircleInfo size = {30} color="white"/>
           </button>
           {isTransportInfoPanelOpen && (
-            <div className={styles.transportInfoPanel} id="transport-info-panel">
-              Doble click para mostrar ruta con parada en el punto seleccionado
-            </div>
+              <div className={styles.transportInfoPanel} id="transport-info-panel">
+Doble click para mostrar ruta con parada en el punto seleccionado
+
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+      {
+
+<svg xmlns="http://www.w3.org/2000/svg" width={45} viewBox="0 0 120 80" fill="#1a75ff">
+  <rect x="10" y="20" width="100" height="40" rx="6" ry="6" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
+  
+  <rect x="10" y="60" width="100" height="10" rx="2" ry="2" fill="#2c3e50" stroke="#2c3e50" stroke-width="2"/>
+  
+  <rect x="18" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="34" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="50" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="66" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  <rect x="82" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
+  
+  <rect x="20" y="42" width="15" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
+  <line x1="27.5" y1="42" x2="27.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
+  
+  <rect x="65" y="42" width="25" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
+  <line x1="77.5" y1="42" x2="77.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
+  
+  <circle cx="30" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
+  <circle cx="30" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
+  <circle cx="90" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
+  <circle cx="90" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
+  
+  <path d="M10,35 Q10,20 20,20 L20,35 Z" fill="#a8d8ff" stroke="#2c3e50" stroke-width="1.5"/>
+  
+  <path d="M110,35 Q110,20 100,20 L100,35 Z" fill="#a8d8ff" stroke="#2c3e50" stroke-width="1.5"/>
+  
+  <rect x="10" y="45" width="4" height="4" rx="1" ry="1" fill="#f1c40f" stroke="#2c3e50" stroke-width="0.5"/>
+  <rect x="106" y="45" width="4" height="4" rx="1" ry="1" fill="#e74c3c" stroke="#2c3e50" stroke-width="0.5"/>
+  
+  <rect x="45" y="12" width="30" height="8" rx="4" ry="4" fill="#e74c3c" stroke="#2c3e50" stroke-width="1"/>
+  <text x="60" y="18.5" font-family="Arial" font-size="6" font-weight="bold" text-anchor="middle" fill="white">BUS</text>
+  
+
+  <text x="60" y="48" font-family="Arial" font-size="26" font-weight="bold" text-anchor="middle" fill="#FF0000" stroke="#FFFF00" stroke-width="1">A</text>
+</svg>
+      }
+      <span>=Parada mas cercana a tí (SUBIDA)</span>
+    </div>
+     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+        <div dangerouslySetInnerHTML={{ __html: camionIconDownSvgString.replace('<svg ', '<svg width="35" ') }} />
+        <span>=Parada mas cercana al punto (BAJADA)</span>
+    </div>
+
+  </div>
           )}
         </div>
       )}
-      
+
       {error && <div className={styles.errorBox}>{error}</div>}
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
-        {location && ( 
+        {location && (
           <button onClick={() => requestLocation(true)} className={styles.mapButton} title="Actualizar mi ubicación (GPS Interno)">
             <IoReloadCircle size={24} />
           </button>
@@ -905,7 +1063,7 @@ export default function GoogleMaps() {
         {mapStatusMessage && <div className={styles.mapOverlayMessage}>{mapStatusMessage}</div>}
         {!mapLoaded && !mapStatusMessage && <div className={styles.loadingState}><div className={styles.spinner}></div>Cargando mapa...</div>}
         <div id="map" className={styles.mapElement} style={{ visibility: mapLoaded ? 'visible' : 'hidden' }}></div>
-      
+
       {visibleRouteLegends.length > 0 && (
           <div className={styles.routeLegendContainer}>
             <ul className={styles.routeLegendList}>
@@ -920,7 +1078,7 @@ export default function GoogleMaps() {
               ))}
             </ul>
           </div>)}
-       {mapLoaded && ( // Opcional: Muestra esta leyenda solo cuando el mapa esté cargado
+        {mapLoaded && (
           <div className={styles.doubleClickLegend}>
             Doble click en cualquier parte del mapa para mostrar la ruta con parada más cercana
           </div>

@@ -9,6 +9,8 @@
   --text-light: #ffffff;
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   --transition: all 0.3s ease;
+   --sidebar-mobile-button-size: 50px;
+  --sidebar-collapsed-width: 60px;
 }
 .reload {
   height: 100%;
@@ -541,58 +543,89 @@
   text-overflow: ellipsis;
 }
 
+
+
+
+
+/* frontend/src/Estilos/GoogleMaps.module.css */
+
+/* Make sure these variables from Sidebar.css are globally available or define fallbacks */
+/* Example:
+:root {
+  --sidebar-mobile-button-size: 50px;
+  --sidebar-collapsed-width: 60px;
+}
+*/
+
+/* In GoogleMaps.module.css */
+
 .transportInfoContainer {
-  position: absolute;
-  top: 85%; /* Ajusta la altura vertical según tu preferencia */
+  display: flex;
+  flex-direction: row;   /* Items laid out horizontally */
+  flex-wrap: nowrap;     /* Items do not wrap to the next line */
   
-  /* Por defecto para móvil o si el sidebar está colapsado/ausente */
-  left: 6%; 
-  z-index: 600; /* Debe estar por encima de otras leyendas o elementos del mapa */
-  display: flex; /* Para alinear el botón y el panel horizontalmente */
-  align-items: center; /* Centra verticalmente el botón y el panel si tienen alturas diferentes */
+  /* --- MODIFICATION HERE --- */
+  /* align-items: flex-start; */ /* This was causing the button to move up */
+  align-items: flex-end;   /* This will align the button and panel along their bottom edges */
+  /* --- END MODIFICATION --- */
+  
+  position: fixed;
+  left: 25px;
+  /* The container's bottom edge is fixed. When height increases, it grows upwards. */
+  bottom: calc(25px + var(--sidebar-mobile-button-size, 50px) + 10px);
+  
+  width: auto; /* Container width adjusts to content */
+  min-height: var(--sidebar-mobile-button-size, 50px); /* Ensures container is at least as tall as the button */
+  z-index: 50;
+  
+  transition: left 0.3s ease-in-out, bottom 0.3s ease-in-out;
 }
 
+/* Styles for .transportInfoButton and .transportInfoPanel remain the same as previously defined */
 .transportInfoButton {
-  background-color: #ffffff; /* Fondo blanco para la "bolita" */
-  color: #333333; /* Color del icono */
-  border: 1px solid #cccccc; /* Borde sutil */
-  border-radius: 50%; /* Hace el botón circular */
-  width: 50px; /* Tamaño del botón */
+  /* Assuming styles similar to these: */
+  background: linear-gradient(to right, #3a2c4a, #1a1523);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  width: 50px;
   height: 50px;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease-out;
+  flex-shrink: 0;
 }
 
 .transportInfoButton:hover {
-  background-color: #f5f5f5; /* Ligero cambio al pasar el mouse */
+  background: linear-gradient(to right, #4a3c5a, #2a2533);
   box-shadow: 0 3px 7px rgba(0,0,0,0.25);
 }
 
-.transportInfoButton.infoButtonActive { /* Estilo opcional cuando el panel está abierto */
-  background-color: #e9e9e9;
+.transportInfoButton.infoButtonActive {
+  background: linear-gradient(to right, #2a1533, #0a0513);
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
 }
 
 .transportInfoPanel {
-  margin-left: 10px; /* Espacio entre el botón y el panel */
-  background-color: #ffffff; /* Fondo del panel */
-  color: #333740; /* Color del texto del panel */
+  margin-left: 10px;
+  background-color: #ffffff;
+  color: #333740;
   padding: 8px 12px;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   border: 1px solid #ddd;
   font-size: 0.8rem;
-  white-space: nowrap; /* Para que el texto no se divida en varias líneas */
-  
-  /* Animación para el despliegue lateral */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 50%;
+
+  /* Animation styles */
   opacity: 0;
-  transform: translateX(-15px) scaleX(0.8); /* Inicia un poco a la izquierda y más pequeño */
-  
-  transform-origin: left center; /* El despliegue se origina desde la izquierda */
+  transform: translateX(-20px) scaleX(0.9);
+  transform-origin: left center; /* Animation origin remains the same */
   animation: deployInfoPanel 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
 
@@ -603,11 +636,9 @@
   }
 }
 
-/* Ajuste para la posición en PC, considerando el Sidebar */
-/* Cambia '250px' al ancho real de tu Sidebar en versión de escritorio */
-@media (min-width: 768px) { /* O el breakpoint donde tu Sidebar es visible y tiene un ancho considerable */
+@media (min-width: 769px) {
   .transportInfoContainer {
-    /* Ancho del Sidebar + un pequeño margen (ej. 15px) */
-    left: calc(5%); 
-    }
-}
+    /* Desktop positioning: Bottom-left, adjusted for sidebar width */
+    left: calc(var(--sidebar-collapsed-width, 60px) + 25px); /* sidebar width + desired offset */
+    bottom: 25px;
+  }}
