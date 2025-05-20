@@ -20,6 +20,57 @@ import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList, FaTrashAlt } from "re
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
 
+const mapCustomStyles = [
+  {
+    featureType: "poi.business", // Puntos de interés comerciales
+    stylers: [{ visibility: "off" }], // Hace que no sean visibles
+  },
+ {
+   featureType: "poi.attraction", // Atracciones turísticas
+   stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "poi.school", // Escuelas
+   stylers: [{ visibility: "off" }],
+ },
+  {
+ featureType: "poi.government", // Edificios gubernamentales
+   stylers: [{ visibility: "off" }],
+ },
+ {
+ featureType: "poi.medical", // Servicios médicos
+  stylers: [{ visibility: "off" }],
+ },
+ {
+ featureType: "poi.place_of_worship", // Lugares de culto
+ stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "poi.sports_complex", // Complejos deportivos
+     stylers: [{ visibility: "off" }],
+ },
+ 
+ {
+  featureType: "poi.park",
+  stylers: [{ visibility: "off" }] // Para ocultarlos
+}
+
+ 
+ 
+ 
+ ,
+
+];
+
+
+
+
+
+
+
+
+
+
 const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
 
 const rutatecnologico = [
@@ -699,7 +750,7 @@ export default function GoogleMaps() {
             {
             center: { lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng },
             zoom: 15, mapTypeId: "roadmap", fullscreenControl: false, streetViewControl: false,
-            mapTypeControl: false, gestureHandling: "greedy", disableDoubleClickZoom: true,
+            mapTypeControl: false, gestureHandling: "greedy", disableDoubleClickZoom: true,styles: mapCustomStyles
             }
         );
         mapRef.current.addListener('zoom_changed', () => { updateTruckPosition() });
