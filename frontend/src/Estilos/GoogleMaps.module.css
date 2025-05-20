@@ -543,9 +543,10 @@
 
 .transportInfoContainer {
   position: absolute;
-  top: 80px; /* Ajusta la altura vertical según tu preferencia */
+  top: 85%; /* Ajusta la altura vertical según tu preferencia */
+  
   /* Por defecto para móvil o si el sidebar está colapsado/ausente */
-  left: 10px; 
+  left: 6%; 
   z-index: 600; /* Debe estar por encima de otras leyendas o elementos del mapa */
   display: flex; /* Para alinear el botón y el panel horizontalmente */
   align-items: center; /* Centra verticalmente el botón y el panel si tienen alturas diferentes */
@@ -556,8 +557,8 @@
   color: #333333; /* Color del icono */
   border: 1px solid #cccccc; /* Borde sutil */
   border-radius: 50%; /* Hace el botón circular */
-  width: 38px; /* Tamaño del botón */
-  height: 38px;
+  width: 50px; /* Tamaño del botón */
+  height: 50px;
   display: flex;
   justify-content: center;
   align-items: center;

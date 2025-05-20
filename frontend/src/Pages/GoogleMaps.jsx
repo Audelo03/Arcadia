@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
-import Sidebar from "../Components/Sidebar"; // Asegúrate que la ruta sea correcta
+import Sidebar from "../Components/Sidebar"; 
+
+import { CiCircleInfo } from "react-icons/ci";
+
 import { IoReloadCircle } from "react-icons/io5";
 import {
   MdGpsFixed,
@@ -877,7 +880,7 @@ export default function GoogleMaps() {
             aria-expanded={isTransportInfoPanelOpen}
             aria-controls="transport-info-panel"
           >
-            <FaRoute size={18} /> {/* Icono de información de transporte */}
+           <CiCircleInfo size = {30}/>{/* Icono de información de transporte */}
           </button>
           {isTransportInfoPanelOpen && (
             <div className={styles.transportInfoPanel} id="transport-info-panel">
