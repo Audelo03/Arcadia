@@ -395,6 +395,8 @@ export default function GoogleMaps() {
   }
 };
 
+  const [mapStatusMessage, setMapStatusMessage] = useState(''); // For "Esperando datos validos", etc.
+  const wsRef = useRef(null); // WebSocket reference
 
   const requestLocation = useCallback(async (showAlert = true) => {
     setError(null);
@@ -963,6 +965,9 @@ useEffect(() => {
 }, [mapLoaded]);
 
 
+  }[mapLoaded, lugares];
+
+
   const togglePoiMenu = useCallback(() => setIsPoiMenuOpen(prev => !prev), []);
   
   const handlePoiTypeSelect = useCallback((poi) => {
@@ -1057,4 +1062,3 @@ useEffect(() => {
       </div>
     </div>
   );
-}
