@@ -743,7 +743,7 @@ export default function GoogleMaps() {
             dynamicPolylineRef.current = null;
           }
 
-          const radius = 100;
+          const radius = 200;
           let routesInRadius = [];
           let closestRouteData = { route: null, distance: Infinity };
           let newDoubleClickDetails = []
@@ -1036,11 +1036,11 @@ Doble click para mostrar ruta con parada en el punto seleccionado
   <text x="60" y="48" font-family="Arial" font-size="26" font-weight="bold" text-anchor="middle" fill="#FF0000" stroke="#FFFF00" stroke-width="1">A</text>
 </svg>
       }
-      <span>=Parada mas cercana a tí (SUBIDA)</span>
+      <span>Parada mas cercana a tí (SUBIDA)</span>
     </div>
      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
         <div dangerouslySetInnerHTML={{ __html: camionIconDownSvgString.replace('<svg ', '<svg width="35" ') }} />
-        <span>=Parada mas cercana al punto (BAJADA)</span>
+        <span>Parada mas cercana al punto (BAJADA)</span>
     </div>
 
   </div>
