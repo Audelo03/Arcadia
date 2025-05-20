@@ -10,9 +10,11 @@ import {
   MdFastfood,
   MdHotel,
 } from "react-icons/md";
-import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList, FaRoute, FaTrashAlt } from "react-icons/fa";
+import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList, FaTrashAlt } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
+import { FaRoute, FaInfoCircle } from "react-icons/fa"; // Elige el que prefieras o importa ambos
+
 
 //pruebas de la api para ruta
 const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
@@ -365,6 +367,23 @@ export default function GoogleMaps() {
   const [mapStatusMessage, setMapStatusMessage] = useState('');
   const wsRef = useRef(null);
 
+  const [visibleRouteLegends, setVisibleRouteLegends] = useState([]);
+  const [activePredefinedRouteDetails, setActivePredefinedRouteDetails] = useState([]); // Array of {id, name, color}
+  const [activeDoubleClickRouteDetails, setActiveDoubleClickRouteDetails] = useState([]); // Array of {id, name, color}
+  const [isTransportInfoPanelOpen, setIsTransportInfoPanelOpen] = useState(false);
+
+  const toggleTransportInfoPanel = useCallback(() => {
+    setIsTransportInfoPanelOpen(prev => !prev);
+  }, []);
+  useEffect(() => {
+    const combinedDetails = [...activePredefinedRouteDetails, ...activeDoubleClickRouteDetails];
+    const uniqueLegends = Array.from(new Map(combinedDetails.map(route => [route.id, route])).values())
+                             .sort((a, b) => a.name.localeCompare(b.name)); 
+
+    setVisibleRouteLegends(uniqueLegends);
+  }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails]);
+
+
   // <--- NUEVO: Función para actualizar la posición del camión
   const updateTruckPosition = useCallback(() => {
     if (!mapRef.current || !window.google?.maps || !activeMarkerRef.current || !activeMarkerRef.current.getPosition()) {
@@ -652,6 +671,7 @@ export default function GoogleMaps() {
           const radius = 100; 
           let routesInRadius = [];
           let closestRouteData = { route: null, distance: Infinity };
+          let newDoubleClickDetails = []
 
           ALL_PREDEFINED_ROUTES_CONFIG.forEach(routeDef => {
             let isRouteInRadiusForCurrentRoute = false;
@@ -683,18 +703,23 @@ export default function GoogleMaps() {
               if (polyline) {
                 polyline.setOptions({ strokeWeight: 5, zIndex: 5 }); 
                 doubleClickedRoutesPolylinesRef.current.push(polyline);
+                newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
               }
             }
           } else if (closestRouteData.route) {
+            const routeDef = closestRouteData.route;
             setMapStatusMessage(`No hay rutas en ${radius}m. Mostrando la más cercana: ${closestRouteData.route.name} (a ${closestRouteData.distance.toFixed(0)}m).`);
             const polyline = await drawRouteFromMapbox(closestRouteData.route.data, closestRouteData.route.color);
             if (polyline) {
               polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
               doubleClickedRoutesPolylinesRef.current.push(polyline);
+              newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
+
             }
           } else {
             setMapStatusMessage("No hay rutas predefinidas cerca del punto clickeado.");
           }
+        setActiveDoubleClickRouteDetails(newDoubleClickDetails);
           updateTruckPosition(); // <--- NUEVO: Actualizar camión después de cambiar rutas por doble click
           setTimeout(() => setMapStatusMessage(''), 7000);
         });
@@ -716,31 +741,46 @@ export default function GoogleMaps() {
 
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) {
-      if (!showPredefinedRoutes) { 
-        predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
-        predefinedPolylinesRef.current = [];
-      }
-       updateTruckPosition(); // <--- NUEVO: Actualizar camión incluso si el mapa no está cargado (para limpiarlo)
-      return;
+        // Si el mapa no está cargado, y se esperaba mostrar rutas, limpiar los detalles.
+        if (showPredefinedRoutes && activePredefinedRouteDetails.length > 0) {
+            setActivePredefinedRouteDetails([]);
+        }
+        // Limpiar polylines si existen y no se deben mostrar
+        if (!showPredefinedRoutes) {
+             predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
+             predefinedPolylinesRef.current = [];
+             if (activePredefinedRouteDetails.length > 0) setActivePredefinedRouteDetails([]);
+        }
+        updateTruckPosition();
+        return;
     }
 
+    // Limpiar polylines predefinidas existentes antes de volver a dibujar
     predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
     predefinedPolylinesRef.current = [];
 
     if (showPredefinedRoutes) {
-      ALL_PREDEFINED_ROUTES_CONFIG.forEach(async (routeDef) => {
-        const polyline = await drawRouteFromMapbox(routeDef.data, routeDef.color);
-        if (polyline) {
-          polyline.setOptions({ zIndex: 3 }); 
-          predefinedPolylinesRef.current.push(polyline);
-        }
-         updateTruckPosition(); // <--- NUEVO: Actualizar después de cada ruta predefinida
-      });
+        Promise.all(ALL_PREDEFINED_ROUTES_CONFIG.map(async (routeDef) => {
+            const polyline = await drawRouteFromMapbox(routeDef.data, routeDef.color);
+            if (polyline) {
+                polyline.setOptions({ zIndex: 3 });
+                predefinedPolylinesRef.current.push(polyline);
+                // Retornar los detalles de la ruta para la leyenda
+                return { id: routeDef.id, name: routeDef.name, color: routeDef.color };
+            }
+            return null; // Retornar null si la ruta no se pudo dibujar
+        })).then(results => {
+            // Filtrar las rutas que se dibujaron exitosamente (no son null)
+            const successfullyDrawnRoutesDetails = results.filter(r => r !== null);
+            setActivePredefinedRouteDetails(successfullyDrawnRoutesDetails);
+            updateTruckPosition();
+        });
     } else {
-       updateTruckPosition(); // <--- NUEVO: Actualizar si se ocultan las rutas
+        // Si no se deben mostrar rutas predefinidas, limpiar los detalles y las polylines
+        setActivePredefinedRouteDetails([]);
+        updateTruckPosition();
     }
-  }, [showPredefinedRoutes, mapLoaded, drawRouteFromMapbox, updateTruckPosition]);
-
+}, [showPredefinedRoutes, mapLoaded, drawRouteFromMapbox, updateTruckPosition]);
 
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
@@ -827,6 +867,26 @@ export default function GoogleMaps() {
         onTogglePredefinedRoutes={togglePredefinedRoutes}
         arePredefinedRoutesVisible={showPredefinedRoutes}
       />
+
+    {mapLoaded && ( // Solo mostrar si el mapa está cargado
+        <div className={styles.transportInfoContainer}>
+          <button
+            onClick={toggleTransportInfoPanel}
+            className={`${styles.transportInfoButton} ${isTransportInfoPanelOpen ? styles.infoButtonActive : ''}`}
+            title="Información sobre rutas"
+            aria-expanded={isTransportInfoPanelOpen}
+            aria-controls="transport-info-panel"
+          >
+            <FaRoute size={18} /> {/* Icono de información de transporte */}
+          </button>
+          {isTransportInfoPanelOpen && (
+            <div className={styles.transportInfoPanel} id="transport-info-panel">
+              Doble click para mostrar ruta con parada en el punto seleccionado
+            </div>
+          )}
+        </div>
+      )}
+      
       {error && <div className={styles.errorBox}>{error}</div>}
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
         {location && ( 
@@ -842,7 +902,28 @@ export default function GoogleMaps() {
         {mapStatusMessage && <div className={styles.mapOverlayMessage}>{mapStatusMessage}</div>}
         {!mapLoaded && !mapStatusMessage && <div className={styles.loadingState}><div className={styles.spinner}></div>Cargando mapa...</div>}
         <div id="map" className={styles.mapElement} style={{ visibility: mapLoaded ? 'visible' : 'hidden' }}></div>
+      
+      {visibleRouteLegends.length > 0 && (
+          <div className={styles.routeLegendContainer}>
+            <ul className={styles.routeLegendList}>
+              {visibleRouteLegends.map((route) => (
+                <li key={route.id} className={styles.routeLegendItem}>
+                  <span
+                    className={styles.routeLegendColorSquare}
+                    style={{ backgroundColor: route.color }}
+                  ></span>
+                  <span className={styles.routeLegendName}>{route.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>)}
+       {mapLoaded && ( // Opcional: Muestra esta leyenda solo cuando el mapa esté cargado
+          <div className={styles.doubleClickLegend}>
+            Doble click en cualquier parte del mapa para mostrar la ruta con parada más cercana
+          </div>
+        )}
       </div>
+
       <div className={styles.poiFabContainer}>
         {isPoiMenuOpen && (
           <div className={styles.poiMenu}>
