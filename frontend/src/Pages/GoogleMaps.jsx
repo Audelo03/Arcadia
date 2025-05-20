@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
 import Sidebar from "../Components/Sidebar";
 import { IoReloadCircle } from "react-icons/io5";
@@ -10,9 +10,9 @@ import {
   MdFastfood,
   MdHotel,
 } from "react-icons/md";
-import { FaLandmark, FaBuilding, FaMapMarkerAlt } from "react-icons/fa";
+import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList } from "react-icons/fa"; // FaThList para "Todos"
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebase-config";
+import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
 
 //pruebas de la api para ruta
 const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
@@ -97,12 +97,11 @@ const loadGoogleMapsScript = () =>
   new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
-    script.src =
-      "https://maps.googleapis.com/maps/api/js?key=AIzaSyC0c5g5slnWygHkivX_GRNxynCExzdUfew"; 
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCVA6g0s25NHqbJrJlW1PPvp_w5uAI_IHw&libraries=places`; // REEMPLAZA TU_API_KEY
     script.async = true;
     script.defer = true;
     script.onload = resolve;
-    script.onerror = () => reject(new Error("Error al cargar Google Maps"));
+    script.onerror = () => reject(new Error("Error al cargar Google Maps. Verifica la API Key."));
     document.head.appendChild(script);
   });
 
@@ -110,7 +109,7 @@ const loadGoogleMapsScript = () =>
 const getCurrentLocation = () =>
   new Promise((resolve, reject) => {
     if (!navigator.geolocation)
-      return reject(new Error("Geolocalización no soportada"));
+      return reject(new Error("Geolocalización no soportada por este navegador."));
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         resolve({
@@ -118,10 +117,29 @@ const getCurrentLocation = () =>
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
         }),
-      () => reject(new Error("No se pudo obtener la ubicación")),
+      (err) => {
+        let message = "No se pudo obtener la ubicación: ";
+        switch(err.code) {
+            case err.PERMISSION_DENIED:
+                message += "Permiso denegado.";
+                break;
+            case err.POSITION_UNAVAILABLE:
+                message += "Información de ubicación no disponible.";
+                break;
+            case err.TIMEOUT:
+                message += "Timeout obteniendo ubicación.";
+                break;
+            default:
+                message += "Error desconocido.";
+                break;
+        }
+        reject(new Error(message))
+      },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
+
+// --- INICIO DE SVGs ---
 const museoIconSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32px" height="32px">
   <defs>
@@ -309,7 +327,6 @@ const hospedajeIconSvgString = `
   <path fill="url(#hotelGradientWindow)" d="M46.9 37.64h8.64v10H46.9zm26.15 0h8.64v10h-8.64z M46.9 50.64h8.64v10H46.9zm26.15 0h8.64v10h-8.64z M46.9 63.64h8.64v10H46.9zm26.15 0h8.64v10h-8.64z"/>
   <path fill="url(#hotelGradientWindow)" d="M26.74 47.06h6.38v10.06h-6.38zm-.03 14.02h6.38v10.06h-6.38z M95.68 46.61h6.38v10.06h-6.38zm-.03 14.02h6.38v10.06h-6.38z"/>
   
-  <!-- Window frames -->
   <path fill="#0A3F73" d="M46.4 37.14h9.64v11H46.4zm26.15 0h9.64v11h-9.64z M46.4 50.14h9.64v11H46.4zm26.15 0h9.64v11h-9.64z M46.4 63.14h9.64v11H46.4zm26.15 0h9.64v11h-9.64z" opacity="0.8"/>
   
   <path fill="url(#hotelGradientDoor)" d="m50.22 99.45l-.03 24.75H78.2l.03-25.51z"/>
@@ -317,9 +334,11 @@ const hospedajeIconSvgString = `
   <circle fill="#8D6E63" cx="55" cy="112" r="0.8" opacity="0.8"/>
   <circle fill="#8D6E63" cx="71" cy="112" r="0.8" opacity="0.8"/>
 </svg>`;
+// --- FIN DE SVGs ---
 
 
 const poiTypes = [
+  { tipo: "Todos", Icono: FaThList, svgString: null, emoji: "🗺️" }, // Opción para mostrar todos
   { tipo: "Museos", Icono: MdMuseum, svgString: museoIconSvgString, emoji: "🏛️" },
   { tipo: "Monumentos Históricos", Icono: FaLandmark, svgString: monumentoHistoricoIconSvgString, emoji: "🗿" },
   { tipo: "Naturaleza", Icono: MdPark, svgString: naturalezaIconSvgString, emoji: "🌿" },
@@ -329,21 +348,22 @@ const poiTypes = [
 ];
 
 export default function GoogleMaps() {
-  const [location, setLocation] = useState(null);
-  const [externalGpsLocation, setExternalGpsLocation] = useState(null);
+  const [location, setLocation] = useState(null); // Internal GPS
+  const [externalGpsLocation, setExternalGpsLocation] = useState(null); // External GPS
   const [error, setError] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [usingExternalGps, setUsingExternalGps] = useState(false);
+  const [usingExternalGps, setUsingExternalGps] = useState(false); // User's choice of GPS source
   const [lugares, setLugares] = useState([]);
 
   const mapRef = useRef(null);
-  const activeMarkerRef = useRef(null);
-  const markersRef = useRef([]);
-  const openInfoWindowRef = useRef(null); // Para mantener una referencia a la InfoWindow abierta
+  const activeMarkerRef = useRef(null); // Marker for current location (internal or external)
+  const poiMarkersRef = useRef([]); // Markers for points of interest
+  const openInfoWindowRef = useRef(null);
 
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
-  const [selectedPoiType, setSelectedPoiType] = useState(null);
+  const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]); // Default to "Todos"
 
+<<<<<<< HEAD
   const drawRouteFromMapbox = async (coordsArray, color = '#0074D9') => {
   if (!mapRef.current || !window.google?.maps) return;
 
@@ -376,267 +396,366 @@ export default function GoogleMaps() {
   }
 };
 
+=======
+  const [mapStatusMessage, setMapStatusMessage] = useState(''); // For "Esperando datos validos", etc.
+  const wsRef = useRef(null); // WebSocket reference
+>>>>>>> c5d28c9cd2bdbe07b174565b3f314f62f9994837
 
-
-  const requestLocation = useCallback(async () => {
+  const requestLocation = useCallback(async (showAlert = true) => {
     setError(null);
     try {
       const loc = await getCurrentLocation();
       setLocation(loc);
+      if (!usingExternalGps && mapRef.current) { // Pan to new internal location if it's active
+        mapRef.current.panTo({ lat: loc.lat, lng: loc.lng });
+      }
     } catch (err) {
       setError(err.message);
+      if (showAlert) alert(`Error obteniendo ubicación: ${err.message}`);
     }
-  }, []);
+  }, [usingExternalGps]);
 
- const updateMarker = useCallback(
-  (lat, lng, isExternal = usingExternalGps) => {
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (!wsRef.current) {
+        wsRef.current = new WebSocket('ws://localhost:8080');
+
+        wsRef.current.onopen = () => {
+            console.log('GoogleMaps WebSocket connected');
+            setMapStatusMessage(''); 
+        };
+
+        wsRef.current.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                 // console.log('GoogleMaps WS message:', message); 
+
+                if (message.type === 'gps_status') {
+                    const { status, message: statusMessage } = message.payload;
+                    if (status === 'waiting_for_valid_data') {
+                        setMapStatusMessage(statusMessage || "Esperando datos GPS válidos...");
+                        setExternalGpsLocation(null); 
+                    } else if (status === 'disconnected' || status === 'disconnected_error' || status === 'script_launch_error' || status === 'script_error') {
+                        setMapStatusMessage(statusMessage || 'GPS desconectado o con error.');
+                        setExternalGpsLocation(null);
+                         if (usingExternalGps) {
+                            // Potentially switch back to internal GPS or show message
+                         }
+                    }
+                } else if (message.type === 'gps_update' && message.payload.lat) {
+                    setMapStatusMessage(''); 
+                    setExternalGpsLocation({
+                        lat: message.payload.lat,
+                        lng: message.payload.lng,
+                        accuracy: 5, 
+                        humidity: message.payload.humidity,
+                        temperature: message.payload.temperature
+                    });
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message in GoogleMaps:', error);
+                setMapStatusMessage('Error procesando datos del GPS.');
+            }
+        };
+
+        wsRef.current.onclose = () => {
+            console.log('GoogleMaps WebSocket disconnected');
+            // ¿setMapStatusMessage('Conexión con el servidor GPS perdida.');
+            // setExternalGpsLocation(null);
+        };
+
+        wsRef.current.onerror = (error) => {
+            console.error('GoogleMaps WebSocket error:', error);
+            
+            setExternalGpsLocation(null);
+        };
+    }
+
+    const handleGpsDataActive = () => setMapStatusMessage('');
+    const handleGpsConnectionLost = () => {
+        setExternalGpsLocation(null);
+    };
+
+    window.addEventListener('gps-data-active', handleGpsDataActive);
+    window.addEventListener('gps-connection-lost', handleGpsConnectionLost);
+
+    return () => {
+        window.removeEventListener('gps-data-active', handleGpsDataActive);
+        window.removeEventListener('gps-connection-lost', handleGpsConnectionLost);
+    };
+  }, [usingExternalGps]);
+
+
+  const updateMarker = useCallback((lat, lng, isExternalSource = usingExternalGps, heading = 0, data = {}) => {
     if (!mapRef.current || !window.google?.maps) return;
 
-    activeMarkerRef.current?.setMap(null);
+    activeMarkerRef.current?.setMap(null); 
 
-    // Función para crear el SVG del marcador simple
-    const createSimpleMarkerSVG = (isExternal, size = 32, heading = 0) => {
-      const color = isExternal ? '#EF4444' : '#1E40AF'; 
-      const outerSize = size;
-      const innerSize = size * 0.4; 
+    const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {
+      const color = isExt ? '#EF4444' : '#1E40AF'; 
+      const outerSize = svgSize;
+      const innerSize = svgSize * 0.4;
       const center = outerSize / 2;
-      const arrowLength = innerSize ; 
-      
+      const arrowLength = innerSize;
+
       return `
         <svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <!-- Filtro para la sombra suave -->
-            <filter id="shadow${isExternal ? 'External' : 'Internal'}" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id="shadow${isExt ? 'External' : 'Internal'}" x="-50%" y="-50%" width="200%" height="200%">
               <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/>
             </filter>
           </defs>
-          
-          <!-- Círculo exterior semi-transparente -->
-          <circle 
-            cx="${center}" 
-            cy="${center}" 
-            r="${center - 2}" 
-            fill="${color}"
-            fill-opacity="0.2"
-            stroke="${color}"
-            stroke-width="1"
-            stroke-opacity="0.4"
-            filter="url(#shadow${isExternal ? 'External' : 'Internal'})"
-          />
-          
-          <!-- Círculo interior sólido -->
-          <circle 
-            cx="${center}" 
-            cy="${center}" 
-            r="${innerSize / 2}" 
-            fill="${color}"
-            stroke="white"
-            stroke-width="2"
-          />
-          
-          <!-- Flecha direccional en el exterior -->
-          <g transform="translate(${center}, ${center}) rotate(${heading})">
-            <path 
-              d="M 0,-${innerSize/2 + 4} L ${arrowLength/3},-${innerSize/2 - 2} L 0,-${innerSize/2 + 2} L -${arrowLength/3},-${innerSize/2 - 2} Z" 
-              fill="white"
-              stroke="${color}"
-              stroke-width="1"
-            />
+          <circle cx="${center}" cy="${center}" r="${center - 2}" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${isExt ? 'External' : 'Internal'})"/>
+          <circle cx="${center}" cy="${center}" r="${innerSize / 2}" fill="${color}" stroke="white" stroke-width="2"/>
+          <g transform="translate(${center}, ${center}) rotate(${svgHeading})">
+            <path d="M 0,-${innerSize/2 + 4} L ${arrowLength/3},-${innerSize/2 - 2} L 0,-${innerSize/2 + 2} L -${arrowLength/3},-${innerSize/2 - 2} Z" fill="white" stroke="${color}" stroke-width="1"/>
           </g>
-        </svg>
-      `;
+        </svg>`;
     };
 
-    // Convertir SVG a Data URL
-    const createMarkerIcon = (isExternal, zoom, heading = 0) => {
-      // Calcular el tamaño basado en el zoom (entre 16 y 48 píxeles)
-      const minSize = 16;
+    const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {
+      const minSize = 24; 
       const maxSize = 48;
       const minZoom = 10;
       const maxZoom = 20;
-      
-      const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+      const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
       const size = minSize + ((normalizedZoom - minZoom) / (maxZoom - minZoom)) * (maxSize - minSize);
-      
-      const svgString = createSimpleMarkerSVG(isExternal, size, heading);
-      const encodedSvg = encodeURIComponent(svgString);
+      const svgString = createSimpleMarkerSVG(isExt, size, svgHeading);
       return {
-        url: `data:image/svg+xml,${encodedSvg}`,
+        url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
         scaledSize: new window.google.maps.Size(size, size),
-        anchor: new window.google.maps.Point(size / 2, size / 2)
+        anchor: new window.google.maps.Point(size / 2, size / 2),
+        optimized: false 
       };
     };
 
-    // Obtener el zoom actual del mapa
     const currentZoom = mapRef.current.getZoom();
+    const markerIcon = createMarkerIcon(isExternalSource, currentZoom, heading);
 
-    const marker = new window.google.maps.Marker({
+    const newMarker = new window.google.maps.Marker({
       position: { lat, lng },
       map: mapRef.current,
-      title: isExternal ? "GPS Externo" : "Mi ubicación actual",
-      icon: {
-        ...createMarkerIcon(isExternal, currentZoom),
-        optimized: false // Importante para SVGs personalizados
-      },
-      zIndex: 1000
+      title: isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)",
+      icon: markerIcon,
+      zIndex: 1000 
     });
+    
+    let contentString = `
+      <div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;">
+        <div style="font-weight: 600; margin-bottom: 4px; color: ${isExternalSource ? '#EF4444' : '#1E40AF'};">
+          ${newMarker.title}
+        </div>
+        <div style="color: #333; font-size: 12px;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</div>`;
+    if (isExternalSource) {
+        if (data.humidity !== null && data.humidity !== undefined) {
+            contentString += `<div style="color: #333; font-size: 12px;">Humedad: ${data.humidity}%</div>`;
+        }
+        if (data.temperature !== null && data.temperature !== undefined) {
+            contentString += `<div style="color: #333; font-size: 12px;">Temp: ${data.temperature}°C</div>`;
+        }
+    }
+    if (data.accuracy) {
+         contentString += `<div style="color: #666; font-size: 11px;">Precisión: ${data.accuracy.toFixed(1)}m</div>`;
+    }
+    contentString += `</div>`;
 
-    // Función para actualizar el tamaño del marcador según el zoom
-    const updateMarkerSize = (heading = 0) => {
-      const zoom = mapRef.current.getZoom();
-      const newIcon = createMarkerIcon(isExternal, zoom, heading);
-      marker.setIcon({
-        url: newIcon.url,
-        scaledSize: newIcon.scaledSize,
-        anchor: newIcon.anchor,
-        optimized: false
-      });
-    };
 
-    // Función para actualizar solo la dirección de la flecha
-    const updateMarkerHeading = (newHeading) => {
-      updateMarkerSize(newHeading);
-    };
+    const infoWindow = new window.google.maps.InfoWindow({ content: contentString });
 
-    // Escuchar cambios de zoom para actualizar el tamaño
-    const zoomListener = mapRef.current.addListener('zoom_changed', updateMarkerSize);
-
-    // InfoWindow simple
-    const infoWindow = new window.google.maps.InfoWindow({
-      content: `
-        <div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px;">
-          <div style="font-weight: 600; margin-bottom: 4px; color: ${isExternal ? '#EF4444' : '#1E40AF'};">
-            ${marker.title}
-          </div>
-          <div style="color: #666; font-size: 12px;">
-            ${lat.toFixed(6)}, ${lng.toFixed(6)}
-          </div>
-        </div>`,
-    });
-
-    marker.addListener("click", () => {
+    newMarker.addListener("click", () => {
       openInfoWindowRef.current?.close();
-      infoWindow.open(mapRef.current, marker);
+      infoWindow.open(mapRef.current, newMarker);
       openInfoWindowRef.current = infoWindow;
     });
 
-    // Añadir métodos para actualizar el tamaño y la orientación
-    marker.updateSize = updateMarkerSize;
-    marker.updateHeading = updateMarkerHeading;
+    activeMarkerRef.current = newMarker;
 
-    // Limpiar el listener cuando se elimine el marcador
-    const originalSetMap = marker.setMap.bind(marker);
-    marker.setMap = function(map) {
-      if (!map && zoomListener) {
-        window.google.maps.event.removeListener(zoomListener);
-      }
-      return originalSetMap(map);
-    };
+  }, [usingExternalGps]);
 
-    activeMarkerRef.current = marker;
-  },
-  [usingExternalGps]
-);
 
   const toggleGpsSource = useCallback(() => {
-    const useExternal = !usingExternalGps;
-    setUsingExternalGps(useExternal);
+    const newUsingExternalGps = !usingExternalGps;
+    setUsingExternalGps(newUsingExternalGps);
+    setMapStatusMessage(''); 
+    setError('');
 
-    const current = useExternal ? externalGpsLocation : location;
-    if (current) {
-      updateMarker(current.lat, current.lng, useExternal);
-      mapRef.current?.panTo(current);
+    if (newUsingExternalGps) {
+      if (!externalGpsLocation) {
+        setMapStatusMessage("Cambiado a GPS Externo. Esperando datos...");
+        activeMarkerRef.current?.setMap(null); 
+      } else {
+        mapRef.current?.panTo({ lat: externalGpsLocation.lat, lng: externalGpsLocation.lng });
+      }
+    } else { 
+      if (!location) {
+        requestLocation(true); 
+        setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación...");
+      } else {
+        mapRef.current?.panTo({ lat: location.lat, lng: location.lng });
+      }
     }
-  }, [
-    usingExternalGps,
-    externalGpsLocation,
-    location,
-    updateMarker,
-  ]);
+  }, [usingExternalGps, externalGpsLocation, location, requestLocation]);
+
 
   useEffect(() => {
     const initMap = async () => {
       try {
         await loadGoogleMapsScript();
         setMapLoaded(true);
-        await requestLocation();
+        await requestLocation(false); 
       } catch (err) {
         setError(err.message);
+        setMapStatusMessage(`Error al iniciar mapa: ${err.message}`);
       }
     };
-    if (!window.google?.maps) initMap();
-    else {
-      setMapLoaded(true);
-      if (!location) {
-        requestLocation();
-      }
+    if (!window.google?.maps && !mapLoaded) { 
+        initMap();
+    } else if (window.google?.maps && !mapLoaded) { 
+        setMapLoaded(true);
+        if(!location) requestLocation(false);
     }
-  }, [requestLocation, location]);
+
+  }, [mapLoaded, location, requestLocation]); 
+
 
   const fetchLugaresPorTipo = useCallback(async (tipo) => {
+    setLugares([]); 
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
       const data = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((l) => l.tipo === tipo);
       setLugares(data);
+      if (data.length === 0) {
+        setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`);
+        setTimeout(()=> setMapStatusMessage(''), 3000);
+      } else {
+        setMapStatusMessage('');
+      }
     } catch (err) {
       console.error("Error al obtener lugares:", err);
       setError("Error al cargar lugares de interés.");
+      setMapStatusMessage("Error al cargar lugares.");
     }
   }, []);
 
+  const fetchAllLugares = useCallback(async () => {
+    setLugares([]);
+    try {
+        const querySnapshot = await getDocs(collection(db, "lugares"));
+        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setLugares(data);
+        if (data.length === 0) {
+            setMapStatusMessage(`No se encontraron lugares.`);
+            setTimeout(() => setMapStatusMessage(''), 3000);
+        } else {
+            setMapStatusMessage('');
+        }
+    } catch (err) {
+        console.error("Error al obtener todos los lugares:", err);
+        setError("Error al cargar todos los lugares de interés.");
+        setMapStatusMessage("Error al cargar lugares.");
+    }
+  }, []);
+
+
+  // Efecto para inicializar el mapa y actualizar el marcador principal
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps) return;
-    const current = usingExternalGps ? externalGpsLocation : location;
-    if (!current) return;
 
-    if (!mapRef.current) {
-      mapRef.current = new window.google.maps.Map(
-        document.getElementById("map"),
-        {
-          center: current,
-          zoom: 15,
-          mapTypeId: "roadmap",
-          fullscreenControl: false,
-          streetViewControl: false,
-          mapTypeControl: false,
-          gestureHandling: "greedy",
-          disableDoubleClickZoom: true,
+    let currentDisplayLocation = null;
+    let isExternalSourceForMarker = false;
+    let markerData = {};
+
+    if (usingExternalGps) {
+        if (externalGpsLocation) {
+            currentDisplayLocation = externalGpsLocation;
+            isExternalSourceForMarker = true;
+            markerData = { humidity: externalGpsLocation.humidity, temperature: externalGpsLocation.temperature, accuracy: externalGpsLocation.accuracy };
+        } 
+    } else { 
+        if (location) {
+            currentDisplayLocation = location;
+            isExternalSourceForMarker = false;
+            markerData = { accuracy: location.accuracy };
         }
-      );
+    }
+    
+    if (!mapRef.current && currentDisplayLocation) { 
+        mapRef.current = new window.google.maps.Map(
+            document.getElementById("map"),
+            {
+            center: { lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng },
+            zoom: 15,
+            mapTypeId: "roadmap",
+            fullscreenControl: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+            gestureHandling: "greedy",
+            disableDoubleClickZoom: true,
+            }
+        );
+        mapRef.current.addListener('zoom_changed', () => {
+            if (activeMarkerRef.current && activeMarkerRef.current.getMap()) { 
+                 // const pos = activeMarkerRef.current.getPosition();
+                 // const newZoom = mapRef.current.getZoom();
+                 // const currentIsExternal = activeMarkerRef.current.getTitle().includes("Externo"); 
+                 // const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {/*...*/}; 
+                 // const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {/*...*/}; 
+                 // activeMarkerRef.current.setIcon(createMarkerIcon(currentIsExternal, newZoom, 0)); 
+            }
+        });
 
-     
+
+    } else if (mapRef.current && currentDisplayLocation) { 
+        if (mapRef.current.getCenter().lat() !== currentDisplayLocation.lat || mapRef.current.getCenter().lng() !== currentDisplayLocation.lng) {
+            mapRef.current.panTo({ lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng });
+        }
     }
 
-    if (mapRef.current.getCenter().lat() !== current.lat || mapRef.current.getCenter().lng() !== current.lng) {
-      mapRef.current.panTo(current);
+    if (currentDisplayLocation) {
+        updateMarker(currentDisplayLocation.lat, currentDisplayLocation.lng, isExternalSourceForMarker, 0, markerData);
+    } else {
+        activeMarkerRef.current?.setMap(null); 
     }
-    updateMarker(current.lat, current.lng);
 
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
+  }, [location, externalGpsLocation, mapLoaded, usingExternalGps, updateMarker]);
 
-     lugares.forEach((lugar) => {
+
+  // Efecto para dibujar marcadores de Puntos de Interés (POIs)
+  useEffect(() => {
+    if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
+
+    poiMarkersRef.current.forEach((m) => m.setMap(null));
+    poiMarkersRef.current = [];
+    if (openInfoWindowRef.current) { 
+        if (activeMarkerRef.current && openInfoWindowRef.current.anchor === activeMarkerRef.current) {
+          // No cerrar
+        } else {
+             openInfoWindowRef.current.close();
+             openInfoWindowRef.current = null;
+        }
+    }
+
+
+    lugares.forEach((lugar) => {
       const { lat, lng } = lugar.ubicacion || {};
-      if (typeof lat !== 'number' || typeof lng !== 'number') return;
+      if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
 
       const poiDefinition = poiTypes.find(pt => pt.tipo === lugar.tipo);
-      let iconOptions = { // Opciones por defecto o fallback
-        //url: '/icons/default_poi.png', // O usa el pin rojo por defecto de Google si esto es null
+      let iconOptions = {
         scaledSize: new window.google.maps.Size(32, 32),
-        anchor: new window.google.maps.Point(16, 32), // Ancla común para pines
+        anchor: new window.google.maps.Point(16, 32), 
       };
 
-      // CAMBIO: Lógica para seleccionar el ícono
       if (poiDefinition) {
-        if (poiDefinition.svgString) { // Prioridad al SVG string definido
+        if (poiDefinition.svgString) {
           iconOptions = {
             url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(poiDefinition.svgString)}`,
-            scaledSize: new window.google.maps.Size(32, 32), // Ajusta el tamaño como necesites
-            anchor: new window.google.maps.Point(16, 16),   // Centro para un ícono cuadrado
+            scaledSize: new window.google.maps.Size(32, 32),
+            anchor: new window.google.maps.Point(16, 16),
           };
-        } else if (poiDefinition.emoji) {
+        } else if (poiDefinition.emoji && poiDefinition.tipo !== "Todos") { // No usar emoji para "Todos" si no tiene SVG
           const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
           iconOptions = {
             url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgEmoji)}`,
@@ -644,519 +763,159 @@ export default function GoogleMaps() {
             anchor: new window.google.maps.Point(16, 16),
           };
         }
-        // Podrías añadir un 'else if (poiDefinition.iconFile)' aquí si tuvieras archivos de imagen
       }
-
 
       const marker = new window.google.maps.Marker({
         position: { lat, lng },
         map: mapRef.current,
         title: lugar.nombre,
-        icon: iconOptions, // Aplicar las opciones del ícono
+        icon: iconOptions,
       });
 
       const id = `carrusel-${lugar.id || Math.random().toString(36).substr(2, 9)}`;
-      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png'];
+      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png']; 
 
       const svgArrowLeft = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M257.5 445.1l-22.2 22.2c-9.4 9.4-24.6 9.4-33.9 0L7 273c-9.4-9.4-9.4-24.6 0-33.9L201.4 44.7c9.4-9.4 24.6-9.4 33.9 0l22.2 22.2c9.5 9.5 9.3 25-.4 34.3L136.6 216H424c13.3 0 24 10.7 24 24v32c0 13.3-10.7 24-24 24H136.6l120.5 114.8c9.8 9.3 10 24.8.4 34.3z"></path></svg>`;
-      const svgArrowRight = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M190.5 66.9l22.2-22.2c9.4-9.4 24.6-9.4 33.9 0L416 239c9.4 9.4 9.4 24.6 0 33.9L246.6 467.3c-9.4 9.4-24.6-9.4-33.9 0l-22.2-22.2c-9.5-9.5-9.3-25 .4-34.3L311.4 296H24c-13.3 0-24-10.7-24-24v-32c0-13.3 10.7-24 24-24h287.4L190.9 101.2c-9.8-9.3-10-24.8-.4-34.3z"></path></svg>`;
+      const svgArrowRight = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M190.5 66.9l22.2-22.2c9.4-9.4 24.6-9.4 33.9 0L416 239c9.4 9.4 9.4 24.6 0 33.9L246.6 467.3c-9.4-9.4-24.6-9.4-33.9 0l-22.2-22.2c-9.5-9.5-9.3-25 .4-34.3L311.4 296H24c-13.3 0-24-10.7-24-24v-32c0-13.3 10.7-24 24-24h287.4L190.9 101.2c-9.8-9.3-10-24.8-.4-34.3z"></path></svg>`;
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
 
-const infoWindowContent = `
-  <style>
-    /* Reset y configuración base del InfoWindow */
-    .gm-style .gm-style-iw-c { /* ESTA ES LA CLAVE PRINCIPAL */
-      padding: 0 !important;
-      border-radius: 12px !important; /* Quizás quieras que sea 0 si tu contenido no es redondeado en el mismo sitio */
-      box-shadow: none !important; /* O none !important; si no quieres ninguna sombra de Google */
-      max-width: none !important;
-      min-width: 0 !important;
-      overflow: hidden !important; /* Muy importante para que tu contenido no se corte si es más grande */
-      background: none !important; /* AÑADIR ESTO PARA QUITAR EL FONDO BLANCO */
-    }
-    
-    .gm-style .gm-style-iw-d {
-      overflow: hidden !important;
-    }
-    
-     .gm-style-iw-wrap button[aria-label="Close"],
-    .gm-style-iw-wrap button[aria-label="Cerrar"],
-
-.gm-style-iw button[aria-label="Close"],
-.gm-style-iw button[aria-label="Cerrar"],
-    .gm-style-iw-close-button,
-    .gm-style .gm-style-iw-t::after { /* ESTO OCULTA EL PICO/FLECHA */
-      display: none !important;
-    }
-
-    /* Container principal optimizado para móvil */
-    .info-window-custom-container {
-      color: #2d3748;
-      width: 100%;
-      max-width: 350px;
-      min-width: 280px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      box-sizing: border-box;
-      overflow: hidden;
-      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    }
-
-    /* Header mejorado */
-    .info-window-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      position: relative;
-    }
-
-    .info-window-header::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
-    }
-
-    .info-window-custom-title {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-      line-height: 1.3;
-      color: white;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      flex: 1;
-      padding-right: 10px;
-    }
-
-    .info-window-custom-close-btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 8px;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      backdrop-filter: blur(10px);
-      min-width: 36px;
-      height: 36px;
-    }
-
-    .info-window-custom-close-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: scale(1.05);
-    }
-
-    /* Body del InfoWindow */
-    .info-window-body {
-      padding: 20px;
-      background: white;
-      max-height: 60vh;
-      overflow-y: auto;
-    }
-
-    /* Galería de imágenes optimizada para móvil */
-    .info-window-image-gallery {
-      margin-bottom: 16px;
-      position: relative;
-    }
-
-    .info-window-image-wrapper {
-      width: 100%;
-      height: 180px;
-      overflow: hidden;
-      border-radius: 12px;
-      background: linear-gradient(45deg, #f0f2f5, #e2e8f0);
-      margin-bottom: 12px;
-      position: relative;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .info-window-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .info-window-image:hover {
-      transform: scale(1.02);
-    }
-
-    /* Controles de galería optimizados para móvil */
-    .info-window-gallery-controls {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      align-items: center;
-    }
-
-    .info-window-gallery-button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 0;
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-      position: relative;
-      overflow: hidden;
-      touch-action: manipulation;
-    }
-
-    .info-window-gallery-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
-    }
-
-    .info-window-gallery-button:hover::before {
-      left: 100%;
-    }
-
-    .info-window-gallery-button svg {
-      width: 22px;
-      height: 22px;
-      transition: transform 0.2s ease;
-    }
-
-    .info-window-gallery-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-    }
-
-    .info-window-gallery-button:hover svg {
-      transform: scale(1.1);
-    }
-
-    .info-window-gallery-button:disabled {
-      background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .info-window-gallery-button:disabled::before {
-      display: none;
-    }
-
-    /* Descripción estilizada */
-    .info-window-description {
-      margin: 0 0 16px;
-      font-size: 0.9rem;
-      line-height: 1.6;
-      color: #4a5568;
-      background: #f7fafc;
-      padding: 14px 16px;
-      border-radius: 10px;
-      border-left: 4px solid #667eea;
-      position: relative;
-    }
-
-    /* Detalles mejorados y optimizados para móvil */
-    .info-window-details {
-      font-size: 0.85rem;
-      color: #2d3748;
-    }
-
-    .info-window-detail-item {
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 10px;
-      padding: 12px 14px;
-      background: #f8fafc;
-      border-radius: 8px;
-      transition: all 0.2s ease;
-      border: 1px solid #e2e8f0;
-    }
-
-    .info-window-detail-item:hover {
-      background: #edf2f7;
-      transform: translateX(2px);
-    }
-
-    .info-window-detail-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .info-window-detail-label {
-      font-weight: 600;
-      color: #667eea;
-      margin-right: 8px;
-      min-width: 50px;
-      flex-shrink: 0;
-    }
-
-    .info-window-detail-value {
-      color: #4a5568;
-      flex: 1;
-      word-wrap: break-word;
-    }
-
-    /* Animaciones de entrada */
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .info-window-custom-container {
-      animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* Optimizaciones específicas para móvil */
-    @media (max-width: 480px) {
-      .info-window-custom-container {
-        width: 100%;
-        min-width: 260px;
-        max-width: 280px;
-      }
-      
-      .info-window-header {
-        padding: 12px 16px;
-      }
-      
-      .info-window-custom-title {
-        font-size: 1rem;
-      }
-      
-      .info-window-body {
-        padding: 16px;
-        max-height: 50vh;
-      }
-      
-      .info-window-image-wrapper {
-        height: 150px;
-      }
-      
-      .info-window-gallery-button {
-        width: 44px;
-        height: 44px;
-      }
-      
-      .info-window-gallery-button svg {
-        width: 20px;
-        height: 20px;
-      }
-      
-      .info-window-description {
-        font-size: 0.85rem;
-        padding: 12px 14px;
-      }
-      
-      .info-window-details {
-        font-size: 0.8rem;
-      }
-      
-      .info-window-detail-item {
-        padding: 10px 12px;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      
-      .info-window-detail-label {
-        margin-bottom: 4px;
-        margin-right: 0;
-      }
-    }
-
-    /* Optimizaciones para pantallas muy pequeñas */
-    @media (max-width: 320px) {
-      .info-window-custom-container {
-        max-width: 260px;
-      }
-      
-      .info-window-gallery-controls {
-        gap: 12px;
-      }
-    }
-
-    /* Mejoras para dispositivos táctiles */
-    @media (hover: none) and (pointer: coarse) {
-      .info-window-gallery-button:hover {
-        transform: none;
-      }
-      
-      .info-window-detail-item:hover {
-        transform: none;
-      }
-      
-      .info-window-image:hover {
-        transform: none;
-      }
-    }
-  </style>
-  <div class="info-window-custom-container" id="${id}-container">
-    <div class="info-window-header">
-      <h3 class="info-window-custom-title">${lugar.nombre}</h3>
-      <button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">
-        ${svgClose}
-      </button>
-    </div>
-    <div class="info-window-body">
-      <div id="${id}" class="info-window-image-gallery">
-        <div class="info-window-image-wrapper">
-          <img src="${imagenes[0]}" id="${id}-img" class="info-window-image" alt="Imagen de ${lugar.nombre}" />
-        </div>
-        ${imagenes.length > 1 ? `
-        <div class="info-window-gallery-controls">
-          <button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">
-            ${svgArrowLeft}
+      const infoWindowContent = `
+      <style>
+        .gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; }
+        .gm-style .gm-style-iw-d { overflow: hidden !important; }
+        .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; }
+        .info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; }
+        .info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; }
+        .info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); }
+        .info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; }
+        .info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; }
+        .info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        .info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; }
+        .info-window-image-gallery { margin-bottom: 16px; position: relative; }
+        .info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .info-window-image:hover { transform: scale(1.02); }
+        .info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; }
+        .info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; }
+        .info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; }
+        .info-window-gallery-button:hover::before { left: 100%; }
+        .info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; }
+        .info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); }
+        .info-window-gallery-button:hover svg { transform: scale(1.1); }
+        .info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; }
+        .info-window-gallery-button:disabled::before { display: none; }
+        .info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; }
+        .info-window-details { font-size: 0.85rem; color: #2d3748; }
+        .info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; }
+        .info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); }
+        .info-window-detail-item:last-child { margin-bottom: 0; }
+        .info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; }
+        .info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @media (max-width: 480px) { .info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; } .info-window-header { padding: 12px 16px; } .info-window-custom-title { font-size: 1rem; } .info-window-body { padding: 16px; max-height: 50vh; } .info-window-image-wrapper { height: 150px; } .info-window-gallery-button { width: 44px; height: 44px; } .info-window-gallery-button svg { width: 20px; height: 20px; } .info-window-description { font-size: 0.85rem; padding: 12px 14px; } .info-window-details { font-size: 0.8rem; } .info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; } .info-window-detail-label { margin-bottom: 4px; margin-right: 0; } }
+        @media (max-width: 320px) { .info-window-custom-container { max-width: 260px; } .info-window-gallery-controls { gap: 12px; } }
+        @media (hover: none) and (pointer: coarse) { .info-window-gallery-button:hover { transform: none; } .info-window-detail-item:hover { transform: none; } .info-window-image:hover { transform: none; } }
+      </style>
+      <div class="info-window-custom-container" id="${id}-container">
+        <div class="info-window-header">
+          <h3 class="info-window-custom-title">${lugar.nombre}</h3>
+          <button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">
+            ${svgClose}
           </button>
-          <button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">
-            ${svgArrowRight}
-          </button>
-        </div>` : ''}
-      </div>
-      <div class="info-window-description">${lugar.descripcion || "No hay descripción disponible."}</div>
-      <div class="info-window-details">
-        <div class="info-window-detail-item">
-          <span class="info-window-detail-label">Tipo:</span>
-          <span class="info-window-detail-value">${lugar.tipo}</span>
         </div>
-        <div class="info-window-detail-item">
-          <span class="info-window-detail-label">Costo:</span>
-          <span class="info-window-detail-value">${lugar.costo_entrada || "Gratis"}</span>
+        <div class="info-window-body">
+          <div id="${id}" class="info-window-image-gallery">
+            <div class="info-window-image-wrapper">
+              <img src="${imagenes[0]}" id="${id}-img" class="info-window-image" alt="Imagen de ${lugar.nombre}" />
+            </div>
+            ${imagenes.length > 1 ? `
+            <div class="info-window-gallery-controls">
+              <button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">
+                ${svgArrowLeft}
+              </button>
+              <button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">
+                ${svgArrowRight}
+              </button>
+            </div>` : ''}
+          </div>
+          <p class="info-window-description">${lugar.descripcion || "No hay descripción disponible."}</p>
+          <div class="info-window-details">
+            <div class="info-window-detail-item">
+              <span class="info-window-detail-label">Tipo:</span>
+              <span class="info-window-detail-value">${lugar.tipo}</span>
+            </div>
+            <div class="info-window-detail-item">
+              <span class="info-window-detail-label">Costo:</span>
+              <span class="info-window-detail-value">${lugar.costo_entrada || "Gratis"}</span>
+            </div>
+            <div class="info-window-detail-item">
+              <span class="info-window-detail-label">Horario:</span>
+              <span class="info-window-detail-value">${lugar.horario || "No especificado"}</span>
+            </div>
+          </div>
         </div>
-        <div class="info-window-detail-item">
-          <span class="info-window-detail-label">Horario:</span>
-          <span class="info-window-detail-value">${lugar.horario || "No especificado"}</span>
-        </div>
-      </div>
-    </div>
-  </div>`;
+      </div>`;
 
-const infoWindow = new window.google.maps.InfoWindow({
-  content: infoWindowContent,
-  ariaLabel: lugar.nombre,
-  disableAutoPan: false,
-  pixelOffset: new window.google.maps.Size(0, -10)
-});
-
-// Event listener para el marker
-marker.addListener("click", () => {
-  openInfoWindowRef.current?.close();
-  infoWindow.open(mapRef.current, marker);
-  openInfoWindowRef.current = infoWindow;
-});
-
-// Event listeners para funcionalidad
-window.google.maps.event.addListener(infoWindow, 'domready', () => {
-  // Botón de cierre
-  const closeButton = document.getElementById(`${id}-custom-close-btn`);
-  if (closeButton) {
-    closeButton.addEventListener('click', () => {
-      infoWindow.close(); 
-    });
-  }
-
-  // Galería de imágenes
-  if (imagenes.length > 1) {
-    const prevButton = document.getElementById(`${id}-prev`);
-    const nextButton = document.getElementById(`${id}-next`);
-    const imgElement = document.getElementById(`${id}-img`);
-    let currentImageIndex = 0;
-
-    if (prevButton && nextButton && imgElement) {
-      const updateGallery = () => {
-        // Efecto de transición suave
-        imgElement.style.opacity = '0.5';
-        
-        setTimeout(() => {
-          imgElement.src = imagenes[currentImageIndex];
-          imgElement.style.opacity = '1';
-        }, 150);
-
-        // Actualizar estado de botones
-        prevButton.disabled = currentImageIndex === 0;
-        nextButton.disabled = currentImageIndex === imagenes.length - 1;
-      };
-
-      prevButton.addEventListener('click', () => {
-        if (currentImageIndex > 0) {
-          currentImageIndex--;
-          updateGallery();
-        }
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: infoWindowContent,
+        ariaLabel: lugar.nombre,
+        disableAutoPan: false, 
+        pixelOffset: new window.google.maps.Size(0, -10) 
       });
 
-      nextButton.addEventListener('click', () => {
-        if (currentImageIndex < imagenes.length - 1) {
-          currentImageIndex++;
-          updateGallery();
-        }
+      marker.addListener("click", () => {
+        openInfoWindowRef.current?.close(); 
+        infoWindow.open(mapRef.current, marker);
+        openInfoWindowRef.current = infoWindow;
       });
 
-      // Navegación con teclado (solo en dispositivos no táctiles)
-      if (window.matchMedia('(hover: hover)').matches) {
-        document.addEventListener('keydown', (e) => {
-          if (openInfoWindowRef.current === infoWindow) {
-            if (e.key === 'ArrowLeft' && currentImageIndex > 0) {
-              currentImageIndex--;
-              updateGallery();
-            } else if (e.key === 'ArrowRight' && currentImageIndex < imagenes.length - 1) {
-              currentImageIndex++;
-              updateGallery();
-            } else if (e.key === 'Escape') {
-              infoWindow.close();
+      window.google.maps.event.addListener(infoWindow, 'domready', () => {
+        const closeButton = document.getElementById(`${id}-custom-close-btn`);
+        if (closeButton) {
+          closeButton.onclick = () => infoWindow.close();
+        }
+
+        if (imagenes.length > 1) {
+          const prevButton = document.getElementById(`${id}-prev`);
+          const nextButton = document.getElementById(`${id}-next`);
+          const imgElement = document.getElementById(`${id}-img`);
+          let currentImageIndex = 0;
+
+          const updateGallery = () => {
+            if(imgElement) {
+                imgElement.style.opacity = '0.5';
+                setTimeout(() => {
+                    imgElement.src = imagenes[currentImageIndex];
+                    imgElement.style.opacity = '1';
+                }, 150);
             }
+            if(prevButton) prevButton.disabled = currentImageIndex === 0;
+            if(nextButton) nextButton.disabled = currentImageIndex === imagenes.length - 1;
+          };
+          
+          if(prevButton) prevButton.onclick = () => { if (currentImageIndex > 0) { currentImageIndex--; updateGallery(); } };
+          if(nextButton) nextButton.onclick = () => { if (currentImageIndex < imagenes.length - 1) { currentImageIndex++; updateGallery(); } };
+          
+          if (imgElement) {
+              let touchStartX = 0;
+              imgElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+              imgElement.addEventListener('touchend', (e) => {
+                  const touchEndX = e.changedTouches[0].screenX;
+                  const swipeThreshold = 50;
+                  if (touchStartX - touchEndX > swipeThreshold && currentImageIndex < imagenes.length - 1) {
+                      currentImageIndex++; updateGallery();
+                  } else if (touchEndX - touchStartX > swipeThreshold && currentImageIndex > 0) {
+                      currentImageIndex--; updateGallery();
+                  }
+              });
           }
-        });
-      }
-
-      // Soporte para gestos táctiles en la imagen (swipe)
-      let touchStartX = 0;
-      let touchEndX = 0;
-
-      imgElement.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-      });
-
-      imgElement.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        const swipeThreshold = 50;
-        
-        if (touchStartX - touchEndX > swipeThreshold && currentImageIndex < imagenes.length - 1) {
-          // Swipe left - next image
-          currentImageIndex++;
-          updateGallery();
-        } else if (touchEndX - touchStartX > swipeThreshold && currentImageIndex > 0) {
-          // Swipe right - previous image
-          currentImageIndex--;
           updateGallery();
         }
       });
-
-      updateGallery(); // Inicializar
-    }
-  }
-});
-
-markersRef.current.push(marker);
+      poiMarkersRef.current.push(marker);
     });
+<<<<<<< HEAD
   }, [
     location,
     externalGpsLocation,
@@ -1208,16 +967,31 @@ useEffect(() => {
   drawRouteFromMapbox(geo, '#FF4136');              // Rojo
   drawRouteFromMapbox(nieves, '#B10DC9');           // Morado
 }, [mapLoaded]);
+=======
+  }, [mapLoaded, lugares]);
+>>>>>>> c5d28c9cd2bdbe07b174565b3f314f62f9994837
 
-  const togglePoiMenu = useCallback(() => {
-    setIsPoiMenuOpen(prev => !prev);
-  }, []);
 
+  const togglePoiMenu = useCallback(() => setIsPoiMenuOpen(prev => !prev), []);
+  
   const handlePoiTypeSelect = useCallback((poi) => {
     setSelectedPoiType(poi);
-    fetchLugaresPorTipo(poi.tipo);
+    if (poi.tipo === "Todos") {
+        fetchAllLugares();
+    } else {
+        fetchLugaresPorTipo(poi.tipo);
+    }
     setIsPoiMenuOpen(false);
-  }, [fetchLugaresPorTipo]);
+  }, [fetchLugaresPorTipo, fetchAllLugares]);
+
+  // Cargar todos los lugares al inicio si "Todos" es la selección por defecto
+  useEffect(() => {
+    if (selectedPoiType && selectedPoiType.tipo === "Todos" && mapLoaded) {
+        fetchAllLugares();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapLoaded]); // Solo ejecutar cuando el mapa está cargado y "Todos" es la opción inicial
+
 
   return (
     <div className={styles.mapRoot}>
@@ -1225,32 +999,42 @@ useEffect(() => {
       {error && <div className={styles.errorBox}>{error}</div>}
 
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
-        {location && (
+        {location && ( 
           <button
-            onClick={requestLocation}
+            onClick={() => requestLocation(true)}
             className={styles.mapButton}
-            title="Actualizar ubicación"
+            title="Actualizar mi ubicación (GPS Interno)"
           >
             <IoReloadCircle size={24} />
           </button>
         )}
         <button
           onClick={toggleGpsSource}
-          className={`${styles.mapButton} ${styles.gpsToggle}`}
-          title="Cambiar fuente GPS"
+          className={`${styles.mapButton} ${styles.gpsToggle} ${usingExternalGps ? styles.externalActive : ''}`}
+          title={usingExternalGps ? "Usando GPS Externo (click para cambiar a Interno)" : "Usando GPS Interno (click para cambiar a Externo)"}
         >
           {usingExternalGps ? <MdGpsFixed size={24} /> : <MdGpsOff size={24} />}
         </button>
       </div>
 
       <div className={styles.mapContainer}>
-        {!mapLoaded && (
+        {mapStatusMessage && (
+          <div className={styles.mapOverlayMessage}>
+            {mapStatusMessage}
+          </div>
+        )}
+        {!mapLoaded && !mapStatusMessage && (
           <div className={styles.loadingState}>
             <div className={styles.spinner}></div>
             Cargando mapa...
           </div>
         )}
-        <div id="map" className={styles.mapElement} style={{ visibility: mapLoaded ? 'visible' : 'hidden' }}></div>
+        <div 
+            id="map" 
+            className={styles.mapElement} 
+            style={{ visibility: mapLoaded ? 'visible' : 'hidden' }}
+        >
+        </div>
       </div>
 
       <div className={styles.poiFabContainer}>
@@ -1260,12 +1044,12 @@ useEffect(() => {
               <button
                 key={poi.tipo}
                 onClick={() => handlePoiTypeSelect(poi)}
-                className={styles.poiMenuItem}
+                className={`${styles.poiMenuItem} ${selectedPoiType && selectedPoiType.tipo === poi.tipo ? styles.poiMenuItemActive : ''}`}
                 title={poi.tipo}
-                style={{ animationDelay: `${index * 0.08}s` }}
+                style={{ animationDelay: `${index * 0.08}s` }} 
               >
                 <poi.Icono size={22} />
-                <span className={styles.poiMenuItemText}>{poi.tipo}</span>
+                <span className={styles.poiMenuItemText}>{poi.tipo === "Todos" ? "Todos los lugares" : poi.tipo}</span>
               </button>
             ))}
           </div>
@@ -1273,7 +1057,7 @@ useEffect(() => {
         <button
           onClick={togglePoiMenu}
           className={styles.poiFab}
-          title={selectedPoiType ? `Mostrando: ${selectedPoiType.tipo}` : "Seleccionar tipo de lugar"}
+          title={selectedPoiType ? `Mostrando: ${selectedPoiType.tipo === "Todos" ? "Todos los lugares" : selectedPoiType.tipo}` : "Seleccionar tipo de lugar"}
           aria-expanded={isPoiMenuOpen}
           aria-haspopup="true"
         >

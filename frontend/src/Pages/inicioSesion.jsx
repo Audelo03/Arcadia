@@ -9,6 +9,7 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import styles from "../Estilos/inicioSesion.module.css";
 import logo from "../Images/logo.jpeg";
+import logopng from "../Images/logopng.png";
 import logoGoogle from "../Images/g-logo.png";
 import { db } from "./firebase-config"; // Asumiendo que has configurado firebase-config.js
 import ConfirmationDialog from "../Components//ConfirmationDialog"; // Importa el componente ConfirmationDialog
@@ -128,7 +129,17 @@ export default function InicioSesion() {
         </div>
 
         <div className={styles["login-form-panel"]}>
-          <h2>Iniciar sesión</h2>
+          <div> {/* Contenedor del título y el logo */}
+    <h2 className={styles["login-title-container"]}>
+  <img
+    src={logopng} // Asegúrate que la ruta sea correcta
+    alt="Logo"
+    className={styles["login-logo"]}
+    loading="lazy"
+  />
+  <span>Iniciar sesión</span>
+</h2>
+  </div>
           <p>Ingresa tus credenciales para acceder.</p>
 
           <form onSubmit={handleSubmit}>

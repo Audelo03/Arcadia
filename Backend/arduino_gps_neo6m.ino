@@ -11,7 +11,7 @@
 // Conecta TX del GPS al pin D0 del Arduino
 // Conecta RX del GPS al pin D1 del Arduino
 SoftwareSerial gpsSerial(0, 1); // RX, TX (D0, D1 en Arduino R4 WiFi)
-TinyGPS++ gps;
+TinyGPSPlus gps;
 
 // Inicializar sensor DHT (elimina esta línea si no tienes DHT)
 DHT dht(DHTPIN, DHTTYPE);
