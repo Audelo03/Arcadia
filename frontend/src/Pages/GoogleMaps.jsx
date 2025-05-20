@@ -363,7 +363,6 @@ export default function GoogleMaps() {
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]); // Default to "Todos"
 
-<<<<<<< HEAD
   const drawRouteFromMapbox = async (coordsArray, color = '#0074D9') => {
   if (!mapRef.current || !window.google?.maps) return;
 
@@ -396,10 +395,6 @@ export default function GoogleMaps() {
   }
 };
 
-=======
-  const [mapStatusMessage, setMapStatusMessage] = useState(''); // For "Esperando datos validos", etc.
-  const wsRef = useRef(null); // WebSocket reference
->>>>>>> c5d28c9cd2bdbe07b174565b3f314f62f9994837
 
   const requestLocation = useCallback(async (showAlert = true) => {
     setError(null);
@@ -915,7 +910,6 @@ export default function GoogleMaps() {
       });
       poiMarkersRef.current.push(marker);
     });
-<<<<<<< HEAD
   }, [
     location,
     externalGpsLocation,
@@ -967,9 +961,6 @@ useEffect(() => {
   drawRouteFromMapbox(geo, '#FF4136');              // Rojo
   drawRouteFromMapbox(nieves, '#B10DC9');           // Morado
 }, [mapLoaded]);
-=======
-  }, [mapLoaded, lugares]);
->>>>>>> c5d28c9cd2bdbe07b174565b3f314f62f9994837
 
 
   const togglePoiMenu = useCallback(() => setIsPoiMenuOpen(prev => !prev), []);
