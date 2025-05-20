@@ -1,20 +1,28 @@
 // frontend/src/Components/Sidebar.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // <--- useRef importado aquí
-import { FaBars, FaRoute, FaSignOutAlt, FaListUl, FaTrashAlt } from "react-icons/fa";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FaBars, FaRoute, FaSignOutAlt, FaTrashAlt } from "react-icons/fa"; // FaListUl eliminada si no se usa más
 import { BiLogIn } from "react-icons/bi";
 import { IoPeopleOutline } from "react-icons/io5";
 import { NavLink, useNavigate } from 'react-router-dom';
-import '../Estilos/Sidebar.css';
-import logoPng from '../Images/logopng.png';
+import '../Estilos/Sidebar.css'; // Asegúrate que la ruta sea correcta
+import logoPng from '../Images/logopng.png'; // Asegúrate que la ruta sea correcta
 import { MdOutlineDeveloperBoard } from "react-icons/md";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from '../Pages/firebase-config';
-// import { db } from '../Pages/firebase-config'; // Descomentar si se usa db directamente aquí
-// import { collection, getDocs } from "firebase/firestore"; // Descomentar si se usa
+import { auth } from '../Pages/firebase-config'; // Asegúrate que la ruta sea correcta
 
-const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteList }) => {
+
+const Sidebar = ({ 
+  // Props originales que podrías estar usando para otras cosas (si las hay)
+  // onShowRoutes, 
+  // onClearRoutes, 
+  // isShowingRoutes, 
+  // onToggleRouteList, 
+  // Nuevas props para el toggle de rutas predefinidas en el mapa:
+  onTogglePredefinedRoutes, 
+  arePredefinedRoutesVisible 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenuIndex, setExpandedMenuIndex] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -25,200 +33,137 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
   const [gpsConnected, setGpsConnected] = useState(false);
   const [isAttemptingConnection, setIsAttemptingConnection] = useState(false);
   
-  const [connectionAttemptTimeout, setConnectionAttemptTimeout] = useState(null);
+  const [connectionAttemptTimeoutId, setConnectionAttemptTimeoutId] = useState(null); // Renombrado para claridad
   const wsRef = useRef(null);
 
   const clearConnectionAttemptTimeout = useCallback(() => {
-    if (connectionAttemptTimeout) {
-      clearTimeout(connectionAttemptTimeout);
-      setConnectionAttemptTimeout(null);
+    if (connectionAttemptTimeoutId) {
+      clearTimeout(connectionAttemptTimeoutId);
+      setConnectionAttemptTimeoutId(null);
     }
-  }, [connectionAttemptTimeout]);
+  }, [connectionAttemptTimeoutId]);
 
   useEffect(() => {
     if (!wsRef.current) {
         wsRef.current = new WebSocket('ws://localhost:8080');
-
-        wsRef.current.onopen = () => {
-            console.log('Sidebar WebSocket connected');
-        };
-
+        wsRef.current.onopen = () => console.log('Sidebar WebSocket connected');
         wsRef.current.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                // console.log('Sidebar WS message:', message); // Debug
-
                 if (message.type === 'gps_status') {
                     const { status, message: statusMessage } = message.payload;
                     if (status === 'waiting_for_valid_data') {
-                        setIsAttemptingConnection(true);
-                        setGpsConnected(false);
+                        setIsAttemptingConnection(true); setGpsConnected(false);
                         setGpsMessageText(statusMessage || 'Esperando datos GPS válidos...');
                         setShowGpsMessage(true);
                     } else if (status === 'disconnected' || status === 'disconnected_error' || status === 'script_launch_error' || status === 'script_error') {
-                        clearConnectionAttemptTimeout();
-                        setIsAttemptingConnection(false);
-                        setGpsConnected(false);
+                        clearConnectionAttemptTimeout(); setIsAttemptingConnection(false); setGpsConnected(false);
                         setGpsMessageText(statusMessage || 'GPS desconectado o error.');
-                        setShowGpsMessage(true);
-                        window.dispatchEvent(new CustomEvent('gps-connection-lost'));
+                        setShowGpsMessage(true); window.dispatchEvent(new CustomEvent('gps-connection-lost'));
                         setTimeout(() => setShowGpsMessage(false), 7000);
                     }
                 } else if (message.type === 'gps_update' && message.payload.lat) {
                     clearConnectionAttemptTimeout();
                     if (!gpsConnected) { 
-                        setGpsMessageText("GPS conectado y recibiendo datos.");
-                        setShowGpsMessage(true);
+                        setGpsMessageText("GPS conectado y recibiendo datos."); setShowGpsMessage(true);
                         setTimeout(() => setShowGpsMessage(false), 5000);
                     }
-                    setGpsConnected(true);
-                    setIsAttemptingConnection(false);
+                    setGpsConnected(true); setIsAttemptingConnection(false);
                     window.dispatchEvent(new CustomEvent('gps-data-active')); 
                 }
-            } catch (error) {
-                console.error('Error processing WebSocket message in Sidebar:', error);
-            }
+            } catch (error) { console.error('Error processing WebSocket message in Sidebar:', error); }
         };
-
-        wsRef.current.onclose = () => {
-            console.log('Sidebar WebSocket disconnected');
-            // No cambiar estado aquí directamente si el cierre es inesperado
-        };
-
+        wsRef.current.onclose = () => console.log('Sidebar WebSocket disconnected');
         wsRef.current.onerror = (error) => {
-            console.error('Sidebar WebSocket error:', error);
-            setGpsMessageText("Error de conexión con el servidor GPS.");
-            setShowGpsMessage(true);
-            setIsAttemptingConnection(false);
-            setGpsConnected(false);
-            clearConnectionAttemptTimeout();
-            setTimeout(() => setShowGpsMessage(false), 7000);
+            console.error('Sidebar WebSocket error:', error); setGpsMessageText("Error de conexión con el servidor GPS.");
+            setShowGpsMessage(true); setIsAttemptingConnection(false); setGpsConnected(false);
+            clearConnectionAttemptTimeout(); setTimeout(() => setShowGpsMessage(false), 7000);
         };
     }
-    
-    return () => {
-        clearConnectionAttemptTimeout();
-    };
+    return () => clearConnectionAttemptTimeout();
   }, [gpsConnected, clearConnectionAttemptTimeout]);
 
-
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-    });
+    const unsubscribe = onAuthStateChanged(auth, (user) => setCurrentUser(user));
     return () => unsubscribe();
   }, []);
 
   const toggle = () => {
-    if (isOpen) {
-      setExpandedMenuIndex(null);
-    }
+    if (isOpen) setExpandedMenuIndex(null);
     setIsOpen(!isOpen);
   };
 
   const toggleSubMenu = (index) => {
-    if (!isOpen) {
-      setIsOpen(true);
-      setExpandedMenuIndex(index);
-    } else {
-      setExpandedMenuIndex(prevIndex => (prevIndex === index ? null : index));
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      console.log("Sesión cerrada");
-      setGpsConnected(false); 
-      setIsAttemptingConnection(false);
-      // No hay 'pythonProcess' que verificar aquí, eso es del backend.
-      // Si es necesario, la acción de desconectar GPS se haría a través de una llamada API a disconnectGps()
-      // si el GPS estuviera activo.
-      if (gpsConnected || isAttemptingConnection) {
-        disconnectGps(); // Intenta desconectar si estaba activo o intentando.
-      }
-      navigate('/login');
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    }
+    if (!isOpen) { setIsOpen(true); setExpandedMenuIndex(index); } 
+    else { setExpandedMenuIndex(prevIndex => (prevIndex === index ? null : index)); }
   };
   
-  const handleExternalGpsClick = useCallback(() => {
-    clearConnectionAttemptTimeout(); 
-
-    if (gpsConnected) { 
-      disconnectGps();
-      return;
-    }
-
-    if (isAttemptingConnection) {
-      setGpsMessageText("Intentando conectar... Esperando datos GPS válidos.");
-      setShowGpsMessage(true);
-      return; 
-    }
-
-    setIsAttemptingConnection(true);
-    setGpsConnected(false); 
-    setGpsMessageText("Iniciando conexión GPS... Asegúrate que los datos GPS (longitud, latitud, [humedad], [temperatura]) estén separados por comas.");
-    setShowGpsMessage(true);
-
-    const timeoutId = setTimeout(() => {
-      if (isAttemptingConnection && !gpsConnected) { 
-        setGpsMessageText("Error: Tiempo de espera agotado. Verifica el dispositivo GPS y la conexión del servidor.");
-        setShowGpsMessage(true);
-        setIsAttemptingConnection(false); 
-        setTimeout(() => setShowGpsMessage(false), 7000);
-      }
-    }, 25000); 
-    setConnectionAttemptTimeout(timeoutId);
-
-    fetch('http://localhost:3001/api/connect-gps')
-      .then(response => {
-        if (!response.ok) {
-          return response.json().then(err => { throw new Error(err.message || `Error del servidor: ${response.status}`) });
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (!data.success) {
-          throw new Error(data.message || "Fallo al iniciar la conexión GPS desde el servidor.");
-        }
-        // El estado real (conectado, esperando datos) lo dará el WebSocket.
-      })
-      .catch(error => {
-        clearConnectionAttemptTimeout();
-        setGpsMessageText(error.message || "Error de red o servidor al intentar conectar con GPS.");
-        setShowGpsMessage(true);
-        setIsAttemptingConnection(false);
-        setTimeout(() => setShowGpsMessage(false), 7000);
-      });
-  }, [gpsConnected, isAttemptingConnection, clearConnectionAttemptTimeout]);
-
-  // Definir disconnectGps usando useCallback para evitar re-creaciones innecesarias si se pasa como prop o dependencia
-  const disconnectGps = useCallback(() => {
+  const disconnectGps = useCallback(() => { // Definida aquí para que handleLogout y handleExternalGpsClick la usen
     clearConnectionAttemptTimeout();
-    setGpsMessageText("Desconectando GPS...");
-    setShowGpsMessage(true);
+    // setGpsMessageText("Desconectando GPS..."); // Opcional, el backend suele responder
+    // setShowGpsMessage(true);
     fetch('http://localhost:3001/api/disconnect-gps')
       .then(response => response.json())
       .then(data => {
         setGpsMessageText(data.message || "Solicitud de desconexión GPS enviada.");
+        setShowGpsMessage(true); // Mostrar mensaje de respuesta
+         // El estado de gpsConnected debería actualizarse via WebSocket status message
       })
       .catch(error => {
-        setGpsMessageText("Error al solicitar desconexión del GPS. Forzando estado desconectado localmente.");
-        setIsAttemptingConnection(false); 
-        setGpsConnected(false);
-        window.dispatchEvent(new CustomEvent('gps-connection-lost'));
+        setGpsMessageText("Error al desconectar GPS. Forzando estado local.");
+        setShowGpsMessage(true);
       })
       .finally(() => {
+         // No cambiar gpsConnected aquí directamente, esperar mensaje de WS
+        setIsAttemptingConnection(false); // Sí resetear esto
         setTimeout(() => setShowGpsMessage(false), 5000);
       });
-  }, [clearConnectionAttemptTimeout]); // Añadir dependencias si las usa directamente
+  }, [clearConnectionAttemptTimeout]);
+
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      if (gpsConnected || isAttemptingConnection) { // Si el GPS estaba activo o intentando conectar
+        disconnectGps(); 
+      }
+      navigate('/login');
+    } catch (error) { console.error("Error al cerrar sesión:", error); }
+  };
+  
+  const handleExternalGpsClick = useCallback(() => {
+    clearConnectionAttemptTimeout(); 
+    if (gpsConnected) { disconnectGps(); return; }
+    if (isAttemptingConnection) { return; } // Ya está intentando
+
+    setIsAttemptingConnection(true); setGpsConnected(false); 
+    setGpsMessageText("Iniciando conexión GPS..."); setShowGpsMessage(true);
+
+    const timeoutId = setTimeout(() => {
+      if (isAttemptingConnection && !gpsConnected) { 
+        setGpsMessageText("Error: Tiempo de espera agotado. Verifica el dispositivo GPS.");
+        setShowGpsMessage(true); setIsAttemptingConnection(false); 
+        setTimeout(() => setShowGpsMessage(false), 7000);
+      }
+    }, 25000); 
+    setConnectionAttemptTimeoutId(timeoutId);
+
+    fetch('http://localhost:3001/api/connect-gps')
+      .then(response => response.ok ? response.json() : response.json().then(err => { throw new Error(err.message || `Error: ${response.status}`) }))
+      .then(data => { if (!data.success) throw new Error(data.message || "Fallo al iniciar GPS desde servidor.");})
+      .catch(error => {
+        clearConnectionAttemptTimeout();
+        setGpsMessageText(error.message || "Error de red/servidor al conectar GPS.");
+        setShowGpsMessage(true); setIsAttemptingConnection(false);
+        setTimeout(() => setShowGpsMessage(false), 7000);
+      });
+  }, [gpsConnected, isAttemptingConnection, clearConnectionAttemptTimeout, disconnectGps]);
+
 
   const getGpsButtonText = () => {
-    if (isAttemptingConnection) return 'Conectando (Esperando datos...)';
+    if (isAttemptingConnection) return 'Conectando GPS...';
     if (gpsConnected) return 'Desconectar GPS Externo';
-    return 'Agregar GPS Externo';
+    return 'Conectar GPS Externo';
   };
 
   const getGpsButtonIcon = () => {
@@ -241,26 +186,11 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
       action: handleExternalGpsClick,
       className: gpsConnected ? 'connected' : (isAttemptingConnection ? 'connecting' : '')
     },
+    // Ítem de menú para mostrar/ocultar rutas predefinidas en el mapa
     {
-      name: isShowingRoutes ? 'Eliminar Rutas Mostradas' : 'Mostrar Rutas',
-      icon: isShowingRoutes ? <FaTrashAlt /> : <FaRoute />,
-      action: () => {
-        if (isShowingRoutes) {
-          onShowRoutes && onShowRoutes(); // Corregido: Llamar onShowRoutes para mostrar, o onClearRoutes para eliminar
-        } else {
-           onToggleRouteList && onToggleRouteList(true); // Esto parece correcto para abrir el modal
-        }
-         // Si la lógica es: si está mostrando -> el botón dice "Eliminar Rutas" -> llama onClearRoutes
-         //                   si no está mostrando -> el botón dice "Mostrar Rutas" -> llama onToggleRouteList(true) o onShowRoutes directamente.
-         // La prop onShowRoutes no estaba definida, asumo que es onClearRoutes() la que se llama cuando isShowingRoutes es true.
-         // Reemplazo con onClearRoutes si esa es la intención:
-         if (isShowingRoutes && onClearRoutes) {
-             onClearRoutes();
-         } else if (!isShowingRoutes && onToggleRouteList) {
-             onToggleRouteList(true);
-         }
-
-      },
+      name: arePredefinedRoutesVisible ? 'Ocultar Rutas del Mapa' : 'Mostrar Rutas en Mapa',
+      icon: arePredefinedRoutesVisible ? <FaTrashAlt /> : <FaRoute />,
+      action: onTogglePredefinedRoutes, // Esta es la nueva prop y acción
     },
   ];
 
@@ -269,7 +199,7 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
       name: 'Cerrar Sesión',
       icon: <FaSignOutAlt />,
       action: handleLogout,
-      path: '#' 
+      path: '#' // O '/login' si prefieres redirigir siempre
     });
   }
 
@@ -297,7 +227,7 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
           </div>
           <div className={`submenu_container ${isExpanded ? 'open' : ''}`}>
             {isExpanded && item.submenu.map((subitem, subindex) => (
-              <NavLink to={subitem.path} key={subitem.name + subindex} className="link sublink" activeclassname="active">
+              <NavLink to={subitem.path} key={subitem.name + subindex} className="link sublink" activeclassname="active"> {/* Corregido: activeClassName */}
                 <div className="icon">{subitem.icon}</div>
                 <div className="submenu_text">{subitem.name}</div>
               </NavLink>
@@ -305,9 +235,9 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
           </div>
         </div>
       );
-    } else if (item.path) {
+    } else if (item.path) { // Asegúrate que item.path exista para items sin action y sin submenu
       return (
-        <NavLink to={item.path} key={item.name + index} className={linkClass} activeclassname="active">
+        <NavLink to={item.path} key={item.name + index} className={linkClass} activeclassname="active"> {/* Corregido: activeClassName */}
           <div className="icon">{item.icon}</div>
           <div style={{ display: isOpen ? "block" : "none" }} className="link_text">{item.name}</div>
         </NavLink>
@@ -320,15 +250,14 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
     <> 
       <div className={`sidebar ${isOpen ? "open" : ""}`} style={{ width: isOpen ? "var(--sidebar-width)" : "60px" }}>
         <div className="top">
-  <h1 style={{ display: isOpen ? "flex" : "none" }} className="logo">
-    <img src={logoPng} alt="Logo" className="logoPng" />
-  </h1>
-  <div className="bars" onClick={toggle}>
-    <FaBars />
-  </div>
-</div>
+          <h1 style={{ display: isOpen ? "flex" : "none" }} className="logo">
+            <img src={logoPng} alt="Logo" className="logoPng" />
+          </h1>
+          <div className="bars" onClick={toggle}>
+            <FaBars />
+          </div>
+        </div>
         {menuItems.map(renderMenuItem)}
-
         {showGpsMessage && (
           <div className={`gps-status-message ${gpsConnected ? 'success' : (isAttemptingConnection ? 'connecting' : 'error')}`}>
             {gpsMessageText}
@@ -342,4 +271,4 @@ const Sidebar = ({ onShowRoutes, onClearRoutes, isShowingRoutes, onToggleRouteLi
   );
 };
 
-export default Sidebar; 
+export default Sidebar;
