@@ -326,7 +326,7 @@ body {
 
 .toggle-password {
     position: absolute;
-    right: 0.5rem; /* Un pequeño espacio desde el borde */
+    right: 0rem; /* Un pequeño espacio desde el borde */
     top: 50%;
     transform: translateY(-50%);
     background: rgba(255, 255, 255, 0.05); /* Fondo inicial sutil */

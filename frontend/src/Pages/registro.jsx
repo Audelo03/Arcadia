@@ -8,6 +8,9 @@ import { app, db } from "./firebase-config";
 import logopng from "../Images/logopng.png";
 import ErrorBanner from "../Components/errorbanner"; // Asumo que este es tu banner de error
 import SuccessBanner from "../Components/SuccessBanner"; // Importa el SuccessBanner
+import { IoEye } from "react-icons/io5";
+import { IoEyeOffSharp } from "react-icons/io5";
+
 
 const auth = getAuth(app);
 
@@ -53,13 +56,13 @@ const PasswordField = memo(
           onChange={onChange}
           required={required}
         />
-        <button
-          type="button"
-          onClick={onTogglePassword}
-          className={styles["toggle-password"]}
-        >
-          {showPassword ? "Ocultar" : "Mostrar"}
-        </button>
+         <button
+                type="button"
+                onClick={onTogglePassword}
+                className={styles["toggle-password"]}
+              >
+                {showPassword ? <IoEye size={24}/> : <IoEyeOffSharp size={24}/>} {/* Aquí está el cambio */}
+              </button>
       </div>
     </div>
   )

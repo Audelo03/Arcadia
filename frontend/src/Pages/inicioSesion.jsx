@@ -17,6 +17,9 @@ import ConfirmationDialog from "../Components/ConfirmationDialog";
 import ErrorBanner from "../Components/errorbanner";
 import SuccessBanner from "../Components/SuccessBanner";
 
+import { IoEye } from "react-icons/io5";
+import { IoEyeOffSharp } from "react-icons/io5";
+
 const auth = getAuth();
 const provider = new GoogleAuthProvider();
 
@@ -235,12 +238,12 @@ export default function InicioSesion() {
                   required
                 />
                 <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className={styles["toggle-password"]}
-                >
-                  {showPassword ? "Ocultar" : "Mostrar"}
-                </button>
+        type="button"
+        onClick={togglePasswordVisibility}
+        className={styles["toggle-password"]}
+      >
+        {showPassword ? <IoEye size={24}/> : <IoEyeOffSharp size={24}/>} {/* Aquí está el cambio */}
+      </button>
               </div>
             </div>
             <button type="submit" className={styles["login-button"]}>
