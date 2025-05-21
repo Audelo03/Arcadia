@@ -59,9 +59,20 @@ const mapCustomStyles = [
  
  
  ,
-
 ];
 
+
+
+const ATLIXCO_BOUNDS = {
+  north: 18.99,
+  south: 18.79,
+  west: -98.57,
+  east: -98.30,
+
+};
+
+const ATLIXCO_CENTER = { lat: 18.9031, lng: -98.4372 };
+const INITIAL_ZOOM_ATLIXCO = 15;
 
 
 
@@ -156,7 +167,7 @@ const getCurrentLocation = () =>
 
 // --- INICIO DE SVGs ---
 const museoIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32px" height="32px">
+<svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24" width="20px" height="20px">
   <defs>
     <linearGradient id="museoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#3E2723; stop-opacity:1" />
@@ -175,7 +186,7 @@ const museoIconSvgString = `
 </svg>`;
 
 const restauranteIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32px" height="32px">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20px" height="20px">
   <title>Icono de Restaurante</title>
   <defs>
     <linearGradient id="restauranteGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -195,7 +206,7 @@ const restauranteIconSvgString = `
 </svg>`;
 
 const monumentoHistoricoIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32px" height="32px">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="20px" height="20px">
   <title>Monumento Histórico</title>
   <defs>
     <linearGradient id="monumentoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -238,7 +249,7 @@ const monumentoHistoricoIconSvgString = `
 </svg>`;
 
 const naturalezaIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="32px" height="32px">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="20px" height="20px">
   <title>Naturaleza</title>
   <defs>
     <linearGradient id="follajeGradient" x1="50%" y1="0%" x2="50%" y2="100%">
@@ -274,7 +285,7 @@ const naturalezaIconSvgString = `
 </svg>`;
 
 const gobiernoIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32px" height="32px">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px">
   <title>Dependencia de Gobierno</title>
   <defs>
     <linearGradient id="gobiernoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -299,7 +310,7 @@ const gobiernoIconSvgString = `
 </svg>`;
 
 const hospedajeIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32px" height="32px">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="20px" height="20px">
   <title>Hospedaje</title>
   <defs>
     <linearGradient id="hotelGradientBody" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -1128,9 +1139,18 @@ export default function GoogleMaps() {
             document.getElementById("map"),
             {
             center: { lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng },
-            zoom: 15, mapTypeId: "roadmap", fullscreenControl: false, streetViewControl: false,
-            mapTypeControl: false, gestureHandling: "greedy", disableDoubleClickZoom: true,styles: mapCustomStyles
-            }
+            zoom: INITIAL_ZOOM_ATLIXCO, // Zoom inicial para Atlixco
+          mapTypeId: "roadmap",
+          fullscreenControl: false,
+          streetViewControl: false,
+          mapTypeControl: false,
+          gestureHandling: "greedy",
+          disableDoubleClickZoom: true,
+          styles: mapCustomStyles,
+          restriction: { // <-- AQUÍ ES LA CLAVE
+            latLngBounds: ATLIXCO_BOUNDS,
+            strictBounds: true,
+            },}
         );
         mapRef.current.addListener('zoom_changed', () => { 
           updateTruckPosition();
@@ -1370,7 +1390,7 @@ export default function GoogleMaps() {
         if (poiDefinition.svgString) {
           iconOptions = { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(poiDefinition.svgString)}`, scaledSize: new window.google.maps.Size(32, 32), anchor: new window.google.maps.Point(16, 16) };
         } else if (poiDefinition.emoji && poiDefinition.tipo !== "Todos") {
-          const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
+          const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
           iconOptions = { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgEmoji)}`, scaledSize: new window.google.maps.Size(32, 32), anchor: new window.google.maps.Point(16, 16) };
         }
       }
