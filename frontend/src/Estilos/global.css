@@ -13,3 +13,9 @@ body {
   min-height: 100vh;
   color: white;
 }
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -moz-tap-highlight-color: transparent; 
+  tap-highlight-color: transparent; 
+}
