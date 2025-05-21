@@ -212,8 +212,8 @@ const CuentaDeUsuario = () => {
           style={{ marginBottom: '20px' }} // Added some bottom margin
           onClick={() => navigate('/mapa')}
         >
-          <IoArrowBack size={20} />
-          <span style={{ marginLeft: '8px' }}>Volver</span>
+          <IoArrowBack size={30} />
+        
         </button>
 
         {/* Profile Information Form */}
