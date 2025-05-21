@@ -1,17 +1,17 @@
 // src/Pages/registro.jsx
-import React, { useState, useCallback, memo } from "react";
-import { useNavigate, Link } from "react-router-dom"; // 👉 Importa useNavigate y Link
+import React, { useState, useCallback, memo, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import styles from "../Estilos/registro.module.css";
 import logo from "../Images/logo.jpeg";
-import logoGoogle from "../Images/g-logo.png";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { app, db } from "./firebase-config";
 import logopng from "../Images/logopng.png";
+import ErrorBanner from "../Components/errorbanner"; // Asumo que este es tu banner de error
+import SuccessBanner from "../Components/SuccessBanner"; // Importa el SuccessBanner
 
 const auth = getAuth(app);
 
-// 🧩 InputField: campo reutilizable para inputs normales
 const InputField = memo(
   ({ label, id, name, type, placeholder, value, onChange, required }) => (
     <div className={styles["input-group"]}>
@@ -28,9 +28,8 @@ const InputField = memo(
     </div>
   )
 );
-InputField.displayNa = "InputField";
+InputField.displayName = "InputField";
 
-// 🔐 PasswordField: input de contraseña con botón para mostrar/ocultar
 const PasswordField = memo(
   ({
     label,
@@ -68,7 +67,6 @@ const PasswordField = memo(
 );
 PasswordField.displayName = "PasswordField";
 
-// ⚧ RadioGroup: grupo de botones para elegir el género
 const RadioGroup = memo(
   ({ label, name, options, selectedValue, onChange, required }) => (
     <div className={styles["form-group"]}>
@@ -101,8 +99,7 @@ const RadioGroup = memo(
 RadioGroup.displayName = "RadioGroup";
 
 export default function Registro() {
-  const navigate = useNavigate(); // 🧭 Hook para redireccionar a otra página
-
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -111,6 +108,43 @@ export default function Registro() {
     email: "",
     password: "",
   });
+
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorKey, setErrorKey] = useState(0);
+  const [successMessage, setSuccessMessage] = useState(""); // Estado para mensaje de éxito
+  const [successKey, setSuccessKey] = useState(0); // Key para reiniciar animación de éxito
+
+  useEffect(() => {
+    let errorTimer;
+    if (errorMessage) {
+      errorTimer = setTimeout(() => setErrorMessage(""), 2000);
+    }
+    return () => clearTimeout(errorTimer);
+  }, [errorMessage, errorKey]);
+
+  useEffect(() => {
+    let successTimer;
+    if (successMessage) {
+      successTimer = setTimeout(() => setSuccessMessage(""), 2000); // El banner se limpia, la navegación ocurre después
+    }
+    return () => clearTimeout(successTimer);
+  }, [successMessage, successKey]);
+
+  const showError = (message) => {
+    setErrorMessage(message);
+    setErrorKey(prevKey => prevKey + 1);
+    setSuccessMessage(""); // Limpia cualquier mensaje de éxito si hay un error
+  };
+
+  const showSuccess = (message, redirectPath) => {
+    setSuccessMessage(message);
+    setSuccessKey(prevKey => prevKey + 1);
+    setErrorMessage(""); // Limpia cualquier mensaje de error
+    setTimeout(() => {
+      navigate(redirectPath);
+    }, 2000); // Navega DESPUÉS de 2 segundos
+  };
+
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -120,18 +154,27 @@ export default function Registro() {
     setShowPassword((prev) => !prev);
   }, []);
 
-  // 📤 Se ejecuta al enviar el formulario
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
       const { email, password, firstName, lastName, gender } = formData;
 
-      // 🔐 Crea usuario con Firebase Auth
+      if (!password || password.trim() === "") {
+        showError("La contraseña no puede estar vacía.");
+        return;
+      }
+      if (password.length < 6) {
+        showError("La contraseña debe tener al menos 6 caracteres.");
+        return;
+      }
+      if (!firstName.trim() || !lastName.trim() || !gender.trim() || !email.trim()) {
+        showError("Todos los campos son obligatorios.");
+        return;
+      }
+
       createUserWithEmailAndPassword(auth, email, password)
         .then(async (userCredential) => {
           const user = userCredential.user;
-
-          // 🗃 Guarda datos extra del usuario en Firestore
           await setDoc(doc(db, "usuarios", user.uid), {
             firstName,
             lastName,
@@ -139,13 +182,28 @@ export default function Registro() {
             email,
             createdAt: new Date(),
           });
-
-          // 🚀 Redirige al login una vez registrado
-          navigate("/inicioSesion");
+          showSuccess("¡Registro exitoso! Redirigiendo...", "/inicioSesion");
         })
         .catch((error) => {
           console.error("Error al registrar:", error.code, error.message);
-          alert("Error al registrarse: " + error.message);
+          let friendlyMessage = "Error al registrarse. Inténtalo de nuevo.";
+          switch (error.code) {
+            case "auth/email-already-in-use":
+              friendlyMessage = "Este correo electrónico ya está en uso.";
+              break;
+            case "auth/invalid-email":
+              friendlyMessage = "El formato del correo electrónico no es válido.";
+              break;
+            case "auth/weak-password":
+              friendlyMessage = "La contraseña es demasiado débil. Debe tener al menos 6 caracteres.";
+              break;
+            case "auth/operation-not-allowed":
+              friendlyMessage = "El registro por correo y contraseña no está habilitado.";
+              break;
+            default:
+              friendlyMessage = "Ocurrió un error al registrarse. Por favor, inténtalo de nuevo.";
+          }
+          showError(friendlyMessage);
         });
     },
     [formData, navigate]
@@ -153,6 +211,8 @@ export default function Registro() {
 
   return (
     <div className={styles["signup-container"]}>
+      {errorMessage && <ErrorBanner key={errorKey} message={errorMessage} />}
+      {successMessage && <SuccessBanner key={successKey} message={successMessage} />}
       <div className={styles["signup-wrapper"]}>
         <div className={styles["signup-image-panel"]}>
           <img
@@ -162,21 +222,19 @@ export default function Registro() {
             loading="lazy"
           />
         </div>
-
         <div className={styles["signup-form-panel"]}>
-           <div> {/* Contenedor del título y el logo */}
-              <h2 className={styles["login-title-container"]}>
-            <img
-              src={logopng} // Asegúrate que la ruta sea correcta
-              alt="Logo"
-              className={styles["login-logo"]}
-              loading="lazy"
-            />
-            <span>Crear Cuenta</span>
-          </h2>
-            </div>
+          <div>
+            <h2 className={styles["login-title-container"]}>
+              <img
+                src={logopng}
+                alt="Logo"
+                className={styles["login-logo"]}
+                loading="lazy"
+              />
+              <span>Crear Cuenta</span>
+            </h2>
+          </div>
           <p>Ingresa tus datos personales para crear tu cuenta.</p>
-
           <form onSubmit={handleSubmit}>
             <div className={styles["name-inputs"]}>
               <InputField
@@ -200,16 +258,14 @@ export default function Registro() {
                 required
               />
             </div>
-
             <RadioGroup
               label="Género"
               name="gender"
-              options={["Masculino", "Femenino"]}
+              options={["Masculino", "Femenino", "Otro"]}
               selectedValue={formData.gender}
               onChange={handleInputChange}
               required
             />
-
             <InputField
               label="Correo Electrónico"
               id="email"
@@ -220,31 +276,25 @@ export default function Registro() {
               onChange={handleInputChange}
               required
             />
-
             <PasswordField
               label="Contraseña"
               id="password"
               name="password"
-              placeholder="Ingresa tu contraseña"
+              placeholder="Mínimo 6 caracteres"
               value={formData.password}
               onChange={handleInputChange}
               required
               showPassword={showPassword}
               onTogglePassword={togglePasswordVisibility}
             />
-
             <button type="submit" className={styles["submit-button"]}>
               Registrarse
             </button>
-
-            
-
             <div className={styles["login-link"]}>
               <p>
                 ¿Ya tienes una cuenta?{" "}
                 <Link to="/inicioSesion">Inicia sesión</Link>
-              </p>{" "}
-              {/* ✅ Enlace sin recargar */}
+              </p>
             </div>
           </form>
         </div>

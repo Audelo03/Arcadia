@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+// src/Pages/inicioSesion.jsx
+import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom"; // SE AÑADIÓ Link AQUÍ
 import {
   getAuth,
   signInWithPopup,
@@ -11,8 +12,10 @@ import styles from "../Estilos/inicioSesion.module.css";
 import logo from "../Images/logo.jpeg";
 import logopng from "../Images/logopng.png";
 import logoGoogle from "../Images/g-logo.png";
-import { db } from "./firebase-config"; // Asumiendo que has configurado firebase-config.js
-import ConfirmationDialog from "../Components//ConfirmationDialog"; // Importa el componente ConfirmationDialog
+import { db } from "./firebase-config";
+import ConfirmationDialog from "../Components/ConfirmationDialog";
+import ErrorBanner from "../Components/errorbanner";
+import SuccessBanner from "../Components/SuccessBanner";
 
 const auth = getAuth();
 const provider = new GoogleAuthProvider();
@@ -24,9 +27,45 @@ export default function InicioSesion() {
     password: "",
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorKey, setErrorKey] = useState(0);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [successKey, setSuccessKey] = useState(0);
+
   const navigate = useNavigate();
 
-  // Maneja el cambio de input
+  useEffect(() => {
+    let errorTimer;
+    if (errorMessage) {
+      errorTimer = setTimeout(() => setErrorMessage(""), 2000);
+    }
+    return () => clearTimeout(errorTimer);
+  }, [errorMessage, errorKey]);
+
+  useEffect(() => {
+    let successTimer;
+    if (successMessage) {
+      successTimer = setTimeout(() => setSuccessMessage(""), 2000);
+    }
+    return () => clearTimeout(successTimer);
+  }, [successMessage, successKey]);
+
+  const showError = (message) => {
+    setErrorMessage(message);
+    setErrorKey(prevKey => prevKey + 1);
+    setSuccessMessage("");
+  };
+
+  const showSuccess = (message, redirectPath) => {
+    setSuccessMessage(message);
+    setSuccessKey(prevKey => prevKey + 1);
+    setErrorMessage("");
+    setTimeout(() => {
+      navigate(redirectPath);
+    }, 2000);
+  };
+
   const handleInputChange = useCallback((e) => {
     const { id, value } = e.target;
     setFormData((prevState) => ({
@@ -35,7 +74,6 @@ export default function InicioSesion() {
     }));
   }, []);
 
-  // Maneja el inicio de sesión con correo y contraseña
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
@@ -46,8 +84,12 @@ export default function InicioSesion() {
           const user = userCredential.user;
           const userRef = doc(db, "usuarios", user.uid);
           const docSnap = await getDoc(userRef);
+          let displayName = user.email; // Default display name
 
-          if (!docSnap.exists()) {
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            displayName = userData.firstName || user.email; // Use firstName if available
+          } else {
             await setDoc(userRef, {
               email: user.email,
               firstName: user.displayName ? user.displayName.split(" ")[0] : "",
@@ -55,24 +97,47 @@ export default function InicioSesion() {
               gender: "no especificado",
               createdAt: new Date(),
             });
+             // If new user, displayName might come from Google or be just email
+            displayName = user.displayName ? user.displayName.split(" ")[0] : user.email;
           }
-          navigate("/mapa");
+          showSuccess(`¡Bienvenido, ${displayName}!`, "/mapa");
         })
         .catch((error) => {
           console.error("Error al iniciar sesión:", error.code, error.message);
-          alert("Error al iniciar sesión: " + error.message);
+          let friendlyMessage = "Error al iniciar sesión. Inténtalo de nuevo.";
+          switch (error.code) {
+            case "auth/user-not-found":
+            case "auth/invalid-user-token":
+              friendlyMessage = "Usuario no encontrado. Verifica tu correo.";
+              break;
+            case "auth/wrong-password":
+              friendlyMessage = "Contraseña incorrecta. Inténtalo de nuevo.";
+              break;
+            case "auth/invalid-email":
+              friendlyMessage = "El correo electrónico no es válido.";
+              break;
+            case "auth/too-many-requests":
+              friendlyMessage = "Demasiados intentos fallidos. Intenta más tarde.";
+              break;
+            case "auth/invalid-credential":
+               friendlyMessage = "Credenciales inválidas. Verifica tu correo y contraseña.";
+              break;
+            default:
+              friendlyMessage = "Error al iniciar sesión. Por favor, inténtalo de nuevo.";
+          }
+          showError(friendlyMessage);
         });
     },
     [formData, navigate]
   );
 
-  // Maneja el inicio de sesión con Google
   const handleGoogleSignIn = useCallback(() => {
     signInWithPopup(auth, provider)
       .then(async (result) => {
         const user = result.user;
         const userRef = doc(db, "usuarios", user.uid);
         const docSnap = await getDoc(userRef);
+        let displayName = user.displayName || user.email;
 
         if (!docSnap.exists()) {
           await setDoc(userRef, {
@@ -82,27 +147,31 @@ export default function InicioSesion() {
             gender: "no especificado",
             createdAt: new Date(),
           });
+           displayName = user.displayName ? user.displayName.split(" ")[0] : user.email;
+        } else {
+            const userData = docSnap.data();
+            displayName = userData.firstName || user.displayName || user.email;
         }
-
-        alert(`Bienvenido, ${user.displayName || user.email}!`);
-        navigate("/mapa");
+        showSuccess(`¡Bienvenido, ${displayName}!`, "/mapa");
       })
       .catch((error) => {
-        console.error(
-          "Error al iniciar sesión con Google:",
-          error.code,
-          error.message
-        );
-        alert("Error al iniciar sesión con Google: " + error.message);
+        console.error("Error al iniciar sesión con Google:", error.code, error.message);
+        let friendlyMessage = "Error con Google. Inténtalo de nuevo.";
+        if (error.code === "auth/popup-closed-by-user") {
+          friendlyMessage = "Cancelaste el inicio de sesión con Google.";
+        } else if (error.code === "auth/cancelled-popup-request") {
+          friendlyMessage = "Se canceló la solicitud de inicio con Google.";
+        } else if (error.code === "auth/account-exists-with-different-credential") {
+          friendlyMessage = "Ya existe una cuenta con este correo, pero con un método de inicio de sesión diferente.";
+        }
+        showError(friendlyMessage);
       });
   }, [navigate]);
 
-  // Maneja la visibilidad de la contraseña
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword((prevState) => !prevState);
   }, []);
 
-  // Maneja continuar sin iniciar sesión
   const handleContinueWithoutLogin = useCallback(() => {
     setShowConfirmation(true);
   }, []);
@@ -118,6 +187,8 @@ export default function InicioSesion() {
 
   return (
     <div className={styles["login-container"]}>
+      {errorMessage && <ErrorBanner key={errorKey} message={errorMessage} />}
+      {successMessage && <SuccessBanner key={successKey} message={successMessage} />}
       <div className={styles["login-wrapper"]}>
         <div className={styles["login-image-panel"]}>
           <img
@@ -127,21 +198,19 @@ export default function InicioSesion() {
             loading="lazy"
           />
         </div>
-
         <div className={styles["login-form-panel"]}>
-          <div> {/* Contenedor del título y el logo */}
-    <h2 className={styles["login-title-container"]}>
-  <img
-    src={logopng} // Asegúrate que la ruta sea correcta
-    alt="Logo"
-    className={styles["login-logo"]}
-    loading="lazy"
-  />
-  <span>Iniciar sesión</span>
-</h2>
-  </div>
+          <div>
+            <h2 className={styles["login-title-container"]}>
+              <img
+                src={logopng}
+                alt="Logo"
+                className={styles["login-logo"]}
+                loading="lazy"
+              />
+              <span>Iniciar sesión</span>
+            </h2>
+          </div>
           <p>Ingresa tus credenciales para acceder.</p>
-
           <form onSubmit={handleSubmit}>
             <div className={styles["form-group"]}>
               <label htmlFor="email">Correo Electrónico</label>
@@ -154,7 +223,6 @@ export default function InicioSesion() {
                 required
               />
             </div>
-
             <div className={styles["form-group"]}>
               <label htmlFor="password">Contraseña</label>
               <div className={styles["password-input"]}>
@@ -175,18 +243,15 @@ export default function InicioSesion() {
                 </button>
               </div>
             </div>
-
             <button type="submit" className={styles["login-button"]}>
               Iniciar sesión
             </button>
-
             <div className={styles["login-link"]}>
               <p>
-                ¿No tienes cuenta? <a href="/signup">Regístrate</a>
+                ¿No tienes cuenta? <Link to="/signup">Regístrate</Link>
               </p>
             </div>
           </form>
-
           <button
             type="button"
             className={styles["google-button"]}
@@ -199,20 +264,17 @@ export default function InicioSesion() {
             />
             Continuar con Google
           </button>
-
           <button
             onClick={handleContinueWithoutLogin}
             className={styles["continue-button"]}
           >
             Continuar sin iniciar sesión
           </button>
-
-          {/* Renderiza el ConfirmationDialog */}
           <ConfirmationDialog
-            isOpen={showConfirmation} // Controla la visibilidad con el estado showConfirmation
-            message="¿Estás seguro de que deseas continuar sin iniciar sesión? Perderás el acceso a funciones personalizadas." // Mensaje a mostrar
-            onConfirm={handleConfirmContinue} // Función a ejecutar si se confirma
-            onCancel={handleCancelContinue} // Función a ejecutar si se cancela
+            isOpen={showConfirmation}
+            message="¿Estás seguro de que deseas continuar sin iniciar sesión? Perderás el acceso a funciones personalizadas."
+            onConfirm={handleConfirmContinue}
+            onCancel={handleCancelContinue}
           />
         </div>
       </div>
