@@ -342,7 +342,7 @@ body {
 }
 
 .toggle-password:hover {
-    color: var(--text-primary);
+    color: black;
     background: rgba(255, 255, 255, 0.1); /* Aclarado en hover */
     transform: translateY(-50%) scale(1.05); /* Mantenido scale, pero el transform original debe ser aplicado */
 }

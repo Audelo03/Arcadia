@@ -1,4 +1,3 @@
-// src/Pages/registro.jsx
 import React, { useState, useCallback, memo, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import styles from "../Estilos/registro.module.css";

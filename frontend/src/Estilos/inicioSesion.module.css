@@ -295,13 +295,13 @@ body {
 }
 
 .toggle-password:hover {
-    color: var(--text-primary); /* Mejora la retroalimentación */
+    color: black; /* Mejora la retroalimentación */
     background: rgba(255, 255, 255, 0.05); /* Sutil hover */
     /* transform: translateY(-50%) scale(1.05); Mantenido como estaba, pero el scale puede ser opcional */
 }
 
 .toggle-password:focus {
-    outline: 2px solid var(--primary-color); /* Mejor visibilidad del foco */
+  /* Mejor visibilidad del foco */
     outline-offset: 2px;
     /* background: rgba(255, 255, 255, 0.1); ya estaba, puede mantenerse */
 }
