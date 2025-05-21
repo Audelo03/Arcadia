@@ -8,25 +8,19 @@ import '../Estilos/Sidebar.css'; // Asegúrate que la ruta sea correcta
 import logoPng from '../Images/logopng.png'; // Asegúrate que la ruta sea correcta
 import { MdOutlineDeveloperBoard } from "react-icons/md";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
-
+import { FaUserCircle } from "react-icons/fa";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
-import { auth } from '../Pages/firebase-config'; // Asegúrate que la ruta sea correcta
 
 
 const Sidebar = ({ 
-  // Props originales que podrías estar usando para otras cosas (si las hay)
-  // onShowRoutes, 
-  // onClearRoutes, 
-  // isShowingRoutes, 
-  // onToggleRouteList, 
-  // Nuevas props para el toggle de rutas predefinidas en el mapa:
-  onTogglePredefinedRoutes, 
+onTogglePredefinedRoutes, 
   arePredefinedRoutesVisible 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenuIndex, setExpandedMenuIndex] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
+   const auth = getAuth()
 
   const [showGpsMessage, setShowGpsMessage] = useState(false);
   const [gpsMessageText, setGpsMessageText] = useState('');
@@ -86,7 +80,7 @@ const Sidebar = ({
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => setCurrentUser(user));
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   const toggle = () => {
     if (isOpen) setExpandedMenuIndex(null);
@@ -172,21 +166,24 @@ const Sidebar = ({
   };
 
   const menuItems = [
-    {
-      name: 'Cuenta',
-      path: '/login',
-      icon: <IoPeopleOutline />,
-      submenu: !currentUser ? [ 
-        { icon: <BiLogIn />, name: 'Iniciar Sesión', path: '/login' }
-      ] : null,
-    },
+     ...(currentUser 
+      ? [{
+          name: 'Mi Cuenta', 
+          path: '/account', 
+          icon: <FaUserCircle />,
+        }]
+      : [{
+          name: 'Cuenta', 
+          icon: <FaUserCircle />,
+           submenu: [{ icon: <BiLogIn />, name: 'Iniciar Sesión', path: '/login' }]
+        }]
+    ),
     {
       name: getGpsButtonText(),
       icon: getGpsButtonIcon(),
       action: handleExternalGpsClick,
       className: gpsConnected ? 'connected' : (isAttemptingConnection ? 'connecting' : '')
     },
-    // Ítem de menú para mostrar/ocultar rutas predefinidas en el mapa
     {
       name: arePredefinedRoutesVisible ? 'Ocultar Rutas del Mapa' : 'Mostrar Rutas en Mapa',
       icon: arePredefinedRoutesVisible ? <FaTrashAlt /> : <FaRoute />,
@@ -199,7 +196,7 @@ const Sidebar = ({
       name: 'Cerrar Sesión',
       icon: <FaSignOutAlt />,
       action: handleLogout,
-      path: '#' // O '/login' si prefieres redirigir siempre
+      path: '/login' 
     });
   }
 
@@ -218,29 +215,39 @@ const Sidebar = ({
           <div style={{ display: isOpen ? "block" : "none" }} className="link_text">{item.name}</div>
         </div>
       );
-    } else if (item.submenu && item.submenu.length > 0) {
+    } else if (item.path) { // This will handle "Mi Cuenta" and "Iniciar Sesión" (if not in submenu)
+      return (
+        <NavLink 
+            to={item.path} 
+            key={item.name + index} 
+            className={({ isActive }) => isActive ? `${linkClass} active` : linkClass}
+        >
+          <div className="icon">{item.icon}</div>
+          <div style={{ display: isOpen ? "block" : "none" }} className="link_text">{item.name}</div>
+        </NavLink>
+      );
+    }
+    else if (item.submenu && item.submenu.length > 0) { // Handle "Cuenta" with "Iniciar Sesión" submenu
+      const isExpanded = expandedMenuIndex === index;
       return (
         <div key={item.name + index}>
-          <div className={linkClass} onClick={() => toggleSubMenu(index)} style={{cursor: 'pointer'}}>
+          <div className={`link ${isExpanded ? 'expanded' : ''}`} onClick={() => setExpandedMenuIndex(prevIndex => (prevIndex === index ? null : index))} style={{cursor: 'pointer'}}>
             <div className="icon">{item.icon}</div>
             <div style={{ display: isOpen ? "block" : "none" }} className="link_text">{item.name}</div>
           </div>
           <div className={`submenu_container ${isExpanded ? 'open' : ''}`}>
             {isExpanded && item.submenu.map((subitem, subindex) => (
-              <NavLink to={subitem.path} key={subitem.name + subindex} className="link sublink" activeclassname="active"> {/* Corregido: activeClassName */}
+              <NavLink 
+                to={subitem.path} 
+                key={subitem.name + subindex} 
+                className={({ isActive }) => isActive ? "link sublink active" : "link sublink"}
+              >
                 <div className="icon">{subitem.icon}</div>
                 <div className="submenu_text">{subitem.name}</div>
               </NavLink>
             ))}
           </div>
         </div>
-      );
-    } else if (item.path) { // Asegúrate que item.path exista para items sin action y sin submenu
-      return (
-        <NavLink to={item.path} key={item.name + index} className={linkClass} activeclassname="active"> {/* Corregido: activeClassName */}
-          <div className="icon">{item.icon}</div>
-          <div style={{ display: isOpen ? "block" : "none" }} className="link_text">{item.name}</div>
-        </NavLink>
       );
     }
     return null;

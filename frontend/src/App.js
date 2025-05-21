@@ -6,34 +6,32 @@ import GoogleMaps from "./Pages/GoogleMaps";
 import Registro from "./Pages/registro";
 import InicioSesion from "./Pages/inicioSesion";
 import SplashScreen from "./Components/SplashScreen";
-import './Estilos/SplashScreen.module.css'; // Asegúrate de importar el archivo CSS correcto
+import CuentaDeUsuario from "./Pages/cuentaDeUsuario";
+import './Estilos/SplashScreen.module.css'; 
 
-// Duraciones (en milisegundos)
 const SPLASH_DISPLAY_TIME = 2000;
 const FADE_OUT_DURATION = 1500;
 
 const App = () => {
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [showSplash, setShowSplash] = useState(true); // Controla la visibilidad del splash screen
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Este efecto se ejecuta solo una vez después del montaje inicial del componente App
     const fadeOutTimer = setTimeout(() => {
-      setIsFadingOut(true); // Inicia la animación de desvanecimiento
+      setIsFadingOut(true); 
     }, SPLASH_DISPLAY_TIME);
 
     const removeSplashTimer = setTimeout(() => {
-      setShowSplash(false); // Oculta el SplashScreen y permite que se muestre la app
+      setShowSplash(false); 
     }, SPLASH_DISPLAY_TIME + FADE_OUT_DURATION);
 
-    // Limpieza de los temporizadores si el componente se desmonta prematuramente
+  
     return () => {
       clearTimeout(fadeOutTimer);
       clearTimeout(removeSplashTimer);
     };
-  }, []); // El array de dependencias vacío asegura que se ejecute solo una vez
+  }, []); 
 
-  // Si showSplash es true, muestra el SplashScreen
   if (showSplash) {
     return (
       <div className={`splashContainer ${isFadingOut ? 'splashContainerHidden' : ''}`}>
@@ -41,8 +39,6 @@ const App = () => {
       </div>
     );
   }
-
-  // Una vez que showSplash es false, muestra la aplicación principal con las rutas
   return (
     <div className="Todo">
       <BrowserRouter>
@@ -51,6 +47,7 @@ const App = () => {
           <Route path="/login" element={<InicioSesion />} />
           <Route path="/signup" element={<Registro />} />
           <Route path="/mapa" element={<GoogleMaps />} />
+          <Route path="/account" element={<CuentaDeUsuario />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
