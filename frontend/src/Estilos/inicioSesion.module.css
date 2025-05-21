@@ -279,25 +279,24 @@ body {
 
 .toggle-password {
     position: absolute;
-    right: 1rem; /* Distancia desde el borde derecho del .password-input */
+    right: 0.5rem; /* Un pequeño espacio desde el borde */
     top: 50%;
-    transform: translateY(-50%); /* Centra verticalmente el botón */
-    background: none;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.05); /* Fondo inicial sutil */
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 1.1rem; /* Tamaño del texto/icono del botón */
+    font-size: 1rem; /* Ligeramente reducido para ser menos imponente */
     transition: var(--transition);
-    padding: 0.5rem; /* Área clickeable del botón */
-    border-radius: var(--border-radius-sm); /* Consistente con otros radios pequeños */
-    z-index: 2; /* Asegura que el botón esté sobre el texto del input. Aumentado de 1 a 2 para mayor seguridad */
-    line-height: 1; /* Para evitar que el alto del texto afecte el tamaño total */
+    padding: 0.75rem; /* Reducido para un botón menos masivo */
+    border-radius: var(--border-radius-sm);
+    z-index: 2; /* Elevado para estar sobre el input text, antes era 8 */
+    line-height: 1; /* Para evitar que la altura del texto afecte el tamaño */
 }
-
 .toggle-password:hover {
-    color: black; /* Mejora la retroalimentación */
+    color: rgba(37, 99, 235, 0.8); /* Mejora la retroalimentación */
     background: rgba(255, 255, 255, 0.05); /* Sutil hover */
-    /* transform: translateY(-50%) scale(1.05); Mantenido como estaba, pero el scale puede ser opcional */
+     transform: translateY(-50%) scale(1.05); 
 }
 
 .toggle-password:focus {
