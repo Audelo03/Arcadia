@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
 import Sidebar from "../Components/Sidebar";
+//Mapa con las rutas
+import { rutas } from "../data/rutas";
 
 import { FaRoute } from "react-icons/fa";
-
 
 import { CiCircleInfo } from "react-icons/ci";
 
@@ -16,93 +17,63 @@ import {
   MdFastfood,
   MdHotel,
 } from "react-icons/md";
-import { FaLandmark, FaBuilding, FaMapMarkerAlt, FaThList, FaTrashAlt } from "react-icons/fa";
+import {
+  FaLandmark,
+  FaBuilding,
+  FaMapMarkerAlt,
+  FaThList,
+  FaTrashAlt,
+} from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
 
-const mapCustomStyles = [
-  {
-    featureType: "poi.business", // Puntos de interés comerciales
-    stylers: [{ visibility: "off" }], // Hace que no sean visibles
-  },
- {
-   featureType: "poi.attraction", // Atracciones turísticas
-   stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "poi.school", // Escuelas
-   stylers: [{ visibility: "off" }],
- },
-  {
- featureType: "poi.government", // Edificios gubernamentales
-   stylers: [{ visibility: "off" }],
- },
- {
- featureType: "poi.medical", // Servicios médicos
-  stylers: [{ visibility: "off" }],
- },
- {
- featureType: "poi.place_of_worship", // Lugares de culto
- stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "poi.sports_complex", // Complejos deportivos
-     stylers: [{ visibility: "off" }],
- },
- 
- {
-  featureType: "poi.park",
-  stylers: [{ visibility: "off" }] // Para ocultarlos
-}
-
- 
- 
- 
- ,
+const hiddenPoiTypes = [
+  "poi.business",
+  "poi.attraction",
+  "poi.school",
+  "poi.government",
+  "poi.medical",
+  "poi.place_of_worship",
+  "poi.sports_complex",
+  "poi.park",
 ];
 
-
+const mapCustomStyles = hiddenPoiTypes.map((type) => ({
+  featureType: type,
+  stylers: [{ visibility: "off" }],
+}));
 
 const ATLIXCO_BOUNDS = {
   north: 18.99,
   south: 18.79,
   west: -98.57,
-  east: -98.30,
-
+  east: -98.3,
 };
 
 const ATLIXCO_CENTER = { lat: 18.9031, lng: -98.4372 };
 const INITIAL_ZOOM_ATLIXCO = 15;
 
-
-
-
 const faRouteSVGString = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 512 512"><path d="M288 448H64V320H0v160c0 17.7 14.3 32 32 32h256c17.7 0 32-14.3 32-32V320H288v128zM112 224c61.9 0 112-50.1 112-112S173.9 0 112 0 0 50.1 0 112s50.1 112 112 112zm0-160c26.5 0 48 21.5 48 48s-21.5 48-48 48-48-21.5-48-48 21.5-48 48-48zM496 0H384c-17.7 0-32 14.3-32 32s14.3 32 32 32H422.7l-70.4 70.4c-25.1-19.5-58.1-30.4-92.3-30.4H147.3c-25.2 9.5-43.2 33.3-43.2 61.1V256H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H208c17.7 0 32-14.3 32-32V217.1c0-8.4 3.6-16.3 9.7-21.7l96-80c11.9-9.9 29.5-8.9 39.4 2s8.9 29.5-2 39.4l-30.9 25.7 54.6 54.6c25.1 19.5 58.1 30.4 92.3 30.4H496c17.7 0 32-14.3 32-32V32c0-17.7-14.3-32-32-32z"/></svg>`;
 
+const accessToken =
+  "pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg";
 
-
-
-const accessToken = 'pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg';
-
-const rutatecnologico = [
-    [-98.42483, 18.917694],[-98.428552, 18.919431],[-98.426565, 18.924332],[-98.425542, 18.92498],[-98.423189, 18.923191],[-98.423477, 18.921163],[-98.422767, 18.919978],[-98.422635, 18.920746],[-98.418238, 18.922761],[-98.429907, 18.91491],[-98.433306, 18.915236],[-98.435812, 18.908112],[-98.437376, 18.908615],[-98.436075, 18.90499],[-98.436623, 18.882513],[-98.436935, 18.88094],[-98.437086, 18.882399],[-98.436671, 18.882546]
-];
-const rutacerril =[
-  [-98.43664211358958,18.88343376854101],[-98.437347,18.889894],[-98.43607,18.904877],[-98.435046,18.912657],[-98.431145,18.913152],[-98.42504,18.91748],[-98.425156,18.930683],[-98.424464,18.934194],[-98.425,18.917646],[-98.430655,18.91435],[-98.432399,18.914944],[-98.435805,18.908088],[-98.43735,18.90861],[-98.438398,18.905788],[-98.436673,18.883449]
-];
-const geo =[
-  [-98.43664211358958,18.88343376854101],[-98.437347,18.889894],[-98.43607,18.904877],[-98.435046,18.912657],[-98.431145,18.913152],[-98.42504,18.91748],[-98.426693,18.942462],[-98.425473,18.931599],[-98.425,18.917646],[-98.430655,18.91435],[-98.432399,18.914944],[-98.435805,18.908088],[-98.43735,18.90861],[-98.438398,18.905788],[-98.436673,18.883449]
-];
-const nieves=[
-  [-98.429681, 18.886328],[-98.435244, 18.87893],[-98.437116, 18.907201],[-98.411041, 18.925793],[-98.427224, 18.917614],[-98.434205, 18.912553],[-98.436818, 18.905187],[-98.436118, 18.88018],[-98.429765, 18.886228]
-];
+const rutatecnologico = rutas.rutatecnologico;
+const rutacerril = rutas.rutacerril;
+const geo = rutas.rutageo;
+const nieves = rutas.rutatecnologico;
 
 // Configuración de las rutas predefinidas
 const ALL_PREDEFINED_ROUTES_CONFIG = [
-  { data: rutatecnologico, color: '#0074D9', id: 'tec', name: 'Ruta Tecnológico' },
-  { data: rutacerril, color: '#2ECC40', id: 'cerril', name: 'Ruta Cerril' },
-  { data: geo, color: '#FF4136', id: 'geo', name: 'Ruta Geo' },
-  { data: nieves, color: '#B10DC9', id: 'nieves', name: 'Ruta Nieves' }
+  {
+    data: rutatecnologico,
+    color: "#0074D9",
+    id: "tec",
+    name: "Ruta Tecnológico",
+  },
+  { data: rutacerril, color: "#2ECC40", id: "cerril", name: "Ruta Cerril" },
+  { data: geo, color: "#FF4136", id: "geo", name: "Ruta Geo" },
+  { data: nieves, color: "#B10DC9", id: "nieves", name: "Ruta Nieves" },
 ];
 
 // Funciones auxiliares para cálculo de distancia
@@ -116,13 +87,14 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   const dLon = deg2rad(lon2 - lon1);
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c; // Distancia en metros
   return distance;
 }
-
 
 // Carga el script de Google Maps solo si aún no está cargado
 const loadGoogleMapsScript = () =>
@@ -131,11 +103,16 @@ const loadGoogleMapsScript = () =>
     const script = document.createElement("script");
     // !!! IMPORTANT: Replace YOUR_API_KEY with your actual Google Maps API key !!!
     // Make sure "Maps JavaScript API", "Directions API", and "Street View Static API" (or equivalent for StreetViewService) are enabled.
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBWXlOXBQH5NrCbM6Gxy0SYaRxvt0uNrkM&libraries=places,directions`; 
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBWXlOXBQH5NrCbM6Gxy0SYaRxvt0uNrkM&libraries=places,directions`;
     script.async = true;
     script.defer = true;
     script.onload = resolve;
-    script.onerror = () => reject(new Error("Error al cargar Google Maps. Verifica la API Key y que las APIs necesarias estén habilitadas."));
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Error al cargar Google Maps. Verifica la API Key y que las APIs necesarias estén habilitadas."
+        )
+      );
     document.head.appendChild(script);
   });
 
@@ -143,7 +120,9 @@ const loadGoogleMapsScript = () =>
 const getCurrentLocation = () =>
   new Promise((resolve, reject) => {
     if (!navigator.geolocation)
-      return reject(new Error("Geolocalización no soportada por este navegador."));
+      return reject(
+        new Error("Geolocalización no soportada por este navegador.")
+      );
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         resolve({
@@ -153,206 +132,38 @@ const getCurrentLocation = () =>
         }),
       (err) => {
         let message = "No se pudo obtener la ubicación: ";
-        switch(err.code) {
-            case err.PERMISSION_DENIED: message += "Permiso denegado."; break;
-            case err.POSITION_UNAVAILABLE: message += "Información de ubicación no disponible."; break;
-            case err.TIMEOUT: message += "Timeout obteniendo ubicación."; break;
-            default: message += "Error desconocido."; break;
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            message += "Permiso denegado.";
+            break;
+          case err.POSITION_UNAVAILABLE:
+            message += "Información de ubicación no disponible.";
+            break;
+          case err.TIMEOUT:
+            message += "Timeout obteniendo ubicación.";
+            break;
+          default:
+            message += "Error desconocido.";
+            break;
         }
-        reject(new Error(message))
+        reject(new Error(message));
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   });
 
 // --- INICIO DE SVGs ---
-const museoIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24" width="20px" height="20px">
-  <defs>
-    <linearGradient id="museoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#3E2723; stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#5D4037; stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1C0E0A; stop-opacity:1" />
-    </linearGradient>
-    <radialGradient id="museoHighlight" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" style="stop-color:#6D4C41; stop-opacity:0.8" />
-      <stop offset="100%" style="stop-color:#3E2723; stop-opacity:0.2" />
-    </radialGradient>
-  </defs>
-  <path fill="url(#museoGradient)" d="M22 11V9L12 2L2 9v2h2v9H2v2h20v-2h-2v-9zm-4 9H6V9h12z"/>
-  <path fill="url(#museoHighlight)" d="M22 11V9L12 2L2 9v2h2v9H2v2h20v-2h-2v-9zm-4 9H6V9h12z"/>
-  <path fill="#D7CCC8" d="M6 20h12V9H6zm2-9h2l2 3l2-3h2v7h-2v-4l-2 3l-2-3v4H8z" opacity=".9"/>
-  <circle fill="#8D6E63" cx="12" cy="6" r="1" opacity="0.6"/>
-</svg>`;
+const museoIconSvgString = "/icons/museo.svg";
 
-const restauranteIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20px" height="20px">
-  <title>Icono de Restaurante</title>
-  <defs>
-    <linearGradient id="restauranteGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#4E342E; stop-opacity:1" />
-      <stop offset="30%" style="stop-color:#6D4C41; stop-opacity:1" />
-      <stop offset="70%" style="stop-color:#5D4037; stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#3E2723; stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="restauranteAccent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8D6E63; stop-opacity:0.7" />
-      <stop offset="100%" style="stop-color:#4E342E; stop-opacity:0.3" />
-    </linearGradient>
-  </defs>
-  <path fill="url(#restauranteGradient)" d="M342.7 223.94h14.87a79.48 79.48 0 0 0 56.58-23.44L496 118l-22.22-22.4l-83.58 83.58l-17.37-17.37l83.58-83.59l-23-22.31l-83.27 83.26l-17.32-17.37l83.58-83.59L394 16l-82.5 81.85a79.5 79.5 0 0 0-23.44 56.59v14.86l-43.13 43.13L48 16C3.72 70.87 29.87 171.71 79.72 221.57l85.5 85.5c26.55 26.55 31.82 28.92 61.94 16.8c6.49-2.61 8.85-2.32 14.9 3.72l13 12.13c2.93 3 3 3.88 3 9.62v5.54c0 21.08 13.48 33.2 22.36 42.24L384 496l72-72l-156.43-156.93 Z" />
-  <path fill="url(#restauranteAccent)" d="M342.7 223.94h14.87a79.48 79.48 0 0 0 56.58-23.44L496 118l-22.22-22.4l-83.58 83.58l-17.37-17.37l83.58-83.59l-23-22.31l-83.27 83.26l-17.32-17.37l83.58-83.59L394 16l-82.5 81.85a79.5 79.5 0 0 0-23.44 56.59v14.86l-43.13 43.13L48 16C3.72 70.87 29.87 171.71 79.72 221.57l85.5 85.5c26.55 26.55 31.82 28.92 61.94 16.8c6.49-2.61 8.85-2.32 14.9 3.72l13 12.13c2.93 3 3 3.88 3 9.62v5.54c0 21.08 13.48 33.2 22.36 42.24L384 496l72-72l-156.43-156.93 Z" />
-  <path fill="url(#restauranteGradient)" d="M227.37 354.59c-29.82 6.11-48.11 11.74-83.08-23.23c-.56-.56-1.14-1.1-1.7-1.66l-19.5-19.5L16 416l80 80l144-144Z" />
-</svg>`;
+const restauranteIconSvgString = "/icons/restaurante.svg";
 
-const monumentoHistoricoIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="20px" height="20px">
-  <title>Monumento Histórico</title>
-  <defs>
-    <linearGradient id="monumentoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#424242; stop-opacity:1"/>
-      <stop offset="30%" style="stop-color:#616161; stop-opacity:1"/>
-      <stop offset="70%" style="stop-color:#424242; stop-opacity:1"/>
-      <stop offset="100%" style="stop-color:#212121; stop-opacity:1"/>
-    </linearGradient>
-    <linearGradient id="monumentoShadow" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#757575; stop-opacity:0.3"/>
-      <stop offset="100%" style="stop-color:#212121; stop-opacity:0.7"/>
-    </linearGradient>
-  </defs>
-  <g fill="url(#monumentoGradient)">
-    <path d="M23.025 12.49H9.005v13.99h14.02z"/>
-    <path d="M28.965 29.47H3.025V27.1c0-.35.28-.63.63-.63h24.69c.35 0 .63.28.63.63v2.37z"/>
-    <path d="M4.045 10.49h23.95v1.37c0 .35-.28-.63-.63.63h-22.7c-.35 0-.63-.28-.63-.63v-1.37z"/>
-    <path d="M8.995 13.46h-2.99v12.1h2.99z"/>
-    <path d="M14.655 13.46h-2.99v12.1h2.99z"/>
-    <path d="M20.315 13.46h-2.99v12.1h2.99z"/>
-    <path d="M25.975 13.46h-2.99v12.1h2.99z"/>
-    <path d="M15.326 3.01L3.366 9.75c-.36.2-.22.76.2.76h24.88c.42 0 .56-.55.2-.76l-11.96-6.74c-.42-.24-.94-.24-1.36 0"/>
-  </g>
-  <g fill="url(#monumentoShadow)">
-    <path d="M23.025 12.49H9.005v13.99h14.02z" opacity="0.3"/>
-    <path d="M26.975 13.46h-2.99v12.1h2.99z" opacity="0.5"/>
-    <path d="M21.315 13.46h-2.99v12.1h2.99z" opacity="0.4"/>
-    <path d="M15.655 13.46h-2.99v12.1h2.99z" opacity="0.3"/>
-  </g>
-  <g fill="#9E9E9E">
-    <path d="M5.015 12.49h4.99v1h-4.99z" />
-    <path d="M10.665 12.49h4.99v1h-4.99z" />
-    <path d="M16.325 12.49h4.99v1h-4.99z" />
-    <path d="M21.985 12.49h4.99v1h-4.99z" />
-    <path d="M5.015 25.48h4.99v1h-4.99z" />
-    <path d="M10.665 25.48h4.99v1h-4.99z" />
-    <path d="M16.325 25.48h4.99v1h-4.99z" />
-    <path d="M21.985 25.48h4.99v1h-4.99z" />
-  </g>
-</svg>`;
+const monumentoHistoricoIconSvgString = "/icons/monumento.svg";
 
-const naturalezaIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="20px" height="20px">
-  <title>Naturaleza</title>
-  <defs>
-    <linearGradient id="follajeGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" style="stop-color:#2E7D32;" />
-      <stop offset="40%" style="stop-color:#388E3C;" />
-      <stop offset="80%" style="stop-color:#1B5E20;" />
-      <stop offset="100%" style="stop-color:#0D2818;" />
-    </linearGradient>
-    <linearGradient id="troncoGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" style="stop-color:#4E342E;" />
-      <stop offset="50%" style="stop-color:#5D4037;" />
-      <stop offset="100%" style="stop-color:#3E2723;" />
-    </linearGradient>
-    <radialGradient id="follajeHighlight" cx="40%" cy="20%" r="60%">
-      <stop offset="0%" style="stop-color:#4CAF50; stop-opacity:0.8" />
-      <stop offset="100%" style="stop-color:#1B5E20; stop-opacity:0.2" />
-    </radialGradient>
-  </defs>
-  <path fill="url(#troncoGradient)" d="M25 52.1h14V64H25z"/>
-  <path fill="#3E2723" d="M27 54.1h10V62H27z" opacity="0.6"/>
-  
-  <path fill="url(#follajeGradient)" d="M32 34.9L2 55.1s14.5 3.4 30 3.4s30-3.4 30-3.4z"/>
-  <path fill="url(#follajeHighlight)" d="M32 34.9L2 55.1s14.5 3.4 30 3.4s30-3.4 30-3.4z" opacity="0.5"/>
-  
-  <path fill="url(#follajeGradient)" d="M32 23.6L7 43.8s12.1 3.4 25 3.4s25-3.4 25-3.4z" style="opacity:0.95"/>
-  <path fill="url(#follajeHighlight)" d="M32 23.6L7 43.8s12.1 3.4 25 3.4s25-3.4 25-3.4z" style="opacity:0.4"/>
-  
-  <path fill="url(#follajeGradient)" d="M32 12.3L12 32.5s9.7 3.4 20 3.4s20-3.4 20-3.4z" style="opacity:0.9"/>
-  <path fill="url(#follajeHighlight)" d="M32 12.3L12 32.5s9.7 3.4 20 3.4s20-3.4 20-3.4z" style="opacity:0.3"/>
-  
-  <path fill="url(#follajeGradient)" d="M32 1L17 20.8s7.2 3.8 15 3.8s15-3.8 15-3.8z" style="opacity:0.85"/>
-  <path fill="url(#follajeHighlight)" d="M32 1L17 20.8s7.2 3.8 15 3.8s15-3.8 15-3.8z" style="opacity:0.25"/>
-</svg>`;
+const naturalezaIconSvgString = "/icons/naturaleza.svg";
 
-const gobiernoIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20px" height="20px">
-  <title>Dependencia de Gobierno</title>
-  <defs>
-    <linearGradient id="gobiernoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#37474F; stop-opacity:1"/>
-      <stop offset="30%" style="stop-color:#455A64; stop-opacity:1"/>
-      <stop offset="70%" style="stop-color:#37474F; stop-opacity:1"/>
-      <stop offset="100%" style="stop-color:#263238; stop-opacity:1"/>
-    </linearGradient>
-    <linearGradient id="gobiernoAccent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#546E7A; stop-opacity:0.6"/>
-      <stop offset="100%" style="stop-color:#263238; stop-opacity:0.8"/>
-    </linearGradient>
-    <radialGradient id="gobiernoHighlight" cx="50%" cy="30%" r="70%">
-      <stop offset="0%" style="stop-color:#607D8B; stop-opacity:0.4"/>
-      <stop offset="100%" style="stop-color:#263238; stop-opacity:0.1"/>
-    </radialGradient>
-  </defs>
-  <path fill="url(#gobiernoGradient)" d="M13.032 2.336a1.75 1.75 0 0 0-2.064 0L3.547 7.75c-.977.712-.474 2.256.734 2.258H16V10h3v.007h.719c1.208-.002 1.71-1.546.734-2.258zM12 5.26a1 1 0 1 1 0 2a1 1 0 0 1 0-2m-.75 10.149q-.137.28-.2.594h-1.8v-4.997h2zm3.5-3.972A2.75 2.75 0 0 0 13 14v.05a3 3 0 0 0-.25.064v-3.108h2zM11 17.003V20.5H3.75a.75.75 0 0 1-.75-.75v-.5a2.25 2.25 0 0 1 2.25-2.248zm-5.5-1h2.25v-4.996H5.5zM14 15h-.5a1.5 1.5 0 0 0-1.5 1.5V18h2.5v-.25a.75.75 0 0 1 1.5 0V18h3v-.25a.75.75 0 0 1 1.5 0V18H23v-1.5a1.5 1.5 0 0 0-1.5-1.5H21v-1a1.75 1.75 0 0 0-1.75-1.75h-3.5A1.75 1.75 0 0 0 14 14zm1.5-1a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v1h-4zm-2 9a1.5 1.5 0 0 1-1.5-1.5v-2h2.5v.75a.75.75 0 0 0 1.5 0v-.75h3v.75a.75.75 0 0 0 1.5 0v-.75H23v2a1.5 1.5 0 0 1-1.5 1.5z"/>
-  <path fill="url(#gobiernoAccent)" d="M13.032 2.336a1.75 1.75 0 0 0-2.064 0L3.547 7.75c-.977.712-.474 2.256.734 2.258H16V10h3v.007h.719c1.208-.002 1.71-1.546.734-2.258z"/>
-  <path fill="url(#gobiernoHighlight)" d="M13.032 2.336a1.75 1.75 0 0 0-2.064 0L3.547 7.75c-.977.712-.474 2.256.734 2.258H16V10h3v.007h.719c1.208-.002 1.71-1.546.734-2.258zM12 5.26a1 1 0 1 1 0 2a1 1 0 0 1 0-2"/>
-  <circle fill="#78909C" cx="12" cy="6.26" r="0.8" opacity="0.7"/>
-</svg>`;
+const gobiernoIconSvgString = "/icons/gobierno.svg";
 
-const hospedajeIconSvgString = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="20px" height="20px">
-  <title>Hospedaje</title>
-  <defs>
-    <linearGradient id="hotelGradientBody" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#3E2723;" />
-      <stop offset="30%" style="stop-color:#5D4037;" />
-      <stop offset="70%" style="stop-color:#4E342E;" />
-      <stop offset="100%" style="stop-color:#2C1810;" />
-    </linearGradient>
-    <linearGradient id="hotelGradientRoof" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#8B0000;" />
-      <stop offset="50%" style="stop-color:#B71C1C;" />
-      <stop offset="100%" style="stop-color:#4A0000;" />
-    </linearGradient>
-    <linearGradient id="hotelGradientWindow" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1565C0;" />
-      <stop offset="50%" style="stop-color:#1976D2;" />
-      <stop offset="100%" style="stop-color:#0A3F73;" />
-    </linearGradient>
-    <linearGradient id="hotelGradientDoor" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#4E342E;" />
-      <stop offset="100%" style="stop-color:#2C1810;" />
-    </linearGradient>
-    <radialGradient id="buildingHighlight" cx="50%" cy="20%" r="80%">
-      <stop offset="0%" style="stop-color:#6D4C41; stop-opacity:0.4"/>
-      <stop offset="100%" style="stop-color:#3E2723; stop-opacity:0.1"/>
-    </radialGradient>
-  </defs>
-  
-  <path fill="url(#hotelGradientBody)" d="m20.6 51.7l-10.7.01s-4.53-7.4-4.93-7.98c-.53-.75-1.72-.63-2.11-.57c-.67.09-.14 1.17.61 2.25s3.94 6.43 3.94 6.43v72.02h113.22l.09-71.78s3.98-6.54 4.37-7.19s.98-1.69.26-1.73c-.78-.04-1.68-.18-2.45 1.03c-.88 1.39-4.58 7.16-4.58 7.16h-10.8V40.17h-16.6s-.59-22.84-27.15-22.68c-26.55.17-26.25 22.66-26.25 22.66H20.74c0 .01-.14 11.35-.14 11.55z"/>
-  <path fill="url(#buildingHighlight)" d="m20.6 51.7l-10.7.01s-4.53-7.4-4.93-7.98c-.53-.75-1.72-.63-2.11-.57c-.67.09-.14 1.17.61 2.25s3.94 6.43 3.94 6.43v72.02h113.22l.09-71.78s3.98-6.54 4.37-7.19s.98-1.69.26-1.73c-.78-.04-1.68-.18-2.45 1.03c-.88 1.39-4.58 7.16-4.58 7.16h-10.8V40.17h-16.6s-.59-22.84-27.15-22.68c-26.55.17-26.25 22.66-26.25 22.66H20.74c0 .01-.14 11.35-.14 11.55z"/>
-  <path fill="url(#hotelGradientBody)" d="M9.86 56.19h10.59v44.28l-10.68.1zm13.28-11.52v44.38l81.98-.09v-44.1H85.81s1.38-22.41-21.45-22.65c-23.67-.26-21.91 22.28-21.91 22.28z"/>
-  <path fill="url(#hotelGradientBody)" d="M118.25 56.56h-10.32v43.9h10.22z"/>
-  <path fill="url(#hotelGradientRoof)" d="m3.68 43.11l17.03.21s-.07-10.03 0-10.78c.07-.74.67-.97 1.63-.97h11.52s4.21-19.72 30.67-19.58c25.08.13 29.89 19.36 29.89 19.36s11.22.15 11.96.15s1.11.59 1.11 1.41v10.26h16.78l-.8 1.93l-4.9 8.25l-109.24-.01z"/>
-  <path fill="#6B1A00" d="M19.42 91.91s.07 5.86.12 6.83s-.11 1.89 2.06 1.91c2.13.02 84.69.04 85.76.04s2.28-.61 2.38-2.14c.1-1.52.05-6.43.05-6.43l-46.36-1.6z"/>
-  <path fill="url(#hotelGradientWindow)" d="M46.9 37.64h8.64v10H46.9zm26.15 0h8.64v10h-8.64z M46.9 50.64h8.64v10H46.9zm26.15 0h8.64v10h-8.64z M46.9 63.64h8.64v10H46.9zm26.15 0h8.64v10h-8.64z"/>
-  <path fill="url(#hotelGradientWindow)" d="M26.74 47.06h6.38v10.06h-6.38zm-.03 14.02h6.38v10.06h-6.38z M95.68 46.61h6.38v10.06h-6.38zm-.03 14.02h6.38v10.06h-6.38z"/>
-  <path fill="#0A3F73" d="M46.4 37.14h9.64v11H46.4zm26.15 0h9.64v11h-9.64z M46.4 50.14h9.64v11H46.4zm26.15 0h9.64v11h-9.64z M46.4 63.14h9.64v11H46.4zm26.15 0h9.64v11h-9.64z" opacity="0.8"/>
-  <path fill="url(#hotelGradientDoor)" d="m50.22 99.45l-.03 24.75H78.2l.03-25.51z"/>
-  <path fill="#2C1810" d="M52.8 102.66v18.63h9.88v-18.57zm12.71.19h9.76l.25 18.44h-9.94z"/>
-  <circle fill="#8D6E63" cx="55" cy="112" r="0.8" opacity="0.8"/>
-  <circle fill="#8D6E63" cx="71" cy="112" r="0.8" opacity="0.8"/>
-</svg>`;
+const hospedajeIconSvgString = "/icons/hospedaje.svg";
 
 const destinationPinSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
@@ -438,17 +249,46 @@ const camionIconDownSvgString = `
   <path d="M60,75 L80,50 L70,50 L70,25 L50,25 L50,50 L40,50 Z" fill="#FF0000" stroke="#AA0000" stroke-width="2" />
 </svg>`;
 
-
 // --- FIN DE SVGs ---
 
 const poiTypes = [
   { tipo: "Todos", Icono: FaThList, svgString: null, emoji: "🗺️" },
-  { tipo: "Museos", Icono: MdMuseum, svgString: museoIconSvgString, emoji: "🏛️" },
-  { tipo: "Monumentos Históricos", Icono: FaLandmark, svgString: monumentoHistoricoIconSvgString, emoji: "🗿" },
-  { tipo: "Naturaleza", Icono: MdPark, svgString: naturalezaIconSvgString, emoji: "🌿" },
-  { tipo: "Gastronomía", Icono: MdFastfood, svgString: restauranteIconSvgString, emoji: "🍽️" },
-  { tipo: "Dependencias de Gobierno", Icono: FaBuilding, svgString: gobiernoIconSvgString, emoji: "🏢" },
-  { tipo: "Hospedaje", Icono: MdHotel, svgString: hospedajeIconSvgString, emoji: "🏨" },
+  {
+    tipo: "Museos",
+    Icono: MdMuseum,
+    urlIcon: "/icons/museo.svg",
+    emoji: "🏛️",
+  },
+  {
+    tipo: "Monumentos Históricos",
+    Icono: FaLandmark,
+    urlIcon: "/icons/monumento.svg",
+    emoji: "🗿",
+  },
+  {
+    tipo: "Naturaleza",
+    Icono: MdPark,
+    urlIcon: "/icons/naturaleza.svg",
+    emoji: "🌿",
+  },
+  {
+    tipo: "Gastronomía",
+    Icono: MdFastfood,
+    urlIcon: "/icons/restaurante.svg",
+    emoji: "🍽️",
+  },
+  {
+    tipo: "Dependencias de Gobierno",
+    Icono: FaBuilding,
+    urlIcon: "/icons/gobierno.svg",
+    emoji: "🏢",
+  },
+  {
+    tipo: "Hospedaje",
+    Icono: MdHotel,
+    urlIcon: "/icons/hospedaje.svg",
+    emoji: "🏨",
+  },
 ];
 
 export default function GoogleMaps() {
@@ -469,34 +309,40 @@ export default function GoogleMaps() {
   const poiMarkersRef = useRef([]);
   const openInfoWindowRef = useRef(null);
   const truckMarkerRef = useRef(null);
-  const doubleClickUserMarkerRef = useRef(null); 
-  const closestRoutePointMarkerRef = useRef(null); 
+  const doubleClickUserMarkerRef = useRef(null);
+  const closestRoutePointMarkerRef = useRef(null);
 
   const walkingToBusStopPolylineRef = useRef(null);
   const walkingFromBusStopPolylineRef = useRef(null);
   const directionsServiceRef = useRef(null);
   const streetViewServiceRef = useRef(null); // Ref for StreetViewService
 
-
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]);
 
-  const [mapStatusMessage, setMapStatusMessage] = useState('');
+  const [mapStatusMessage, setMapStatusMessage] = useState("");
   const wsRef = useRef(null);
 
   const [visibleRouteLegends, setVisibleRouteLegends] = useState([]);
-  const [activePredefinedRouteDetails, setActivePredefinedRouteDetails] = useState([]);
-  const [activeDoubleClickRouteDetails, setActiveDoubleClickRouteDetails] = useState([]);
-  const [isTransportInfoPanelOpen, setIsTransportInfoPanelOpen] = useState(false);
+  const [activePredefinedRouteDetails, setActivePredefinedRouteDetails] =
+    useState([]);
+  const [activeDoubleClickRouteDetails, setActiveDoubleClickRouteDetails] =
+    useState([]);
+  const [isTransportInfoPanelOpen, setIsTransportInfoPanelOpen] =
+    useState(false);
 
   const toggleTransportInfoPanel = useCallback(() => {
-    setIsTransportInfoPanelOpen(prev => !prev);
+    setIsTransportInfoPanelOpen((prev) => !prev);
   }, []);
-  
-    useEffect(() => {
-    const combinedDetails = [...activePredefinedRouteDetails, ...activeDoubleClickRouteDetails];
-    const uniqueLegends = Array.from(new Map(combinedDetails.map(route => [route.id, route])).values())
-                                .sort((a, b) => a.name.localeCompare(b.name));
+
+  useEffect(() => {
+    const combinedDetails = [
+      ...activePredefinedRouteDetails,
+      ...activeDoubleClickRouteDetails,
+    ];
+    const uniqueLegends = Array.from(
+      new Map(combinedDetails.map((route) => [route.id, route])).values()
+    ).sort((a, b) => a.name.localeCompare(b.name));
 
     setVisibleRouteLegends(uniqueLegends);
   }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails]);
@@ -505,180 +351,284 @@ export default function GoogleMaps() {
     if (mapLoaded && window.google && window.google.maps) {
       if (!directionsServiceRef.current) {
         console.log("[GoogleMaps] Initializing Directions Service");
-        directionsServiceRef.current = new window.google.maps.DirectionsService();
+        directionsServiceRef.current =
+          new window.google.maps.DirectionsService();
       }
       if (!streetViewServiceRef.current) {
         console.log("[GoogleMaps] Initializing StreetView Service");
-        streetViewServiceRef.current = new window.google.maps.StreetViewService();
+        streetViewServiceRef.current =
+          new window.google.maps.StreetViewService();
       }
     }
   }, [mapLoaded]);
 
   const getRoadSnappedLocation = useCallback((originalLatLng) => {
     return new Promise((resolve) => {
-      if (!streetViewServiceRef.current || !originalLatLng || !window.google?.maps) {
-        console.warn("[GoogleMaps getRoadSnappedLocation] Missing StreetViewService or LatLng, returning original.");
-        resolve(originalLatLng); 
+      if (
+        !streetViewServiceRef.current ||
+        !originalLatLng ||
+        !window.google?.maps
+      ) {
+        console.warn(
+          "[GoogleMaps getRoadSnappedLocation] Missing StreetViewService or LatLng, returning original."
+        );
+        resolve(originalLatLng);
         return;
       }
-  
+
       streetViewServiceRef.current.getPanorama(
         {
           location: originalLatLng,
-          radius: 50, 
+          radius: 50,
           source: window.google.maps.StreetViewSource.OUTDOOR,
         },
         (data, status) => {
-          if (status === window.google.maps.StreetViewStatus.OK && data && data.location && data.location.latLng) {
-            console.log("[GoogleMaps getRoadSnappedLocation] Snapped", originalLatLng.toString(), "to", data.location.latLng.toString());
+          if (
+            status === window.google.maps.StreetViewStatus.OK &&
+            data &&
+            data.location &&
+            data.location.latLng
+          ) {
+            console.log(
+              "[GoogleMaps getRoadSnappedLocation] Snapped",
+              originalLatLng.toString(),
+              "to",
+              data.location.latLng.toString()
+            );
             resolve(data.location.latLng);
           } else {
             if (status !== window.google.maps.StreetViewStatus.ZERO_RESULTS) {
-               console.warn("[GoogleMaps getRoadSnappedLocation] StreetViewService error:", status, "Falling back to original LatLng for:", originalLatLng.toString());
+              console.warn(
+                "[GoogleMaps getRoadSnappedLocation] StreetViewService error:",
+                status,
+                "Falling back to original LatLng for:",
+                originalLatLng.toString()
+              );
             } else {
-               console.log("[GoogleMaps getRoadSnappedLocation] No StreetView panorama found nearby for:", originalLatLng.toString(), "Using original.");
+              console.log(
+                "[GoogleMaps getRoadSnappedLocation] No StreetView panorama found nearby for:",
+                originalLatLng.toString(),
+                "Using original."
+              );
             }
-            resolve(originalLatLng); 
+            resolve(originalLatLng);
           }
         }
       );
     });
   }, []);
 
+  const drawWalkingRoute = useCallback(
+    async (origin, destination, polylineRef, color = "#4A90E2") => {
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
+      }
 
-  const drawWalkingRoute = useCallback(async (origin, destination, polylineRef, color = '#4A90E2') => {
-    if (polylineRef.current) {
-      polylineRef.current.setMap(null);
-      polylineRef.current = null;
-    }
-  
-    if (!directionsServiceRef.current || !origin || !destination || !mapRef.current || !window.google?.maps) {
-      console.warn("[GoogleMaps drawWalkingRoute] Bailing out. Missing prerequisites:", {
-        hasDirectionsService: !!directionsServiceRef.current,
-        originPassed: !!origin,
-        destinationPassed: !!destination,
-        hasMapRef: !!mapRef.current,
-        googleMapsLoaded: !!(window.google?.maps)
-      });
-      if (origin) console.log("[GoogleMaps drawWalkingRoute] Origin details:", JSON.stringify(origin));
-      if (destination) console.log("[GoogleMaps drawWalkingRoute] Destination details:", JSON.stringify(destination));
-      return;
-    }
-  
-    console.log(`[GoogleMaps drawWalkingRoute] Requesting route from`, origin, `to`, destination);
-  
-    const request = {
-      origin: origin,
-      destination: destination,
-      travelMode: window.google.maps.TravelMode.WALKING,
-    };
-  
-    try {
-      const response = await new Promise((resolve, reject) => {
-        directionsServiceRef.current.route(request, (result, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
-            resolve(result);
-          } else {
-            reject(status); 
+      if (
+        !directionsServiceRef.current ||
+        !origin ||
+        !destination ||
+        !mapRef.current ||
+        !window.google?.maps
+      ) {
+        console.warn(
+          "[GoogleMaps drawWalkingRoute] Bailing out. Missing prerequisites:",
+          {
+            hasDirectionsService: !!directionsServiceRef.current,
+            originPassed: !!origin,
+            destinationPassed: !!destination,
+            hasMapRef: !!mapRef.current,
+            googleMapsLoaded: !!window.google?.maps,
           }
-        });
-      });
-  
-      const route = response.routes[0];
-      if (!route) {
-        console.warn("[GoogleMaps drawWalkingRoute] No route found in Directions API response.");
-        // Potentially set a user message here as well if needed
-        // setMapStatusMessage("No se pudo generar la sub-ruta peatonal.");
-        // setTimeout(() => setMapStatusMessage(''), 5000);
+        );
+        if (origin)
+          console.log(
+            "[GoogleMaps drawWalkingRoute] Origin details:",
+            JSON.stringify(origin)
+          );
+        if (destination)
+          console.log(
+            "[GoogleMaps drawWalkingRoute] Destination details:",
+            JSON.stringify(destination)
+          );
         return;
       }
-  
-      const lineSymbol = {
-        path: 'M 0,-1 0,1', 
-        strokeOpacity: 1,
-        scale: 3, 
-        strokeWeight: 2.5, 
+
+      console.log(
+        `[GoogleMaps drawWalkingRoute] Requesting route from`,
+        origin,
+        `to`,
+        destination
+      );
+
+      const request = {
+        origin: origin,
+        destination: destination,
+        travelMode: window.google.maps.TravelMode.WALKING,
       };
-  
-      const polyline = new window.google.maps.Polyline({
-        path: route.overview_path,
-        geodesic: true,
-        strokeColor: color,
-        strokeOpacity: 0, 
-        strokeWeight: 2.5,
-        icons: [{
-          icon: lineSymbol,
-          offset: '0',
-          repeat: '15px', 
-        }],
-        map: mapRef.current,
-        zIndex: 10 
-      });
-      polylineRef.current = polyline;
-      console.log("[GoogleMaps drawWalkingRoute] Successfully drawn walking route.");
-  
-    } catch (errorStatus) {
-      console.error(`[GoogleMaps drawWalkingRoute] Error fetching walking directions. Origin:`, origin, `Destination:`, destination, `Status: ${errorStatus}`);
-      let userMessage = "Error al trazar ruta peatonal.";
-      if (window.google?.maps?.DirectionsStatus) {
-        switch (errorStatus) {
-          case window.google.maps.DirectionsStatus.ZERO_RESULTS:
-            userMessage = "No se encontró una ruta peatonal.";
-            break;
-          case window.google.maps.DirectionsStatus.OVER_QUERY_LIMIT:
-            userMessage = "Límite de consultas API excedido. Intente más tarde.";
-            break;
-          case window.google.maps.DirectionsStatus.REQUEST_DENIED:
-            userMessage = "Solicitud de ruta denegada. Verifique la configuración de API.";
-            break;
-          case window.google.maps.DirectionsStatus.UNKNOWN_ERROR:
-            userMessage = "Error desconocido al trazar ruta. Intente de nuevo.";
-            break;
-          default:
-             userMessage = `Error al trazar ruta peatonal (${errorStatus}).`;
+
+      try {
+        const response = await new Promise((resolve, reject) => {
+          directionsServiceRef.current.route(request, (result, status) => {
+            if (status === window.google.maps.DirectionsStatus.OK) {
+              resolve(result);
+            } else {
+              reject(status);
+            }
+          });
+        });
+
+        const route = response.routes[0];
+        if (!route) {
+          console.warn(
+            "[GoogleMaps drawWalkingRoute] No route found in Directions API response."
+          );
+          // Potentially set a user message here as well if needed
+          // setMapStatusMessage("No se pudo generar la sub-ruta peatonal.");
+          // setTimeout(() => setMapStatusMessage(''), 5000);
+          return;
         }
+
+        const lineSymbol = {
+          path: "M 0,-1 0,1",
+          strokeOpacity: 1,
+          scale: 3,
+          strokeWeight: 2.5,
+        };
+
+        const polyline = new window.google.maps.Polyline({
+          path: route.overview_path,
+          geodesic: true,
+          strokeColor: color,
+          strokeOpacity: 0,
+          strokeWeight: 2.5,
+          icons: [
+            {
+              icon: lineSymbol,
+              offset: "0",
+              repeat: "15px",
+            },
+          ],
+          map: mapRef.current,
+          zIndex: 10,
+        });
+        polylineRef.current = polyline;
+        console.log(
+          "[GoogleMaps drawWalkingRoute] Successfully drawn walking route."
+        );
+      } catch (errorStatus) {
+        console.error(
+          `[GoogleMaps drawWalkingRoute] Error fetching walking directions. Origin:`,
+          origin,
+          `Destination:`,
+          destination,
+          `Status: ${errorStatus}`
+        );
+        let userMessage = "Error al trazar ruta peatonal.";
+        if (window.google?.maps?.DirectionsStatus) {
+          switch (errorStatus) {
+            case window.google.maps.DirectionsStatus.ZERO_RESULTS:
+              userMessage = "No se encontró una ruta peatonal.";
+              break;
+            case window.google.maps.DirectionsStatus.OVER_QUERY_LIMIT:
+              userMessage =
+                "Límite de consultas API excedido. Intente más tarde.";
+              break;
+            case window.google.maps.DirectionsStatus.REQUEST_DENIED:
+              userMessage =
+                "Solicitud de ruta denegada. Verifique la configuración de API.";
+              break;
+            case window.google.maps.DirectionsStatus.UNKNOWN_ERROR:
+              userMessage =
+                "Error desconocido al trazar ruta. Intente de nuevo.";
+              break;
+            default:
+              userMessage = `Error al trazar ruta peatonal (${errorStatus}).`;
+          }
+        } else {
+          userMessage = `Error al trazar ruta peatonal (${errorStatus}). Google Maps API might not be fully loaded.`;
+        }
+        setMapStatusMessage(
+          userMessage + " (Consulte la consola para detalles)"
+        );
+        setTimeout(() => setMapStatusMessage(""), 7000);
+      }
+    },
+    [setMapStatusMessage]
+  );
+
+  const drawConnectingWalkingRoutes = useCallback(
+    (
+      userLocation,
+      truckStopLocation,
+      destinationLocation,
+      destinationStopLocation
+    ) => {
+      console.log("[GoogleMaps drawConnectingWalkingRoutes] Inputs:", {
+        userLocation,
+        truckStopLocation,
+        destinationLocation,
+        destinationStopLocation,
+      });
+
+      if (userLocation && truckStopLocation) {
+        console.log(
+          "[GoogleMaps drawConnectingWalkingRoutes] Attempting User to CamionA route."
+        );
+        drawWalkingRoute(
+          userLocation,
+          truckStopLocation,
+          walkingToBusStopPolylineRef,
+          "#00BFA5"
+        );
       } else {
-        userMessage = `Error al trazar ruta peatonal (${errorStatus}). Google Maps API might not be fully loaded.`;
+        console.log(
+          "[GoogleMaps drawConnectingWalkingRoutes] Skipping User to CamionA route (missing points)."
+        );
+        if (walkingToBusStopPolylineRef.current) {
+          walkingToBusStopPolylineRef.current.setMap(null);
+          walkingToBusStopPolylineRef.current = null;
+        }
       }
-      setMapStatusMessage(userMessage + " (Consulte la consola para detalles)");
-      setTimeout(() => setMapStatusMessage(''), 7000);
-    }
-  }, [setMapStatusMessage]);
 
-  const drawConnectingWalkingRoutes = useCallback((userLocation, truckStopLocation, destinationLocation, destinationStopLocation) => {
-    console.log("[GoogleMaps drawConnectingWalkingRoutes] Inputs:", {userLocation, truckStopLocation, destinationLocation, destinationStopLocation});
-    
-    if (userLocation && truckStopLocation) {
-      console.log("[GoogleMaps drawConnectingWalkingRoutes] Attempting User to CamionA route.");
-      drawWalkingRoute(userLocation, truckStopLocation, walkingToBusStopPolylineRef, '#00BFA5'); 
-    } else {
-      console.log("[GoogleMaps drawConnectingWalkingRoutes] Skipping User to CamionA route (missing points).");
-      if (walkingToBusStopPolylineRef.current) {
-        walkingToBusStopPolylineRef.current.setMap(null);
-        walkingToBusStopPolylineRef.current = null;
+      if (destinationLocation && destinationStopLocation) {
+        console.log(
+          "[GoogleMaps drawConnectingWalkingRoutes] Attempting Destination to CamionB route."
+        );
+        drawWalkingRoute(
+          destinationLocation,
+          destinationStopLocation,
+          walkingFromBusStopPolylineRef,
+          "#FF6F00"
+        );
+      } else {
+        console.log(
+          "[GoogleMaps drawConnectingWalkingRoutes] Skipping Destination to CamionB route (missing points)."
+        );
+        if (walkingFromBusStopPolylineRef.current) {
+          walkingFromBusStopPolylineRef.current.setMap(null);
+          walkingFromBusStopPolylineRef.current = null;
+        }
       }
-    }
-  
-    if (destinationLocation && destinationStopLocation) {
-      console.log("[GoogleMaps drawConnectingWalkingRoutes] Attempting Destination to CamionB route.");
-      drawWalkingRoute(destinationLocation, destinationStopLocation, walkingFromBusStopPolylineRef, '#FF6F00'); 
-    } else {
-      console.log("[GoogleMaps drawConnectingWalkingRoutes] Skipping Destination to CamionB route (missing points).");
-      if (walkingFromBusStopPolylineRef.current) {
-        walkingFromBusStopPolylineRef.current.setMap(null);
-        walkingFromBusStopPolylineRef.current = null;
-      }
-    }
-  }, [drawWalkingRoute]);
-
+    },
+    [drawWalkingRoute]
+  );
 
   const updateTruckPosition = useCallback(() => {
-    if (!mapRef.current || !window.google?.maps || !activeMarkerRef.current || !activeMarkerRef.current.getPosition()) {
+    if (
+      !mapRef.current ||
+      !window.google?.maps ||
+      !activeMarkerRef.current ||
+      !activeMarkerRef.current.getPosition()
+    ) {
       if (truckMarkerRef.current) {
         truckMarkerRef.current.setMap(null);
       }
       if (walkingToBusStopPolylineRef.current) {
-        console.log("[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline due to missing prerequisites for truckMarker.");
+        console.log(
+          "[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline due to missing prerequisites for truckMarker."
+        );
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
       }
@@ -688,14 +638,14 @@ export default function GoogleMaps() {
     const userPosition = activeMarkerRef.current.getPosition();
     let allVisibleRoutePoints = [];
 
-    predefinedPolylinesRef.current.forEach(polyline => {
+    predefinedPolylinesRef.current.forEach((polyline) => {
       if (polyline.getMap()) {
         const path = polyline.getPath().getArray();
         allVisibleRoutePoints.push(...path);
       }
     });
 
-    doubleClickedRoutesPolylinesRef.current.forEach(polyline => {
+    doubleClickedRoutesPolylinesRef.current.forEach((polyline) => {
       if (polyline.getMap()) {
         const path = polyline.getPath().getArray();
         allVisibleRoutePoints.push(...path);
@@ -707,7 +657,9 @@ export default function GoogleMaps() {
         truckMarkerRef.current.setMap(null);
       }
       if (walkingToBusStopPolylineRef.current) {
-        console.log("[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline because no routes are visible for truckMarker.");
+        console.log(
+          "[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline because no routes are visible for truckMarker."
+        );
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
       }
@@ -717,7 +669,7 @@ export default function GoogleMaps() {
     let overallClosestPoint = null;
     let minDistanceSq = Infinity;
 
-    allVisibleRoutePoints.forEach(pointOnRoute => {
+    allVisibleRoutePoints.forEach((pointOnRoute) => {
       const distSq =
         Math.pow(userPosition.lat() - pointOnRoute.lat(), 2) +
         Math.pow(userPosition.lng() - pointOnRoute.lng(), 2);
@@ -731,9 +683,11 @@ export default function GoogleMaps() {
       const nuevoAncho = 35;
       const nuevoAlto = 45;
       const truckIcon = {
-        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconSvgString)}`,
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+          camionIconSvgString
+        )}`,
         scaledSize: new window.google.maps.Size(nuevoAncho, nuevoAlto),
-        anchor: new window.google.maps.Point(nuevoAncho/2, nuevoAlto/2),
+        anchor: new window.google.maps.Point(nuevoAncho / 2, nuevoAlto / 2),
       };
 
       if (!truckMarkerRef.current) {
@@ -742,12 +696,12 @@ export default function GoogleMaps() {
           map: mapRef.current,
           icon: truckIcon,
           title: "Camión en ruta (Parada A - Subida)",
-          zIndex: 900
+          zIndex: 900,
         });
       } else {
         truckMarkerRef.current.setPosition(overallClosestPoint);
         if (!truckMarkerRef.current.getMap()) {
-            truckMarkerRef.current.setMap(mapRef.current);
+          truckMarkerRef.current.setMap(mapRef.current);
         }
       }
     } else {
@@ -755,165 +709,274 @@ export default function GoogleMaps() {
         truckMarkerRef.current.setMap(null);
       }
       if (walkingToBusStopPolylineRef.current) {
-        console.log("[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline because truckMarker could not be placed.");
+        console.log(
+          "[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline because truckMarker could not be placed."
+        );
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
       }
     }
-  }, []); 
-
-  const drawRouteFromMapbox = useCallback(async (coordsArray, color = '#0074D9') => {
-    if (!mapRef.current || !window.google?.maps) return null;
-
-    const coordsString = coordsArray.map(p => p.join(',')).join(';');
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?geometries=geojson&access_token=${accessToken}`;
-
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (!data.routes || data.routes.length === 0) {
-        console.warn("[GoogleMaps drawRouteFromMapbox] No se encontraron rutas desde Mapbox.");
-        return null;
-      }
-
-      const routeData = data.routes[0].geometry.coordinates;
-      const path = routeData.map(([lng, lat]) => ({ lat, lng }));
-
-      const polyline = new window.google.maps.Polyline({
-        path,
-        geodesic: true,
-        strokeColor: color,
-        strokeOpacity: 0.9,
-        strokeWeight: 4,
-      });
-      polyline.setMap(mapRef.current);
-      return polyline;
-    } catch (err) {
-      console.error("[GoogleMaps drawRouteFromMapbox] Error al obtener la ruta desde Mapbox:", err);
-      return null;
-    }
   }, []);
 
-  const requestLocation = useCallback(async (showAlert = true) => {
-    setError(null);
-    try {
-      const loc = await getCurrentLocation();
-      setLocation(loc);
-      if (!usingExternalGps && mapRef.current) {
-        mapRef.current.panTo({ lat: loc.lat, lng: loc.lng });
+  const drawRouteFromMapbox = useCallback(
+    async (coordsArray, color = "#0074D9") => {
+      if (!mapRef.current || !window.google?.maps) return null;
+
+      const coordsString = coordsArray.map((p) => p.join(",")).join(";");
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?geometries=geojson&access_token=${accessToken}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.routes || data.routes.length === 0) {
+          console.warn(
+            "[GoogleMaps drawRouteFromMapbox] No se encontraron rutas desde Mapbox."
+          );
+          return null;
+        }
+
+        const routeData = data.routes[0].geometry.coordinates;
+        const path = routeData.map(([lng, lat]) => ({ lat, lng }));
+
+        const polyline = new window.google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: color,
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+        });
+        polyline.setMap(mapRef.current);
+        return polyline;
+      } catch (err) {
+        console.error(
+          "[GoogleMaps drawRouteFromMapbox] Error al obtener la ruta desde Mapbox:",
+          err
+        );
+        return null;
       }
-    } catch (err) {
-      setError(err.message);
-      if (showAlert) alert(`Error obteniendo ubicación: ${err.message}`);
-    }
-  }, [usingExternalGps]);
+    },
+    []
+  );
+
+  const requestLocation = useCallback(
+    async (showAlert = true) => {
+      setError(null);
+      try {
+        const loc = await getCurrentLocation();
+        setLocation(loc);
+        if (!usingExternalGps && mapRef.current) {
+          mapRef.current.panTo({ lat: loc.lat, lng: loc.lng });
+        }
+      } catch (err) {
+        setError(err.message);
+        if (showAlert) alert(`Error obteniendo ubicación: ${err.message}`);
+      }
+    },
+    [usingExternalGps]
+  );
 
   useEffect(() => {
     if (!wsRef.current) {
-        wsRef.current = new WebSocket('ws://localhost:8080');
-        wsRef.current.onopen = () => { console.log('[GoogleMaps] WebSocket connected'); setMapStatusMessage(''); };
-        wsRef.current.onmessage = (event) => {
-            try {
-                const message = JSON.parse(event.data);
-                if (message.type === 'gps_status') {
-                    const { status, message: statusMessageText } = message.payload;
-                    if (status === 'waiting_for_valid_data') {
-                        setMapStatusMessage(statusMessageText || "Esperando datos GPS válidos...");
-                        setExternalGpsLocation(null);
-                    } else if (status === 'disconnected' || status === 'disconnected_error' || status === 'script_launch_error' || status === 'script_error') {
-                        setMapStatusMessage(statusMessageText || 'GPS desconectado o con error.');
-                        setExternalGpsLocation(null);
-                    }
-                } else if (message.type === 'gps_update' && message.payload.lat) {
-                    setMapStatusMessage('');
-                    setExternalGpsLocation({
-                        lat: message.payload.lat, lng: message.payload.lng, accuracy: 5,
-                        humidity: message.payload.humidity, temperature: message.payload.temperature
-                    });
-                }
-            } catch (e) {
-                console.error('[GoogleMaps] Error processing WebSocket message:', e);
-                setMapStatusMessage('Error procesando datos del GPS.');
+      wsRef.current = new WebSocket("ws://localhost:8080");
+      wsRef.current.onopen = () => {
+        console.log("[GoogleMaps] WebSocket connected");
+        setMapStatusMessage("");
+      };
+      wsRef.current.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === "gps_status") {
+            const { status, message: statusMessageText } = message.payload;
+            if (status === "waiting_for_valid_data") {
+              setMapStatusMessage(
+                statusMessageText || "Esperando datos GPS válidos..."
+              );
+              setExternalGpsLocation(null);
+            } else if (
+              status === "disconnected" ||
+              status === "disconnected_error" ||
+              status === "script_launch_error" ||
+              status === "script_error"
+            ) {
+              setMapStatusMessage(
+                statusMessageText || "GPS desconectado o con error."
+              );
+              setExternalGpsLocation(null);
             }
-        };
-        wsRef.current.onclose = () => { console.log('[GoogleMaps] WebSocket disconnected'); };
-        wsRef.current.onerror = (e) => { console.error('[GoogleMaps] WebSocket error:', e); setExternalGpsLocation(null); };
+          } else if (message.type === "gps_update" && message.payload.lat) {
+            setMapStatusMessage("");
+            setExternalGpsLocation({
+              lat: message.payload.lat,
+              lng: message.payload.lng,
+              accuracy: 5,
+              humidity: message.payload.humidity,
+              temperature: message.payload.temperature,
+            });
+          }
+        } catch (e) {
+          console.error("[GoogleMaps] Error processing WebSocket message:", e);
+          setMapStatusMessage("Error procesando datos del GPS.");
+        }
+      };
+      wsRef.current.onclose = () => {
+        console.log("[GoogleMaps] WebSocket disconnected");
+      };
+      wsRef.current.onerror = (e) => {
+        console.error("[GoogleMaps] WebSocket error:", e);
+        setExternalGpsLocation(null);
+      };
     }
-    const handleGpsDataActive = () => setMapStatusMessage('');
-    const handleGpsConnectionLost = () => { setExternalGpsLocation(null); };
-    window.addEventListener('gps-data-active', handleGpsDataActive);
-    window.addEventListener('gps-connection-lost', handleGpsConnectionLost);
+    const handleGpsDataActive = () => setMapStatusMessage("");
+    const handleGpsConnectionLost = () => {
+      setExternalGpsLocation(null);
+    };
+    window.addEventListener("gps-data-active", handleGpsDataActive);
+    window.addEventListener("gps-connection-lost", handleGpsConnectionLost);
     return () => {
-        window.removeEventListener('gps-data-active', handleGpsDataActive);
-        window.removeEventListener('gps-connection-lost', handleGpsConnectionLost);
+      window.removeEventListener("gps-data-active", handleGpsDataActive);
+      window.removeEventListener(
+        "gps-connection-lost",
+        handleGpsConnectionLost
+      );
     };
   }, [usingExternalGps]);
 
-  const updateMarker = useCallback((lat, lng, isExternalSource = usingExternalGps, heading = 0, data = {}) => {
-    if (!mapRef.current || !window.google?.maps) return;
-    activeMarkerRef.current?.setMap(null);
-    const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {
-      const color = isExt ? '#EF4444' : '#1E40AF';
-      const outerSize = svgSize; const innerSize = svgSize * 0.4; const center = outerSize / 2; const arrowLength = innerSize;
-      return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${isExt ? 'External' : 'Internal'}" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${center - 2}" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${isExt ? 'External' : 'Internal'})"/><circle cx="${center}" cy="${center}" r="${innerSize / 2}" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${innerSize/2 + 4} L ${arrowLength/3},-${innerSize/2 - 2} L 0,-${innerSize/2 + 2} L -${arrowLength/3},-${innerSize/2 - 2} Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
-    };
-    const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {
-      const minSize = 24; const maxSize = 48; const minZoom = 10; const maxZoom = 20;
-      const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
-      const size = minSize + ((normalizedZoom - minZoom) / (maxZoom - minZoom)) * (maxSize - minSize);
-      const svgString = createSimpleMarkerSVG(isExt, size, svgHeading);
-      return { url: `data:image/svg+xml,${encodeURIComponent(svgString)}`, scaledSize: new window.google.maps.Size(size, size), anchor: new window.google.maps.Point(size / 2, size / 2), optimized: false };
-    };
-    const currentZoom = mapRef.current.getZoom();
-    const markerIcon = createMarkerIcon(isExternalSource, currentZoom, heading);
-    const newMarker = new window.google.maps.Marker({ position: { lat, lng }, map: mapRef.current, title: isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)", icon: markerIcon, zIndex: 1000 });
-    let contentString = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${isExternalSource ? '#EF4444' : '#1E40AF'};">${newMarker.title}</div><div style="color: #333; font-size: 12px;">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</div>`;
-    if (isExternalSource) {
-        if (data.humidity !== null && data.humidity !== undefined) contentString += `<div style="color: #333; font-size: 12px;">Humedad: ${data.humidity}%</div>`;
-        if (data.temperature !== null && data.temperature !== undefined) contentString += `<div style="color: #333; font-size: 12px;">Temp: ${data.temperature}°C</div>`;
-    }
-    if (data.accuracy) contentString += `<div style="color: #666; font-size: 11px;">Precisión: ${data.accuracy.toFixed(1)}m</div>`;
-    contentString += `</div>`;
-    const infoWindow = new window.google.maps.InfoWindow({ content: contentString });
-    newMarker.addListener("click", () => { openInfoWindowRef.current?.close(); infoWindow.open(mapRef.current, newMarker); openInfoWindowRef.current = infoWindow; });
-    activeMarkerRef.current = newMarker;
-  }, [usingExternalGps]);
+  const updateMarker = useCallback(
+    (lat, lng, isExternalSource = usingExternalGps, heading = 0, data = {}) => {
+      if (!mapRef.current || !window.google?.maps) return;
+      activeMarkerRef.current?.setMap(null);
+      const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {
+        const color = isExt ? "#EF4444" : "#1E40AF";
+        const outerSize = svgSize;
+        const innerSize = svgSize * 0.4;
+        const center = outerSize / 2;
+        const arrowLength = innerSize;
+        return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${
+          isExt ? "External" : "Internal"
+        }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
+          center - 2
+        }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
+          isExt ? "External" : "Internal"
+        })"/><circle cx="${center}" cy="${center}" r="${
+          innerSize / 2
+        }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
+          innerSize / 2 + 4
+        } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
+          innerSize / 2 + 2
+        } L -${arrowLength / 3},-${
+          innerSize / 2 - 2
+        } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
+      };
+      const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {
+        const minSize = 24;
+        const maxSize = 48;
+        const minZoom = 10;
+        const maxZoom = 20;
+        const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
+        const size =
+          minSize +
+          ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
+            (maxSize - minSize);
+        const svgString = createSimpleMarkerSVG(isExt, size, svgHeading);
+        return {
+          url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
+          scaledSize: new window.google.maps.Size(size, size),
+          anchor: new window.google.maps.Point(size / 2, size / 2),
+          optimized: false,
+        };
+      };
+      const currentZoom = mapRef.current.getZoom();
+      const markerIcon = createMarkerIcon(
+        isExternalSource,
+        currentZoom,
+        heading
+      );
+      const newMarker = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: mapRef.current,
+        title: isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)",
+        icon: markerIcon,
+        zIndex: 1000,
+      });
+      let contentString = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
+        isExternalSource ? "#EF4444" : "#1E40AF"
+      };">${
+        newMarker.title
+      }</div><div style="color: #333; font-size: 12px;">Lat: ${lat.toFixed(
+        6
+      )}, Lng: ${lng.toFixed(6)}</div>`;
+      if (isExternalSource) {
+        if (data.humidity !== null && data.humidity !== undefined)
+          contentString += `<div style="color: #333; font-size: 12px;">Humedad: ${data.humidity}%</div>`;
+        if (data.temperature !== null && data.temperature !== undefined)
+          contentString += `<div style="color: #333; font-size: 12px;">Temp: ${data.temperature}°C</div>`;
+      }
+      if (data.accuracy)
+        contentString += `<div style="color: #666; font-size: 11px;">Precisión: ${data.accuracy.toFixed(
+          1
+        )}m</div>`;
+      contentString += `</div>`;
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: contentString,
+      });
+      newMarker.addListener("click", () => {
+        openInfoWindowRef.current?.close();
+        infoWindow.open(mapRef.current, newMarker);
+        openInfoWindowRef.current = infoWindow;
+      });
+      activeMarkerRef.current = newMarker;
+    },
+    [usingExternalGps]
+  );
 
   const toggleGpsSource = useCallback(() => {
     const newUsingExternalGps = !usingExternalGps;
     setUsingExternalGps(newUsingExternalGps);
-    setMapStatusMessage(''); setError('');
+    setMapStatusMessage("");
+    setError("");
     if (newUsingExternalGps) {
-      if (!externalGpsLocation) { setMapStatusMessage("Cambiado a GPS Externo. Esperando datos..."); activeMarkerRef.current?.setMap(null); }
-      else { mapRef.current?.panTo({ lat: externalGpsLocation.lat, lng: externalGpsLocation.lng }); }
+      if (!externalGpsLocation) {
+        setMapStatusMessage("Cambiado a GPS Externo. Esperando datos...");
+        activeMarkerRef.current?.setMap(null);
+      } else {
+        mapRef.current?.panTo({
+          lat: externalGpsLocation.lat,
+          lng: externalGpsLocation.lng,
+        });
+      }
     } else {
-      if (!location) { requestLocation(true); setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación..."); }
-      else { mapRef.current?.panTo({ lat: location.lat, lng: location.lng }); }
+      if (!location) {
+        requestLocation(true);
+        setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación...");
+      } else {
+        mapRef.current?.panTo({ lat: location.lat, lng: location.lng });
+      }
     }
   }, [usingExternalGps, externalGpsLocation, location, requestLocation]);
 
   useEffect(() => {
     const initMap = async () => {
-      try { 
+      try {
         console.log("[GoogleMaps] Attempting to load Google Maps script...");
-        await loadGoogleMapsScript(); 
+        await loadGoogleMapsScript();
         console.log("[GoogleMaps] Google Maps script loaded.");
-        setMapLoaded(true); 
-        await requestLocation(false); 
-      }
-      catch (err) { 
+        setMapLoaded(true);
+        await requestLocation(false);
+      } catch (err) {
         console.error("[GoogleMaps] Error initializing map:", err);
-        setError(err.message); 
-        setMapStatusMessage(`Error al iniciar mapa: ${err.message}`); 
+        setError(err.message);
+        setMapStatusMessage(`Error al iniciar mapa: ${err.message}`);
       }
     };
     if (!window.google?.maps && !mapLoaded) {
       initMap();
-    } else if (window.google?.maps && !mapLoaded) { 
-      console.log("[GoogleMaps] Script already loaded but map not marked as loaded. Setting mapLoaded true.");
-      setMapLoaded(true); 
-      if(!location) requestLocation(false); 
+    } else if (window.google?.maps && !mapLoaded) {
+      console.log(
+        "[GoogleMaps] Script already loaded but map not marked as loaded. Setting mapLoaded true."
+      );
+      setMapLoaded(true);
+      if (!location) requestLocation(false);
     }
   }, [mapLoaded, location, requestLocation]);
 
@@ -921,196 +984,300 @@ export default function GoogleMaps() {
     setLugares([]);
     try {
       const querySnapshot = await getDocs(collection(db, "lugares"));
-      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter((l) => l.tipo === tipo);
+      const data = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((l) => l.tipo === tipo);
       setLugares(data);
-      if (data.length === 0) { setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`); setTimeout(()=> setMapStatusMessage(''), 3000); }
-      else { setMapStatusMessage(''); }
-    } catch (err) { console.error("[GoogleMaps] Error al obtener lugares:", err); setError("Error al cargar lugares de interés."); setMapStatusMessage("Error al cargar lugares."); }
+      if (data.length === 0) {
+        setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`);
+        setTimeout(() => setMapStatusMessage(""), 3000);
+      } else {
+        setMapStatusMessage("");
+      }
+    } catch (err) {
+      console.error("[GoogleMaps] Error al obtener lugares:", err);
+      setError("Error al cargar lugares de interés.");
+      setMapStatusMessage("Error al cargar lugares.");
+    }
   }, []);
 
   const fetchAllLugares = useCallback(async () => {
     setLugares([]);
     try {
-        const querySnapshot = await getDocs(collection(db, "lugares"));
-        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setLugares(data);
-        if (data.length === 0) { setMapStatusMessage(`No se encontraron lugares.`); setTimeout(() => setMapStatusMessage(''), 3000); }
-        else { setMapStatusMessage(''); }
-    } catch (err) { console.error("[GoogleMaps] Error al obtener todos los lugares:", err); setError("Error al cargar todos los lugares de interés."); setMapStatusMessage("Error al cargar lugares."); }
+      const querySnapshot = await getDocs(collection(db, "lugares"));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setLugares(data);
+      if (data.length === 0) {
+        setMapStatusMessage(`No se encontraron lugares.`);
+        setTimeout(() => setMapStatusMessage(""), 3000);
+      } else {
+        setMapStatusMessage("");
+      }
+    } catch (err) {
+      console.error("[GoogleMaps] Error al obtener todos los lugares:", err);
+      setError("Error al cargar todos los lugares de interés.");
+      setMapStatusMessage("Error al cargar lugares.");
+    }
   }, []);
 
   const togglePredefinedRoutes = useCallback(() => {
-    setShowPredefinedRoutes(prev => !prev);
+    setShowPredefinedRoutes((prev) => !prev);
   }, []);
 
-  const handlePoiRouteRequest = useCallback(async (poiLocation) => {
-    console.log("[GoogleMaps handlePoiRouteRequest] Initiated for POI:", poiLocation);
-    if (!mapRef.current || !window.google?.maps || !poiLocation || typeof poiLocation.lat !== 'number' || typeof poiLocation.lng !== 'number') {
-      console.warn("[GoogleMaps handlePoiRouteRequest] Bailing: Missing prerequisites.");
-      return;
-    }
-    
-    console.log("[GoogleMaps handlePoiRouteRequest] Clearing previous walking routes.");
-    if (walkingToBusStopPolylineRef.current) {
-      walkingToBusStopPolylineRef.current.setMap(null);
-      walkingToBusStopPolylineRef.current = null;
-    }
-    if (walkingFromBusStopPolylineRef.current) {
-      walkingFromBusStopPolylineRef.current.setMap(null);
-      walkingFromBusStopPolylineRef.current = null;
-    }
+  const handlePoiRouteRequest = useCallback(
+    async (poiLocation) => {
+      console.log(
+        "[GoogleMaps handlePoiRouteRequest] Initiated for POI:",
+        poiLocation
+      );
+      if (
+        !mapRef.current ||
+        !window.google?.maps ||
+        !poiLocation ||
+        typeof poiLocation.lat !== "number" ||
+        typeof poiLocation.lng !== "number"
+      ) {
+        console.warn(
+          "[GoogleMaps handlePoiRouteRequest] Bailing: Missing prerequisites."
+        );
+        return;
+      }
 
-    if (doubleClickUserMarkerRef.current) {
-      doubleClickUserMarkerRef.current.setMap(null);
-      doubleClickUserMarkerRef.current = null;
-    }
-    if (closestRoutePointMarkerRef.current) {
-      closestRoutePointMarkerRef.current.setMap(null);
-      closestRoutePointMarkerRef.current = null;
-    }
+      console.log(
+        "[GoogleMaps handlePoiRouteRequest] Clearing previous walking routes."
+      );
+      if (walkingToBusStopPolylineRef.current) {
+        walkingToBusStopPolylineRef.current.setMap(null);
+        walkingToBusStopPolylineRef.current = null;
+      }
+      if (walkingFromBusStopPolylineRef.current) {
+        walkingFromBusStopPolylineRef.current.setMap(null);
+        walkingFromBusStopPolylineRef.current = null;
+      }
 
-    const clickedLat = poiLocation.lat;
-    const clickedLng = poiLocation.lng;
-    const clickedPositionGoogle = new window.google.maps.LatLng(clickedLat, clickedLng); // Exact POI location
+      if (doubleClickUserMarkerRef.current) {
+        doubleClickUserMarkerRef.current.setMap(null);
+        doubleClickUserMarkerRef.current = null;
+      }
+      if (closestRoutePointMarkerRef.current) {
+        closestRoutePointMarkerRef.current.setMap(null);
+        closestRoutePointMarkerRef.current = null;
+      }
 
-    const destinationIcon = {
-      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(destinationPinSvgString)}`,
-      scaledSize: new window.google.maps.Size(30, 30),
-      anchor: new window.google.maps.Point(15, 25),
-    };
+      const clickedLat = poiLocation.lat;
+      const clickedLng = poiLocation.lng;
+      const clickedPositionGoogle = new window.google.maps.LatLng(
+        clickedLat,
+        clickedLng
+      ); // Exact POI location
 
-    // Visual marker at exact POI location
-    doubleClickUserMarkerRef.current = new window.google.maps.Marker({
-      position: clickedPositionGoogle,
-      map: mapRef.current,
-      title: "Destino seleccionado (POI)",
-      icon: destinationIcon,
-      zIndex: 955
-    });
+      const destinationIcon = {
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+          destinationPinSvgString
+        )}`,
+        scaledSize: new window.google.maps.Size(30, 30),
+        anchor: new window.google.maps.Point(15, 25),
+      };
 
-    doubleClickedRoutesPolylinesRef.current.forEach(polyline => polyline.setMap(null));
-    doubleClickedRoutesPolylinesRef.current = [];
+      // Visual marker at exact POI location
+      doubleClickUserMarkerRef.current = new window.google.maps.Marker({
+        position: clickedPositionGoogle,
+        map: mapRef.current,
+        title: "Destino seleccionado (POI)",
+        icon: destinationIcon,
+        zIndex: 955,
+      });
 
-    if (dynamicPolylineRef.current) {
-      dynamicPolylineRef.current.setMap(null);
-      dynamicPolylineRef.current = null;
-    }
+      doubleClickedRoutesPolylinesRef.current.forEach((polyline) =>
+        polyline.setMap(null)
+      );
+      doubleClickedRoutesPolylinesRef.current = [];
 
-    const radius = 200;
-    let routesInRadius = [];
-    let closestRouteData = { route: null, distance: Infinity };
-    let newDoubleClickDetails = []
+      if (dynamicPolylineRef.current) {
+        dynamicPolylineRef.current.setMap(null);
+        dynamicPolylineRef.current = null;
+      }
 
-    ALL_PREDEFINED_ROUTES_CONFIG.forEach(routeDef => {
-      let isRouteInRadiusForCurrentRoute = false;
-      let minDistanceForThisRoute = Infinity;
+      const radius = 200;
+      let routesInRadius = [];
+      let closestRouteData = { route: null, distance: Infinity };
+      let newDoubleClickDetails = [];
 
-      routeDef.data.forEach(pointCoords => {
-        const dist = getDistanceFromLatLonInMeters(clickedLat, clickedLng, pointCoords[1], pointCoords[0]);
-        if (dist <= radius) {
-          isRouteInRadiusForCurrentRoute = true;
+      ALL_PREDEFINED_ROUTES_CONFIG.forEach((routeDef) => {
+        let isRouteInRadiusForCurrentRoute = false;
+        let minDistanceForThisRoute = Infinity;
+
+        routeDef.data.forEach((pointCoords) => {
+          const dist = getDistanceFromLatLonInMeters(
+            clickedLat,
+            clickedLng,
+            pointCoords[1],
+            pointCoords[0]
+          );
+          if (dist <= radius) {
+            isRouteInRadiusForCurrentRoute = true;
+          }
+          if (dist < minDistanceForThisRoute) {
+            minDistanceForThisRoute = dist;
+          }
+        });
+
+        if (isRouteInRadiusForCurrentRoute) {
+          routesInRadius.push(routeDef);
         }
-        if (dist < minDistanceForThisRoute) {
-          minDistanceForThisRoute = dist;
+
+        if (minDistanceForThisRoute < closestRouteData.distance) {
+          closestRouteData = {
+            route: routeDef,
+            distance: minDistanceForThisRoute,
+          };
         }
       });
 
-      if (isRouteInRadiusForCurrentRoute) {
-        routesInRadius.push(routeDef);
-      }
-
-      if (minDistanceForThisRoute < closestRouteData.distance) {
-        closestRouteData = { route: routeDef, distance: minDistanceForThisRoute };
-      }
-    });
-
-    if (routesInRadius.length > 0) {
-      setMapStatusMessage(`Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m alrededor del punto de interés.`);
-      for (const routeDef of routesInRadius) {
-        const polyline = await drawRouteFromMapbox(routeDef.data, routeDef.color);
+      if (routesInRadius.length > 0) {
+        setMapStatusMessage(
+          `Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m alrededor del punto de interés.`
+        );
+        for (const routeDef of routesInRadius) {
+          const polyline = await drawRouteFromMapbox(
+            routeDef.data,
+            routeDef.color
+          );
+          if (polyline) {
+            polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
+            doubleClickedRoutesPolylinesRef.current.push(polyline);
+            newDoubleClickDetails.push({
+              id: routeDef.id,
+              name: routeDef.name,
+              color: routeDef.color,
+            });
+          }
+        }
+      } else if (closestRouteData.route) {
+        const routeDef = closestRouteData.route;
+        setMapStatusMessage(
+          `No hay rutas en ${radius}m alrededor del punto de interés. Mostrando la más cercana: ${
+            closestRouteData.route.name
+          } (a ${closestRouteData.distance.toFixed(0)}m).`
+        );
+        const polyline = await drawRouteFromMapbox(
+          closestRouteData.route.data,
+          closestRouteData.route.color
+        );
         if (polyline) {
           polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
           doubleClickedRoutesPolylinesRef.current.push(polyline);
-          newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
+          newDoubleClickDetails.push({
+            id: routeDef.id,
+            name: routeDef.name,
+            color: routeDef.color,
+          });
         }
+      } else {
+        setMapStatusMessage("No hay rutas predefinidas cerca del POI.");
       }
-    } else if (closestRouteData.route) {
-      const routeDef = closestRouteData.route;
-      setMapStatusMessage(`No hay rutas en ${radius}m alrededor del punto de interés. Mostrando la más cercana: ${closestRouteData.route.name} (a ${closestRouteData.distance.toFixed(0)}m).`);
-      const polyline = await drawRouteFromMapbox(closestRouteData.route.data, closestRouteData.route.color);
-      if (polyline) {
-        polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
-        doubleClickedRoutesPolylinesRef.current.push(polyline);
-        newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
-      }
-    } else {
-      setMapStatusMessage("No hay rutas predefinidas cerca del POI.");
-    }
-    setActiveDoubleClickRouteDetails(newDoubleClickDetails);
+      setActiveDoubleClickRouteDetails(newDoubleClickDetails);
 
-    let pointsFromNewlySuggestedByClickRoutes = [];
-    doubleClickedRoutesPolylinesRef.current.forEach(polyline => {
-      if (polyline.getMap()) { 
+      let pointsFromNewlySuggestedByClickRoutes = [];
+      doubleClickedRoutesPolylinesRef.current.forEach((polyline) => {
+        if (polyline.getMap()) {
           const path = polyline.getPath().getArray();
           pointsFromNewlySuggestedByClickRoutes.push(...path);
-      }
-    });
+        }
+      });
 
-    let closestPointForCamionDown = null;
-    let minDistanceSqForCamionDown = Infinity;
+      let closestPointForCamionDown = null;
+      let minDistanceSqForCamionDown = Infinity;
 
-    if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
-        pointsFromNewlySuggestedByClickRoutes.forEach(pointOnRoute => {
-            const distSq =
-                Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
-                Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
-            if (distSq < minDistanceSqForCamionDown) {
-                minDistanceSqForCamionDown = distSq;
-                closestPointForCamionDown = pointOnRoute;
-            }
+      if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
+        pointsFromNewlySuggestedByClickRoutes.forEach((pointOnRoute) => {
+          const distSq =
+            Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
+            Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
+          if (distSq < minDistanceSqForCamionDown) {
+            minDistanceSqForCamionDown = distSq;
+            closestPointForCamionDown = pointOnRoute;
+          }
         });
-    }
+      }
 
-    if (closestPointForCamionDown) {
+      if (closestPointForCamionDown) {
         const camionDownIcon = {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconDownSvgString)}`,
-            scaledSize: new window.google.maps.Size(35, 45),
-            anchor: new window.google.maps.Point(35/2, 45/2),
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+            camionIconDownSvgString
+          )}`,
+          scaledSize: new window.google.maps.Size(35, 45),
+          anchor: new window.google.maps.Point(35 / 2, 45 / 2),
         };
         closestRoutePointMarkerRef.current = new window.google.maps.Marker({
-            position: closestPointForCamionDown,
-            map: mapRef.current,
-            icon: camionDownIcon,
-            title: "Parada más cercana en ruta sugerida (Parada B - Bajada)",
-            zIndex: 960
+          position: closestPointForCamionDown,
+          map: mapRef.current,
+          icon: camionDownIcon,
+          title: "Parada más cercana en ruta sugerida (Parada B - Bajada)",
+          zIndex: 960,
         });
-    }
+      }
 
-    updateTruckPosition(); 
+      updateTruckPosition();
 
-    const exactUserPosition = activeMarkerRef.current ? activeMarkerRef.current.getPosition() : null;
-    // clickedPositionGoogle is the exact destination for the visual marker
-    // For the API, we'll use a snapped version of clickedPositionGoogle
-    
-    const snappedUserLocation = exactUserPosition ? await getRoadSnappedLocation(exactUserPosition) : null;
-    const snappedDestinationLocation = await getRoadSnappedLocation(clickedPositionGoogle);
+      const exactUserPosition = activeMarkerRef.current
+        ? activeMarkerRef.current.getPosition()
+        : null;
+      // clickedPositionGoogle is the exact destination for the visual marker
+      // For the API, we'll use a snapped version of clickedPositionGoogle
 
+      const snappedUserLocation = exactUserPosition
+        ? await getRoadSnappedLocation(exactUserPosition)
+        : null;
+      const snappedDestinationLocation = await getRoadSnappedLocation(
+        clickedPositionGoogle
+      );
 
-    const truckStopAPositionForWalking = truckMarkerRef.current && truckMarkerRef.current.getMap() ? truckMarkerRef.current.getPosition() : null;
-    const truckStopBPositionForWalking = closestRoutePointMarkerRef.current && closestRoutePointMarkerRef.current.getMap() ? closestRoutePointMarkerRef.current.getPosition() : null;
+      const truckStopAPositionForWalking =
+        truckMarkerRef.current && truckMarkerRef.current.getMap()
+          ? truckMarkerRef.current.getPosition()
+          : null;
+      const truckStopBPositionForWalking =
+        closestRoutePointMarkerRef.current &&
+        closestRoutePointMarkerRef.current.getMap()
+          ? closestRoutePointMarkerRef.current.getPosition()
+          : null;
 
-    console.log("[GoogleMaps handlePoiRouteRequest] Preparing to draw walking routes. Exact User:", exactUserPosition, "Snapped User:", snappedUserLocation, "Exact Dest (POI):", clickedPositionGoogle, "Snapped Dest:", snappedDestinationLocation, "CamionA:", truckStopAPositionForWalking, "CamionB:", truckStopBPositionForWalking);
+      console.log(
+        "[GoogleMaps handlePoiRouteRequest] Preparing to draw walking routes. Exact User:",
+        exactUserPosition,
+        "Snapped User:",
+        snappedUserLocation,
+        "Exact Dest (POI):",
+        clickedPositionGoogle,
+        "Snapped Dest:",
+        snappedDestinationLocation,
+        "CamionA:",
+        truckStopAPositionForWalking,
+        "CamionB:",
+        truckStopBPositionForWalking
+      );
 
-    drawConnectingWalkingRoutes(
-      snappedUserLocation, 
-      truckStopAPositionForWalking,
-      snappedDestinationLocation, 
-      truckStopBPositionForWalking
-    );
+      drawConnectingWalkingRoutes(
+        snappedUserLocation,
+        truckStopAPositionForWalking,
+        snappedDestinationLocation,
+        truckStopBPositionForWalking
+      );
 
-    setTimeout(() => setMapStatusMessage(''), 7000);
-  }, [drawRouteFromMapbox, setMapStatusMessage, updateTruckPosition, drawConnectingWalkingRoutes, getRoadSnappedLocation]);
-
+      setTimeout(() => setMapStatusMessage(""), 7000);
+    },
+    [
+      drawRouteFromMapbox,
+      setMapStatusMessage,
+      updateTruckPosition,
+      drawConnectingWalkingRoutes,
+      getRoadSnappedLocation,
+    ]
+  );
 
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps) return;
@@ -1120,26 +1287,33 @@ export default function GoogleMaps() {
     let markerData = {};
 
     if (usingExternalGps) {
-        if (externalGpsLocation) {
-            currentDisplayLocation = externalGpsLocation;
-            isExternalSourceForMarker = true;
-            markerData = { humidity: externalGpsLocation.humidity, temperature: externalGpsLocation.temperature, accuracy: externalGpsLocation.accuracy };
-        }
+      if (externalGpsLocation) {
+        currentDisplayLocation = externalGpsLocation;
+        isExternalSourceForMarker = true;
+        markerData = {
+          humidity: externalGpsLocation.humidity,
+          temperature: externalGpsLocation.temperature,
+          accuracy: externalGpsLocation.accuracy,
+        };
+      }
     } else {
-        if (location) {
-            currentDisplayLocation = location;
-            isExternalSourceForMarker = false;
-            markerData = { accuracy: location.accuracy };
-        }
+      if (location) {
+        currentDisplayLocation = location;
+        isExternalSourceForMarker = false;
+        markerData = { accuracy: location.accuracy };
+      }
     }
 
     if (!mapRef.current && currentDisplayLocation) {
-        console.log("[GoogleMaps] Initializing Google Map instance.");
-        mapRef.current = new window.google.maps.Map(
-            document.getElementById("map"),
-            {
-            center: { lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng },
-            zoom: INITIAL_ZOOM_ATLIXCO, // Zoom inicial para Atlixco
+      console.log("[GoogleMaps] Initializing Google Map instance.");
+      mapRef.current = new window.google.maps.Map(
+        document.getElementById("map"),
+        {
+          center: {
+            lat: currentDisplayLocation.lat,
+            lng: currentDisplayLocation.lng,
+          },
+          zoom: INITIAL_ZOOM_ATLIXCO, // Zoom inicial para Atlixco
           mapTypeId: "roadmap",
           fullscreenControl: false,
           streetViewControl: false,
@@ -1147,229 +1321,336 @@ export default function GoogleMaps() {
           gestureHandling: "greedy",
           disableDoubleClickZoom: true,
           styles: mapCustomStyles,
-          restriction: { // <-- AQUÍ ES LA CLAVE
+          restriction: {
+            // <-- AQUÍ ES LA CLAVE
             latLngBounds: ATLIXCO_BOUNDS,
             strictBounds: true,
-            },}
-        );
-        mapRef.current.addListener('zoom_changed', () => { 
-          updateTruckPosition();
+          },
+        }
+      );
+      mapRef.current.addListener("zoom_changed", () => {
+        updateTruckPosition();
+      });
+
+      mapRef.current.addListener("dblclick", async (event) => {
+        console.log("[GoogleMaps dblclick] Event triggered.");
+        console.log("[GoogleMaps dblclick] Clearing previous walking routes.");
+        if (walkingToBusStopPolylineRef.current) {
+          walkingToBusStopPolylineRef.current.setMap(null);
+          walkingToBusStopPolylineRef.current = null;
+        }
+        if (walkingFromBusStopPolylineRef.current) {
+          walkingFromBusStopPolylineRef.current.setMap(null);
+          walkingFromBusStopPolylineRef.current = null;
+        }
+
+        if (doubleClickUserMarkerRef.current) {
+          doubleClickUserMarkerRef.current.setMap(null);
+          doubleClickUserMarkerRef.current = null;
+        }
+        if (closestRoutePointMarkerRef.current) {
+          closestRoutePointMarkerRef.current.setMap(null);
+          closestRoutePointMarkerRef.current = null;
+        }
+
+        const clickedLat = event.latLng.lat();
+        const clickedLng = event.latLng.lng();
+        const clickedPositionGoogle = new window.google.maps.LatLng(
+          clickedLat,
+          clickedLng
+        ); // Exact clicked position
+
+        const destinationIcon = {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+            destinationPinSvgString
+          )}`,
+          scaledSize: new window.google.maps.Size(30, 30),
+          anchor: new window.google.maps.Point(15, 25),
+        };
+
+        // Visual marker at exact clicked position
+        doubleClickUserMarkerRef.current = new window.google.maps.Marker({
+          position: clickedPositionGoogle,
+          map: mapRef.current,
+          title: "Destino seleccionado",
+          icon: destinationIcon,
+          zIndex: 955,
         });
 
-        mapRef.current.addListener('dblclick', async (event) => {
-          console.log("[GoogleMaps dblclick] Event triggered.");
-          console.log("[GoogleMaps dblclick] Clearing previous walking routes.");
-          if (walkingToBusStopPolylineRef.current) {
-            walkingToBusStopPolylineRef.current.setMap(null);
-            walkingToBusStopPolylineRef.current = null;
-          }
-          if (walkingFromBusStopPolylineRef.current) {
-            walkingFromBusStopPolylineRef.current.setMap(null);
-            walkingFromBusStopPolylineRef.current = null;
-          }
+        doubleClickedRoutesPolylinesRef.current.forEach((polyline) =>
+          polyline.setMap(null)
+        );
+        doubleClickedRoutesPolylinesRef.current = [];
 
-          if (doubleClickUserMarkerRef.current) {
-            doubleClickUserMarkerRef.current.setMap(null);
-            doubleClickUserMarkerRef.current = null;
-          }
-          if (closestRoutePointMarkerRef.current) {
-            closestRoutePointMarkerRef.current.setMap(null);
-            closestRoutePointMarkerRef.current = null;
-          }
+        if (dynamicPolylineRef.current) {
+          dynamicPolylineRef.current.setMap(null);
+          dynamicPolylineRef.current = null;
+        }
 
-          const clickedLat = event.latLng.lat();
-          const clickedLng = event.latLng.lng();
-          const clickedPositionGoogle = new window.google.maps.LatLng(clickedLat, clickedLng); // Exact clicked position
-          
-          const destinationIcon = {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(destinationPinSvgString)}`,
-              scaledSize: new window.google.maps.Size(30, 30), 
-              anchor: new window.google.maps.Point(15, 25),    
-          };
+        const radius = 200;
+        let routesInRadius = [];
+        let closestRouteData = { route: null, distance: Infinity };
+        let newDoubleClickDetails = [];
 
-          // Visual marker at exact clicked position
-          doubleClickUserMarkerRef.current = new window.google.maps.Marker({
-              position: clickedPositionGoogle,
-              map: mapRef.current,
-              title: "Destino seleccionado", 
-              icon: destinationIcon,
-              zIndex: 955 
-          });
+        ALL_PREDEFINED_ROUTES_CONFIG.forEach((routeDef) => {
+          let isRouteInRadiusForCurrentRoute = false;
+          let minDistanceForThisRoute = Infinity;
 
-          doubleClickedRoutesPolylinesRef.current.forEach(polyline => polyline.setMap(null));
-          doubleClickedRoutesPolylinesRef.current = [];
-
-          if (dynamicPolylineRef.current) {
-            dynamicPolylineRef.current.setMap(null);
-            dynamicPolylineRef.current = null;
-          }
-
-          const radius = 200;
-          let routesInRadius = [];
-          let closestRouteData = { route: null, distance: Infinity };
-          let newDoubleClickDetails = []
-
-          ALL_PREDEFINED_ROUTES_CONFIG.forEach(routeDef => {
-            let isRouteInRadiusForCurrentRoute = false;
-            let minDistanceForThisRoute = Infinity;
-
-            routeDef.data.forEach(pointCoords => {
-              const dist = getDistanceFromLatLonInMeters(clickedLat, clickedLng, pointCoords[1], pointCoords[0]);
-              if (dist <= radius) {
-                isRouteInRadiusForCurrentRoute = true;
-              }
-              if (dist < minDistanceForThisRoute) {
-                minDistanceForThisRoute = dist;
-              }
-            });
-
-            if (isRouteInRadiusForCurrentRoute) {
-              routesInRadius.push(routeDef);
+          routeDef.data.forEach((pointCoords) => {
+            const dist = getDistanceFromLatLonInMeters(
+              clickedLat,
+              clickedLng,
+              pointCoords[1],
+              pointCoords[0]
+            );
+            if (dist <= radius) {
+              isRouteInRadiusForCurrentRoute = true;
             }
-
-            if (minDistanceForThisRoute < closestRouteData.distance) {
-              closestRouteData = { route: routeDef, distance: minDistanceForThisRoute };
+            if (dist < minDistanceForThisRoute) {
+              minDistanceForThisRoute = dist;
             }
           });
 
-          if (routesInRadius.length > 0) {
-            setMapStatusMessage(`Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m.`);
-            for (const routeDef of routesInRadius) {
-              const polyline = await drawRouteFromMapbox(routeDef.data, routeDef.color);
-              if (polyline) {
-                polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
-                doubleClickedRoutesPolylinesRef.current.push(polyline);
-                newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
-              }
-            }
-          } else if (closestRouteData.route) {
-            const routeDef = closestRouteData.route;
-            setMapStatusMessage(`No hay rutas en ${radius}m. Mostrando la más cercana: ${closestRouteData.route.name} (a ${closestRouteData.distance.toFixed(0)}m).`);
-            const polyline = await drawRouteFromMapbox(closestRouteData.route.data, closestRouteData.route.color);
+          if (isRouteInRadiusForCurrentRoute) {
+            routesInRadius.push(routeDef);
+          }
+
+          if (minDistanceForThisRoute < closestRouteData.distance) {
+            closestRouteData = {
+              route: routeDef,
+              distance: minDistanceForThisRoute,
+            };
+          }
+        });
+
+        if (routesInRadius.length > 0) {
+          setMapStatusMessage(
+            `Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m.`
+          );
+          for (const routeDef of routesInRadius) {
+            const polyline = await drawRouteFromMapbox(
+              routeDef.data,
+              routeDef.color
+            );
             if (polyline) {
               polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
               doubleClickedRoutesPolylinesRef.current.push(polyline);
-              newDoubleClickDetails.push({ id: routeDef.id, name: routeDef.name, color: routeDef.color });
-            }
-          } else {
-            setMapStatusMessage("No hay rutas predefinidas cerca del punto clickeado.");
-          }
-          setActiveDoubleClickRouteDetails(newDoubleClickDetails);
-
-          let pointsFromNewlySuggestedByClickRoutes = [];
-          doubleClickedRoutesPolylinesRef.current.forEach(polyline => {
-            if (polyline.getMap()) { 
-                const path = polyline.getPath().getArray();
-                pointsFromNewlySuggestedByClickRoutes.push(...path);
-            }
-          });
-
-          let closestPointForCamionDown = null;
-          let minDistanceSqForCamionDown = Infinity;
-
-          if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
-              pointsFromNewlySuggestedByClickRoutes.forEach(pointOnRoute => {
-                  const distSq =
-                      Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
-                      Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
-                  if (distSq < minDistanceSqForCamionDown) {
-                      minDistanceSqForCamionDown = distSq;
-                      closestPointForCamionDown = pointOnRoute;
-                  }
+              newDoubleClickDetails.push({
+                id: routeDef.id,
+                name: routeDef.name,
+                color: routeDef.color,
               });
+            }
           }
-
-          if (closestPointForCamionDown) {
-              const camionDownIcon = {
-                  url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconDownSvgString)}`,
-                  scaledSize: new window.google.maps.Size(35, 45), 
-                  anchor: new window.google.maps.Point(35/2, 45/2), 
-              };
-              closestRoutePointMarkerRef.current = new window.google.maps.Marker({
-                  position: closestPointForCamionDown,
-                  map: mapRef.current,
-                  icon: camionDownIcon,
-                  title: "Parada más cercana en ruta sugerida (Parada B - Bajada)",
-                  zIndex: 960 
-              });
-          }
-
-          updateTruckPosition(); 
-
-          const exactUserPosition = activeMarkerRef.current ? activeMarkerRef.current.getPosition() : null;
-          // clickedPositionGoogle is the exact destination for the visual marker
-          // For the API, we'll use a snapped version
-          
-          const snappedUserLocation = exactUserPosition ? await getRoadSnappedLocation(exactUserPosition) : null;
-          const snappedClickedPosition = await getRoadSnappedLocation(clickedPositionGoogle);
-
-
-          const truckStopAPositionForWalking = truckMarkerRef.current && truckMarkerRef.current.getMap() ? truckMarkerRef.current.getPosition() : null;
-          const truckStopBPositionForWalking = closestRoutePointMarkerRef.current && closestRoutePointMarkerRef.current.getMap() ? closestRoutePointMarkerRef.current.getPosition() : null;
-          
-          console.log("[GoogleMaps dblclick] Preparing to draw walking routes. Exact User:", exactUserPosition, "Snapped User:", snappedUserLocation, "Exact Click:", clickedPositionGoogle, "Snapped Click:", snappedClickedPosition, "CamionA:", truckStopAPositionForWalking, "CamionB:", truckStopBPositionForWalking);
-
-          drawConnectingWalkingRoutes(
-            snappedUserLocation, 
-            truckStopAPositionForWalking,
-            snappedClickedPosition, 
-            truckStopBPositionForWalking
+        } else if (closestRouteData.route) {
+          const routeDef = closestRouteData.route;
+          setMapStatusMessage(
+            `No hay rutas en ${radius}m. Mostrando la más cercana: ${
+              closestRouteData.route.name
+            } (a ${closestRouteData.distance.toFixed(0)}m).`
           );
+          const polyline = await drawRouteFromMapbox(
+            closestRouteData.route.data,
+            closestRouteData.route.color
+          );
+          if (polyline) {
+            polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
+            doubleClickedRoutesPolylinesRef.current.push(polyline);
+            newDoubleClickDetails.push({
+              id: routeDef.id,
+              name: routeDef.name,
+              color: routeDef.color,
+            });
+          }
+        } else {
+          setMapStatusMessage(
+            "No hay rutas predefinidas cerca del punto clickeado."
+          );
+        }
+        setActiveDoubleClickRouteDetails(newDoubleClickDetails);
 
-          setTimeout(() => setMapStatusMessage(''), 7000);
+        let pointsFromNewlySuggestedByClickRoutes = [];
+        doubleClickedRoutesPolylinesRef.current.forEach((polyline) => {
+          if (polyline.getMap()) {
+            const path = polyline.getPath().getArray();
+            pointsFromNewlySuggestedByClickRoutes.push(...path);
+          }
         });
 
-    } else if (mapRef.current && currentDisplayLocation) {
-        if (mapRef.current.getCenter().lat() !== currentDisplayLocation.lat || mapRef.current.getCenter().lng() !== currentDisplayLocation.lng) {
-            mapRef.current.panTo({ lat: currentDisplayLocation.lat, lng: currentDisplayLocation.lng });
+        let closestPointForCamionDown = null;
+        let minDistanceSqForCamionDown = Infinity;
+
+        if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
+          pointsFromNewlySuggestedByClickRoutes.forEach((pointOnRoute) => {
+            const distSq =
+              Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
+              Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
+            if (distSq < minDistanceSqForCamionDown) {
+              minDistanceSqForCamionDown = distSq;
+              closestPointForCamionDown = pointOnRoute;
+            }
+          });
         }
+
+        if (closestPointForCamionDown) {
+          const camionDownIcon = {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+              camionIconDownSvgString
+            )}`,
+            scaledSize: new window.google.maps.Size(35, 45),
+            anchor: new window.google.maps.Point(35 / 2, 45 / 2),
+          };
+          closestRoutePointMarkerRef.current = new window.google.maps.Marker({
+            position: closestPointForCamionDown,
+            map: mapRef.current,
+            icon: camionDownIcon,
+            title: "Parada más cercana en ruta sugerida (Parada B - Bajada)",
+            zIndex: 960,
+          });
+        }
+
+        updateTruckPosition();
+
+        const exactUserPosition = activeMarkerRef.current
+          ? activeMarkerRef.current.getPosition()
+          : null;
+        // clickedPositionGoogle is the exact destination for the visual marker
+        // For the API, we'll use a snapped version
+
+        const snappedUserLocation = exactUserPosition
+          ? await getRoadSnappedLocation(exactUserPosition)
+          : null;
+        const snappedClickedPosition = await getRoadSnappedLocation(
+          clickedPositionGoogle
+        );
+
+        const truckStopAPositionForWalking =
+          truckMarkerRef.current && truckMarkerRef.current.getMap()
+            ? truckMarkerRef.current.getPosition()
+            : null;
+        const truckStopBPositionForWalking =
+          closestRoutePointMarkerRef.current &&
+          closestRoutePointMarkerRef.current.getMap()
+            ? closestRoutePointMarkerRef.current.getPosition()
+            : null;
+
+        console.log(
+          "[GoogleMaps dblclick] Preparing to draw walking routes. Exact User:",
+          exactUserPosition,
+          "Snapped User:",
+          snappedUserLocation,
+          "Exact Click:",
+          clickedPositionGoogle,
+          "Snapped Click:",
+          snappedClickedPosition,
+          "CamionA:",
+          truckStopAPositionForWalking,
+          "CamionB:",
+          truckStopBPositionForWalking
+        );
+
+        drawConnectingWalkingRoutes(
+          snappedUserLocation,
+          truckStopAPositionForWalking,
+          snappedClickedPosition,
+          truckStopBPositionForWalking
+        );
+
+        setTimeout(() => setMapStatusMessage(""), 7000);
+      });
+    } else if (mapRef.current && currentDisplayLocation) {
+      if (
+        mapRef.current.getCenter().lat() !== currentDisplayLocation.lat ||
+        mapRef.current.getCenter().lng() !== currentDisplayLocation.lng
+      ) {
+        mapRef.current.panTo({
+          lat: currentDisplayLocation.lat,
+          lng: currentDisplayLocation.lng,
+        });
+      }
     }
 
     if (currentDisplayLocation) {
-        updateMarker(currentDisplayLocation.lat, currentDisplayLocation.lng, isExternalSourceForMarker, 0, markerData);
+      updateMarker(
+        currentDisplayLocation.lat,
+        currentDisplayLocation.lng,
+        isExternalSourceForMarker,
+        0,
+        markerData
+      );
     } else {
-        activeMarkerRef.current?.setMap(null);
+      activeMarkerRef.current?.setMap(null);
     }
     updateTruckPosition();
-  }, [location, externalGpsLocation, mapLoaded, usingExternalGps, updateMarker, drawRouteFromMapbox, setMapStatusMessage, updateTruckPosition, handlePoiRouteRequest, drawConnectingWalkingRoutes, getRoadSnappedLocation]);
-
+  }, [
+    location,
+    externalGpsLocation,
+    mapLoaded,
+    usingExternalGps,
+    updateMarker,
+    drawRouteFromMapbox,
+    setMapStatusMessage,
+    updateTruckPosition,
+    handlePoiRouteRequest,
+    drawConnectingWalkingRoutes,
+    getRoadSnappedLocation,
+  ]);
 
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) {
-        if (showPredefinedRoutes && activePredefinedRouteDetails.length > 0) {
-            setActivePredefinedRouteDetails([]);
-        }
-        if (!showPredefinedRoutes) {
-             predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
-             predefinedPolylinesRef.current = [];
-             if (activePredefinedRouteDetails.length > 0) setActivePredefinedRouteDetails([]);
-        }
-        updateTruckPosition();
-        return;
+      if (showPredefinedRoutes && activePredefinedRouteDetails.length > 0) {
+        setActivePredefinedRouteDetails([]);
+      }
+      if (!showPredefinedRoutes) {
+        predefinedPolylinesRef.current.forEach((polyline) =>
+          polyline.setMap(null)
+        );
+        predefinedPolylinesRef.current = [];
+        if (activePredefinedRouteDetails.length > 0)
+          setActivePredefinedRouteDetails([]);
+      }
+      updateTruckPosition();
+      return;
     }
 
-    predefinedPolylinesRef.current.forEach(polyline => polyline.setMap(null));
+    predefinedPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
     predefinedPolylinesRef.current = [];
 
     if (showPredefinedRoutes) {
-        Promise.all(ALL_PREDEFINED_ROUTES_CONFIG.map(async (routeDef) => {
-            const polyline = await drawRouteFromMapbox(routeDef.data, routeDef.color);
-            if (polyline) {
-                polyline.setOptions({ zIndex: 3 });
-                predefinedPolylinesRef.current.push(polyline);
-                return { id: routeDef.id, name: routeDef.name, color: routeDef.color };
-            }
-            return null;
-        })).then(results => {
-            const successfullyDrawnRoutesDetails = results.filter(r => r !== null);
-            setActivePredefinedRouteDetails(successfullyDrawnRoutesDetails);
-            updateTruckPosition();
-        });
+      Promise.all(
+        ALL_PREDEFINED_ROUTES_CONFIG.map(async (routeDef) => {
+          const polyline = await drawRouteFromMapbox(
+            routeDef.data,
+            routeDef.color
+          );
+          if (polyline) {
+            polyline.setOptions({ zIndex: 3 });
+            predefinedPolylinesRef.current.push(polyline);
+            return {
+              id: routeDef.id,
+              name: routeDef.name,
+              color: routeDef.color,
+            };
+          }
+          return null;
+        })
+      ).then((results) => {
+        const successfullyDrawnRoutesDetails = results.filter(
+          (r) => r !== null
+        );
+        setActivePredefinedRouteDetails(successfullyDrawnRoutesDetails);
+        updateTruckPosition();
+      });
     } else {
-        setActivePredefinedRouteDetails([]);
-        updateTruckPosition(); 
+      setActivePredefinedRouteDetails([]);
+      updateTruckPosition();
     }
-  }, [showPredefinedRoutes, mapLoaded, drawRouteFromMapbox, updateTruckPosition]); 
+  }, [
+    showPredefinedRoutes,
+    mapLoaded,
+    drawRouteFromMapbox,
+    updateTruckPosition,
+  ]);
 
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
@@ -1377,30 +1658,68 @@ export default function GoogleMaps() {
     poiMarkersRef.current.forEach((m) => m.setMap(null));
     poiMarkersRef.current = [];
     if (openInfoWindowRef.current) {
-        if (activeMarkerRef.current && openInfoWindowRef.current.anchor === activeMarkerRef.current) { /* No cerrar */ }
-        else { openInfoWindowRef.current.close(); openInfoWindowRef.current = null; }
+      if (
+        activeMarkerRef.current &&
+        openInfoWindowRef.current.anchor === activeMarkerRef.current
+      ) {
+        /* No cerrar */
+      } else {
+        openInfoWindowRef.current.close();
+        openInfoWindowRef.current = null;
+      }
     }
 
     lugares.forEach((lugar) => {
       const { lat, lng } = lugar.ubicacion || {};
-      if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
-      const poiDefinition = poiTypes.find(pt => pt.tipo === lugar.tipo);
-      let iconOptions = { scaledSize: new window.google.maps.Size(32, 32), anchor: new window.google.maps.Point(16, 32) };
+      if (
+        typeof lat !== "number" ||
+        typeof lng !== "number" ||
+        isNaN(lat) ||
+        isNaN(lng)
+      )
+        return;
+      const poiDefinition = poiTypes.find((pt) => pt.tipo === lugar.tipo);
+      let iconOptions = {
+        scaledSize: new window.google.maps.Size(32, 32),
+        anchor: new window.google.maps.Point(16, 32),
+      };
       if (poiDefinition) {
         if (poiDefinition.svgString) {
-          iconOptions = { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(poiDefinition.svgString)}`, scaledSize: new window.google.maps.Size(32, 32), anchor: new window.google.maps.Point(16, 16) };
+          iconOptions = {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+              poiDefinition.svgString
+            )}`,
+            scaledSize: new window.google.maps.Size(32, 32),
+            anchor: new window.google.maps.Point(16, 16),
+          };
         } else if (poiDefinition.emoji && poiDefinition.tipo !== "Todos") {
           const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
-          iconOptions = { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgEmoji)}`, scaledSize: new window.google.maps.Size(32, 32), anchor: new window.google.maps.Point(16, 16) };
+          iconOptions = {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+              svgEmoji
+            )}`,
+            scaledSize: new window.google.maps.Size(32, 32),
+            anchor: new window.google.maps.Point(16, 16),
+          };
         }
       }
 
       if (!iconOptions.url || !iconOptions.url) {
-      return;
-    }
-      const marker = new window.google.maps.Marker({ position: { lat, lng }, map: mapRef.current, title: lugar.nombre, icon: iconOptions });
-      const id = `carrusel-${lugar.id || Math.random().toString(36).substr(2, 9)}`;
-      const imagenes = lugar.imagenes && lugar.imagenes.length > 0 ? lugar.imagenes : ['/icons/placeholder.png'];
+        return;
+      }
+      const marker = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: mapRef.current,
+        title: lugar.nombre,
+        icon: iconOptions,
+      });
+      const id = `carrusel-${
+        lugar.id || Math.random().toString(36).substr(2, 9)
+      }`;
+      const imagenes =
+        lugar.imagenes && lugar.imagenes.length > 0
+          ? lugar.imagenes
+          : ["/icons/placeholder.png"];
       const svgArrowLeft = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M257.5 445.1l-22.2 22.2c-9.4 9.4-24.6 9.4-33.9 0L7 273c-9.4-9.4-9.4-24.6 0-33.9L201.4 44.7c9.4-9.4 24.6-9.4 33.9 0l22.2 22.2c9.5 9.5 9.3 25-.4 34.3L136.6 216H424c13.3 0 24 10.7 24 24v32c0 13.3-10.7 24-24 24H136.6l120.5 114.8c9.8 9.3 10 24.8.4 34.3z"></path></svg>`;
       const svgArrowRight = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M190.5 66.9l22.2-22.2c9.4-9.4 24.6-9.4 33.9 0L416 239c9.4 9.4 9.4 24.6 0 33.9L246.6 467.3c-9.4-9.4-24.6-9.4-33.9 0l-22.2-22.2c-9.5-9.5-9.3-25 .4-34.3L311.4 296H24c-13.3 0-24-10.7-24-24v-32c0 13.3 10.7-24 24-24h287.4L190.9 101.2c-9.8-9.3-10-24.8-.4-34.3z"></path></svg>`;
       const svgRoute = `<svg
@@ -1423,66 +1742,135 @@ export default function GoogleMaps() {
       ></path>
     </svg>`;
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
-      
-const infoWindowContent = `<style>.gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; } .gm-style .gm-style-iw-d { overflow: hidden !important; } .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; } .info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; } .info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; } .info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); } .info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; } .info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; } .info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); } .info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; } .info-window-image-gallery { margin-bottom: 16px; position: relative; } .info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); } .info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .info-window-image:hover { transform: scale(1.02); } .info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; } .info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; } .info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; } .info-window-gallery-button:hover::before { left: 100%; } .info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; } .info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); } .info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; } .info-window-gallery-button:disabled::before { display: none; } .info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; } .info-window-details { font-size: 0.85rem; color: #2d3748; text-align: center; } .info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; } .info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); } .info-window-detail-item:last-child { margin-bottom: 0; } .info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; } .info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; } .info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); } .info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); } .info-window-route-button svg { width: 20px; height: 20px; } @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } .info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } @media (max-width: 480px) { .info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; } .info-window-header { padding: 12px 16px; } .info-window-custom-title { font-size: 1rem; } .info-window-body { padding: 16px; max-height: 50vh; } .info-window-image-wrapper { height: 150px; } .info-window-gallery-button { width: 44px; height: 44px; } .info-window-gallery-button svg { width: 20px; height: 20px; } .info-window-description { font-size: 0.85rem; padding: 12px 14px; } .info-window-details { font-size: 0.8rem; } .info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; } .info-window-detail-label { margin-bottom: 4px; margin-right: 0; } } @media (max-width: 320px) { .info-window-custom-container { max-width: 260px; } .info-window-gallery-controls { gap: 12px; } } @media (hover: none) and (pointer: coarse) { .info-window-gallery-button:hover { transform: none; } .info-window-detail-item:hover { transform: none; } .info-window-image:hover { transform: none; } .info-window-route-button:hover { transform: none; } } </style><div class="info-window-custom-container" id="${id}-container"><div class="info-window-header"><h3 class="info-window-custom-title">${lugar.nombre}</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${imagenes[0]}" id="${id}-img" class="info-window-image" alt="Imagen de ${lugar.nombre}" /></div>${imagenes.length > 1 ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button></div>` : ''}</div><p class="info-window-description">${lugar.descripcion || "No hay descripción disponible."}</p><div class="info-window-details"><div class="info-window-detail-item"><span class="info-window-detail-label">Tipo:</span><span class="info-window-detail-value">${lugar.tipo}</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Costo:</span><span class="info-window-detail-value">${lugar.costo_entrada || "Gratis"}</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Horario:</span><span class="info-window-detail-value">${lugar.horario || "No especificado"}</span></div><button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button></div></div></div>`;      
-      const infoWindow = new window.google.maps.InfoWindow({ content: infoWindowContent, ariaLabel: lugar.nombre, disableAutoPan: false, pixelOffset: new window.google.maps.Size(0, -10) });
-      marker.addListener("click", () => { openInfoWindowRef.current?.close(); infoWindow.open(mapRef.current, marker); openInfoWindowRef.current = infoWindow; });
-      window.google.maps.event.addListener(infoWindow, 'domready', () => {
+
+      const infoWindowContent = `<style>.gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; } .gm-style .gm-style-iw-d { overflow: hidden !important; } .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; } .info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; } .info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; } .info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); } .info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; } .info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; } .info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); } .info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; } .info-window-image-gallery { margin-bottom: 16px; position: relative; } .info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); } .info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .info-window-image:hover { transform: scale(1.02); } .info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; } .info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; } .info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; } .info-window-gallery-button:hover::before { left: 100%; } .info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; } .info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); } .info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; } .info-window-gallery-button:disabled::before { display: none; } .info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; } .info-window-details { font-size: 0.85rem; color: #2d3748; text-align: center; } .info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; } .info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); } .info-window-detail-item:last-child { margin-bottom: 0; } .info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; } .info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; } .info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); } .info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); } .info-window-route-button svg { width: 20px; height: 20px; } @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } .info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } @media (max-width: 480px) { .info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; } .info-window-header { padding: 12px 16px; } .info-window-custom-title { font-size: 1rem; } .info-window-body { padding: 16px; max-height: 50vh; } .info-window-image-wrapper { height: 150px; } .info-window-gallery-button { width: 44px; height: 44px; } .info-window-gallery-button svg { width: 20px; height: 20px; } .info-window-description { font-size: 0.85rem; padding: 12px 14px; } .info-window-details { font-size: 0.8rem; } .info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; } .info-window-detail-label { margin-bottom: 4px; margin-right: 0; } } @media (max-width: 320px) { .info-window-custom-container { max-width: 260px; } .info-window-gallery-controls { gap: 12px; } } @media (hover: none) and (pointer: coarse) { .info-window-gallery-button:hover { transform: none; } .info-window-detail-item:hover { transform: none; } .info-window-image:hover { transform: none; } .info-window-route-button:hover { transform: none; } } </style><div class="info-window-custom-container" id="${id}-container"><div class="info-window-header"><h3 class="info-window-custom-title">${
+        lugar.nombre
+      }</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${
+        imagenes[0]
+      }" id="${id}-img" class="info-window-image" alt="Imagen de ${
+        lugar.nombre
+      }" /></div>${
+        imagenes.length > 1
+          ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button></div>`
+          : ""
+      }</div><p class="info-window-description">${
+        lugar.descripcion || "No hay descripción disponible."
+      }</p><div class="info-window-details"><div class="info-window-detail-item"><span class="info-window-detail-label">Tipo:</span><span class="info-window-detail-value">${
+        lugar.tipo
+      }</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Costo:</span><span class="info-window-detail-value">${
+        lugar.costo_entrada || "Gratis"
+      }</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Horario:</span><span class="info-window-detail-value">${
+        lugar.horario || "No especificado"
+      }</span></div><button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button></div></div></div>`;
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: infoWindowContent,
+        ariaLabel: lugar.nombre,
+        disableAutoPan: false,
+        pixelOffset: new window.google.maps.Size(0, -10),
+      });
+      marker.addListener("click", () => {
+        openInfoWindowRef.current?.close();
+        infoWindow.open(mapRef.current, marker);
+        openInfoWindowRef.current = infoWindow;
+      });
+      window.google.maps.event.addListener(infoWindow, "domready", () => {
         const closeButton = document.getElementById(`${id}-custom-close-btn`);
         if (closeButton) closeButton.onclick = () => infoWindow.close();
         const routeButton = document.getElementById(`${id}-route-btn`);
         if (routeButton) {
           routeButton.onclick = () => {
             handlePoiRouteRequest(lugar.ubicacion);
-            infoWindow.close(); 
+            infoWindow.close();
           };
         }
 
         if (imagenes.length > 1) {
-          const prevButton = document.getElementById(`${id}-prev`); const nextButton = document.getElementById(`${id}-next`); const imgElement = document.getElementById(`${id}-img`);
+          const prevButton = document.getElementById(`${id}-prev`);
+          const nextButton = document.getElementById(`${id}-next`);
+          const imgElement = document.getElementById(`${id}-img`);
           let currentImageIndex = 0;
           const updateGallery = () => {
-            if(imgElement) { imgElement.style.opacity = '0.5'; setTimeout(() => { imgElement.src = imagenes[currentImageIndex]; imgElement.style.opacity = '1'; }, 150); }
-            if(prevButton) prevButton.disabled = currentImageIndex === 0;
-            if(nextButton) nextButton.disabled = currentImageIndex === imagenes.length - 1;
+            if (imgElement) {
+              imgElement.style.opacity = "0.5";
+              setTimeout(() => {
+                imgElement.src = imagenes[currentImageIndex];
+                imgElement.style.opacity = "1";
+              }, 150);
+            }
+            if (prevButton) prevButton.disabled = currentImageIndex === 0;
+            if (nextButton)
+              nextButton.disabled = currentImageIndex === imagenes.length - 1;
           };
-          if(prevButton) prevButton.onclick = () => { if (currentImageIndex > 0) { currentImageIndex--; updateGallery(); } };
-          if(nextButton) nextButton.onclick = () => { if (currentImageIndex < imagenes.length - 1) { currentImageIndex++; updateGallery(); } };
+          if (prevButton)
+            prevButton.onclick = () => {
+              if (currentImageIndex > 0) {
+                currentImageIndex--;
+                updateGallery();
+              }
+            };
+          if (nextButton)
+            nextButton.onclick = () => {
+              if (currentImageIndex < imagenes.length - 1) {
+                currentImageIndex++;
+                updateGallery();
+              }
+            };
           if (imgElement) {
-              let touchStartX = 0;
-              imgElement.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-              imgElement.addEventListener('touchend', (e) => {
-                  const touchEndX = e.changedTouches[0].screenX; const swipeThreshold = 50;
-                  if (touchStartX - touchEndX > swipeThreshold && currentImageIndex < imagenes.length - 1) { currentImageIndex++; updateGallery(); }
-                  else if (touchEndX - touchStartX > swipeThreshold && currentImageIndex > 0) { currentImageIndex--; updateGallery(); }
-              });
+            let touchStartX = 0;
+            imgElement.addEventListener(
+              "touchstart",
+              (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+              },
+              { passive: true }
+            );
+            imgElement.addEventListener("touchend", (e) => {
+              const touchEndX = e.changedTouches[0].screenX;
+              const swipeThreshold = 50;
+              if (
+                touchStartX - touchEndX > swipeThreshold &&
+                currentImageIndex < imagenes.length - 1
+              ) {
+                currentImageIndex++;
+                updateGallery();
+              } else if (
+                touchEndX - touchStartX > swipeThreshold &&
+                currentImageIndex > 0
+              ) {
+                currentImageIndex--;
+                updateGallery();
+              }
+            });
           }
           updateGallery();
         }
       });
       poiMarkersRef.current.push(marker);
     });
-  }, [lugares, mapLoaded, handlePoiRouteRequest]); 
+  }, [lugares, mapLoaded, handlePoiRouteRequest]);
 
+  const togglePoiMenu = useCallback(
+    () => setIsPoiMenuOpen((prev) => !prev),
+    []
+  );
 
-  const togglePoiMenu = useCallback(() => setIsPoiMenuOpen(prev => !prev), []);
-
-  const handlePoiTypeSelect = useCallback((poi) => {
-    setSelectedPoiType(poi);
-    if (poi.tipo === "Todos") fetchAllLugares();
-    else fetchLugaresPorTipo(poi.tipo);
-    setIsPoiMenuOpen(false);
-  }, [fetchLugaresPorTipo, fetchAllLugares]);
+  const handlePoiTypeSelect = useCallback(
+    (poi) => {
+      setSelectedPoiType(poi);
+      if (poi.tipo === "Todos") fetchAllLugares();
+      else fetchLugaresPorTipo(poi.tipo);
+      setIsPoiMenuOpen(false);
+    },
+    [fetchLugaresPorTipo, fetchAllLugares]
+  );
 
   useEffect(() => {
     if (selectedPoiType && selectedPoiType.tipo === "Todos" && mapLoaded) {
-        fetchAllLugares();
+      fetchAllLugares();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapLoaded, selectedPoiType]);
 
-
-  
   return (
     <div className={styles.mapRoot}>
       <Sidebar
@@ -1490,34 +1878,62 @@ const infoWindowContent = `<style>.gm-style .gm-style-iw-c { padding: 0 !importa
         arePredefinedRoutesVisible={showPredefinedRoutes}
       />
 
-    {mapLoaded && (
+      {mapLoaded && (
         <div className={styles.transportInfoContainer}>
           <button
             onClick={toggleTransportInfoPanel}
-            className={`${styles.transportInfoButton} ${isTransportInfoPanelOpen ? styles.infoButtonActive : ''}`}
+            className={`${styles.transportInfoButton} ${
+              isTransportInfoPanelOpen ? styles.infoButtonActive : ""
+            }`}
             title="Información sobre rutas"
             aria-expanded={isTransportInfoPanelOpen}
             aria-controls="transport-info-panel"
           >
-           <CiCircleInfo size = {30} color="white"/>
+            <CiCircleInfo size={30} color="white" />
           </button>
           {isTransportInfoPanelOpen && (
-              <div className={styles.transportInfoPanel} id="transport-info-panel">
-Doble click para mostrar ruta con parada en el punto seleccionado
-
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-      {
-
-<div dangerouslySetInnerHTML={{ __html: camionIconSvgString.replace('<svg ', '<svg width="35" ') }} />
-      }
-      <span>Parada mas cercana a tí (SUBIDA)</span>
-    </div>
-     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-        <div dangerouslySetInnerHTML={{ __html: camionIconDownSvgString.replace('<svg ', '<svg width="35" ') }} />
-        <span>Parada mas cercana al punto (BAJADA)</span>
-    </div>
-
-  </div>
+            <div
+              className={styles.transportInfoPanel}
+              id="transport-info-panel"
+            >
+              Doble click para mostrar ruta con parada en el punto seleccionado
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "8px",
+                }}
+              >
+                {
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: camionIconSvgString.replace(
+                        "<svg ",
+                        '<svg width="35" '
+                      ),
+                    }}
+                  />
+                }
+                <span>Parada mas cercana a tí (SUBIDA)</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "8px",
+                }}
+              >
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: camionIconDownSvgString.replace(
+                      "<svg ",
+                      '<svg width="35" '
+                    ),
+                  }}
+                />
+                <span>Parada mas cercana al punto (BAJADA)</span>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1525,20 +1941,44 @@ Doble click para mostrar ruta con parada en el punto seleccionado
       {error && <div className={styles.errorBox}>{error}</div>}
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
         {location && (
-          <button onClick={() => requestLocation(true)} className={styles.mapButton} title="Actualizar mi ubicación (GPS Interno)">
+          <button
+            onClick={() => requestLocation(true)}
+            className={styles.mapButton}
+            title="Actualizar mi ubicación (GPS Interno)"
+          >
             <IoReloadCircle size={24} />
           </button>
         )}
-        <button onClick={toggleGpsSource} className={`${styles.mapButton} ${styles.gpsToggle} ${usingExternalGps ? styles.externalActive : ''}`} title={usingExternalGps ? "Usando GPS Externo (click para cambiar a Interno)" : "Usando GPS Interno (click para cambiar a Externo)"}>
+        <button
+          onClick={toggleGpsSource}
+          className={`${styles.mapButton} ${styles.gpsToggle} ${
+            usingExternalGps ? styles.externalActive : ""
+          }`}
+          title={
+            usingExternalGps
+              ? "Usando GPS Externo (click para cambiar a Interno)"
+              : "Usando GPS Interno (click para cambiar a Externo)"
+          }
+        >
           {usingExternalGps ? <MdGpsFixed size={24} /> : <MdGpsOff size={24} />}
         </button>
       </div>
       <div className={styles.mapContainer}>
-        {mapStatusMessage && <div className={styles.mapOverlayMessage}>{mapStatusMessage}</div>}
-        {!mapLoaded && !mapStatusMessage && <div className={styles.loadingState}><div className={styles.spinner}></div>Cargando mapa...</div>}
-        <div id="map" className={styles.mapElement} style={{ visibility: mapLoaded ? 'visible' : 'hidden' }}></div>
+        {mapStatusMessage && (
+          <div className={styles.mapOverlayMessage}>{mapStatusMessage}</div>
+        )}
+        {!mapLoaded && !mapStatusMessage && (
+          <div className={styles.loadingState}>
+            <div className={styles.spinner}></div>Cargando mapa...
+          </div>
+        )}
+        <div
+          id="map"
+          className={styles.mapElement}
+          style={{ visibility: mapLoaded ? "visible" : "hidden" }}
+        ></div>
 
-      {visibleRouteLegends.length > 0 && (
+        {visibleRouteLegends.length > 0 && (
           <div className={styles.routeLegendContainer}>
             <ul className={styles.routeLegendList}>
               {visibleRouteLegends.map((route) => (
@@ -1551,10 +1991,12 @@ Doble click para mostrar ruta con parada en el punto seleccionado
                 </li>
               ))}
             </ul>
-          </div>)}
+          </div>
+        )}
         {mapLoaded && (
           <div className={styles.doubleClickLegend}>
-            Doble click en cualquier parte del mapa para mostrar la ruta con parada más cercana
+            Doble click en cualquier parte del mapa para mostrar la ruta con
+            parada más cercana
           </div>
         )}
       </div>
@@ -1563,15 +2005,45 @@ Doble click para mostrar ruta con parada en el punto seleccionado
         {isPoiMenuOpen && (
           <div className={styles.poiMenu}>
             {poiTypes.map((poi, index) => (
-              <button key={poi.tipo} onClick={() => handlePoiTypeSelect(poi)} className={`${styles.poiMenuItem} ${selectedPoiType && selectedPoiType.tipo === poi.tipo ? styles.poiMenuItemActive : ''}`} title={poi.tipo} style={{ animationDelay: `${index * 0.08}s` }}>
+              <button
+                key={poi.tipo}
+                onClick={() => handlePoiTypeSelect(poi)}
+                className={`${styles.poiMenuItem} ${
+                  selectedPoiType && selectedPoiType.tipo === poi.tipo
+                    ? styles.poiMenuItemActive
+                    : ""
+                }`}
+                title={poi.tipo}
+                style={{ animationDelay: `${index * 0.08}s` }}
+              >
                 <poi.Icono size={22} />
-                <span className={styles.poiMenuItemText}>{poi.tipo === "Todos" ? "Todos los lugares" : poi.tipo}</span>
+                <span className={styles.poiMenuItemText}>
+                  {poi.tipo === "Todos" ? "Todos los lugares" : poi.tipo}
+                </span>
               </button>
             ))}
           </div>
         )}
-        <button onClick={togglePoiMenu} className={styles.poiFab} title={selectedPoiType ? `Mostrando: ${selectedPoiType.tipo === "Todos" ? "Todos los lugares" : selectedPoiType.tipo}` : "Seleccionar tipo de lugar"} aria-expanded={isPoiMenuOpen} aria-haspopup="true">
-          {selectedPoiType ? <selectedPoiType.Icono size={28} /> : <FaMapMarkerAlt size={28} />}
+        <button
+          onClick={togglePoiMenu}
+          className={styles.poiFab}
+          title={
+            selectedPoiType
+              ? `Mostrando: ${
+                  selectedPoiType.tipo === "Todos"
+                    ? "Todos los lugares"
+                    : selectedPoiType.tipo
+                }`
+              : "Seleccionar tipo de lugar"
+          }
+          aria-expanded={isPoiMenuOpen}
+          aria-haspopup="true"
+        >
+          {selectedPoiType ? (
+            <selectedPoiType.Icono size={28} />
+          ) : (
+            <FaMapMarkerAlt size={28} />
+          )}
         </button>
       </div>
     </div>
