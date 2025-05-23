@@ -152,19 +152,6 @@ const getCurrentLocation = () =>
     );
   });
 
-// --- INICIO DE SVGs ---
-const museoIconSvgString = "/icons/museo.svg";
-
-const restauranteIconSvgString = "/icons/restaurante.svg";
-
-const monumentoHistoricoIconSvgString = "/icons/monumento.svg";
-
-const naturalezaIconSvgString = "/icons/naturaleza.svg";
-
-const gobiernoIconSvgString = "/icons/gobierno.svg";
-
-const hospedajeIconSvgString = "/icons/hospedaje.svg";
-
 const destinationPinSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
   <defs>
@@ -249,7 +236,6 @@ const camionIconDownSvgString = `
   <path d="M60,75 L80,50 L70,50 L70,25 L50,25 L50,50 L40,50 Z" fill="#FF0000" stroke="#AA0000" stroke-width="2" />
 </svg>`;
 
-// --- FIN DE SVGs ---
 
 const poiTypes = [
   { tipo: "Todos", Icono: FaThList, svgString: null, emoji: "🗺️" },
@@ -315,7 +301,7 @@ export default function GoogleMaps() {
   const walkingToBusStopPolylineRef = useRef(null);
   const walkingFromBusStopPolylineRef = useRef(null);
   const directionsServiceRef = useRef(null);
-  const streetViewServiceRef = useRef(null); // Ref for StreetViewService
+  const streetViewServiceRef = useRef(null); 
 
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]);
@@ -330,6 +316,10 @@ export default function GoogleMaps() {
     useState([]);
   const [isTransportInfoPanelOpen, setIsTransportInfoPanelOpen] =
     useState(false);
+  const [heading, setHeading] = useState(0);
+
+
+
 
   const toggleTransportInfoPanel = useCallback(() => {
     setIsTransportInfoPanelOpen((prev) => !prev);
@@ -484,9 +474,7 @@ export default function GoogleMaps() {
           console.warn(
             "[GoogleMaps drawWalkingRoute] No route found in Directions API response."
           );
-          // Potentially set a user message here as well if needed
-          // setMapStatusMessage("No se pudo generar la sub-ruta peatonal.");
-          // setTimeout(() => setMapStatusMessage(''), 5000);
+     
           return;
         }
 
@@ -843,92 +831,120 @@ export default function GoogleMaps() {
   }, [usingExternalGps]);
 
   const updateMarker = useCallback(
-    (lat, lng, isExternalSource = usingExternalGps, heading = 0, data = {}) => {
-      if (!mapRef.current || !window.google?.maps) return;
-      activeMarkerRef.current?.setMap(null);
-      const createSimpleMarkerSVG = (isExt, svgSize = 32, svgHeading = 0) => {
-        const color = isExt ? "#EF4444" : "#1E40AF";
-        const outerSize = svgSize;
-        const innerSize = svgSize * 0.4;
-        const center = outerSize / 2;
-        const arrowLength = innerSize;
-        return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${
-          isExt ? "External" : "Internal"
-        }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
-          center - 2
-        }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
-          isExt ? "External" : "Internal"
-        })"/><circle cx="${center}" cy="${center}" r="${
-          innerSize / 2
-        }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
-          innerSize / 2 + 4
-        } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
-          innerSize / 2 + 2
-        } L -${arrowLength / 3},-${
-          innerSize / 2 - 2
-        } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
+  (lat, lng, isExternalSource = usingExternalGps, currentHeading = 0, data = {}) => {
+    if (!mapRef.current || !window.google?.maps) return;
+
+    // Funciones auxiliares para crear el ícono del marcador
+    // (Estas funciones se definen dentro de useCallback para capturar 'isExternalSource' y 'currentHeading' del scope de updateMarker,
+    // o podrían definirse fuera si se les pasan todos los parámetros necesarios)
+    const createSimpleMarkerSVG = (isExtParam, svgSize = 32, svgHeading = 0) => {
+      const color = isExtParam ? "#EF4444" : "#1E40AF"; // Usar isExtParam que viene de isExternalSource
+      const outerSize = svgSize;
+      const innerSize = svgSize * 0.4;
+      const center = outerSize / 2;
+      const arrowLength = innerSize;
+      // Tu código SVG original para el marcador
+      return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${
+        isExtParam ? "External" : "Internal" // Usar isExtParam
+      }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
+        center - 2
+      }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
+        isExtParam ? "External" : "Internal" // Usar isExtParam
+      })"/><circle cx="${center}" cy="${center}" r="${
+        innerSize / 2
+      }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
+        innerSize / 2 + 4
+      } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
+        innerSize / 2 + 2
+      } L -${arrowLength / 3},-${
+        innerSize / 2 - 2
+      } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
+    };
+
+    const createMarkerIcon = (isExtParam, zoom, svgHeading = 0) => {
+      const minSize = 24;
+      const maxSize = 48;
+      const minZoom = 10;
+      const maxZoom = 20;
+      const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
+      const size =
+        minSize +
+        ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
+          (maxSize - minSize);
+      const svgString = createSimpleMarkerSVG(isExtParam, size, svgHeading); // Pasar isExtParam
+      return {
+        url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
+        scaledSize: new window.google.maps.Size(size, size),
+        anchor: new window.google.maps.Point(size / 2, size / 2),
+        optimized: false, // Recomendado para SVGs que cambian dinámicamente
       };
-      const createMarkerIcon = (isExt, zoom, svgHeading = 0) => {
-        const minSize = 24;
-        const maxSize = 48;
-        const minZoom = 10;
-        const maxZoom = 20;
-        const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
-        const size =
-          minSize +
-          ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
-            (maxSize - minSize);
-        const svgString = createSimpleMarkerSVG(isExt, size, svgHeading);
-        return {
-          url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
-          scaledSize: new window.google.maps.Size(size, size),
-          anchor: new window.google.maps.Point(size / 2, size / 2),
-          optimized: false,
-        };
-      };
-      const currentZoom = mapRef.current.getZoom();
-      const markerIcon = createMarkerIcon(
-        isExternalSource,
-        currentZoom,
-        heading
-      );
+    };
+
+    const currentZoom = mapRef.current.getZoom();
+    // Pasar isExternalSource explícitamente a createMarkerIcon, ya que el isExternalSource
+    // en el scope de createSimpleMarkerSVG y createMarkerIcon es el del momento de definición de updateMarker,
+    // no el del momento de ejecución si no se pasa como parámetro.
+    const markerIcon = createMarkerIcon(isExternalSource, currentZoom, currentHeading);
+    const newPosition = { lat, lng };
+    const newTitle = isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)";
+
+    // Generar el contenido del InfoWindow (se usa en ambos casos, crear o actualizar)
+    const generateInfoWindowContent = (titleForInfoWindow, currentLat, currentLng, currentData, isExtSrc) => {
+        let content = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
+            isExtSrc ? "#EF4444" : "#1E40AF"
+          };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(6)}, Lng: ${currentLng.toFixed(6)}</div>`;
+        if (isExtSrc) {
+            if (currentData.humidity !== null && currentData.humidity !== undefined)
+              content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
+            if (currentData.temperature !== null && currentData.temperature !== undefined)
+              content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
+        }
+        if (currentData.accuracy)
+            content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(1)}m</div>`;
+        content += `</div>`;
+        return content;
+    };
+
+
+    if (activeMarkerRef.current) {
+      // Si el marcador ya existe, solo actualiza sus propiedades
+      activeMarkerRef.current.setPosition(newPosition);
+      activeMarkerRef.current.setIcon(markerIcon); // Actualiza el ícono con la nueva rotación/estilo
+
+      if (activeMarkerRef.current.getTitle() !== newTitle) {
+        activeMarkerRef.current.setTitle(newTitle);
+      }
+
+      // Si la InfoWindow está abierta para este marcador y su contenido necesita actualizarse
+      if (openInfoWindowRef.current && openInfoWindowRef.current.getAnchor() === activeMarkerRef.current) {
+        const newInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
+        openInfoWindowRef.current.setContent(newInfoWindowContent);
+      }
+    } else {
+      // Si el marcador no existe, créalo
       const newMarker = new window.google.maps.Marker({
-        position: { lat, lng },
+        position: newPosition,
         map: mapRef.current,
-        title: isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)",
-        icon: markerIcon,
+        title: newTitle,
+        icon: markerIcon, // Ícono inicial
         zIndex: 1000,
       });
-      let contentString = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
-        isExternalSource ? "#EF4444" : "#1E40AF"
-      };">${
-        newMarker.title
-      }</div><div style="color: #333; font-size: 12px;">Lat: ${lat.toFixed(
-        6
-      )}, Lng: ${lng.toFixed(6)}</div>`;
-      if (isExternalSource) {
-        if (data.humidity !== null && data.humidity !== undefined)
-          contentString += `<div style="color: #333; font-size: 12px;">Humedad: ${data.humidity}%</div>`;
-        if (data.temperature !== null && data.temperature !== undefined)
-          contentString += `<div style="color: #333; font-size: 12px;">Temp: ${data.temperature}°C</div>`;
-      }
-      if (data.accuracy)
-        contentString += `<div style="color: #666; font-size: 11px;">Precisión: ${data.accuracy.toFixed(
-          1
-        )}m</div>`;
-      contentString += `</div>`;
+
+      // Configuración del InfoWindow para el nuevo marcador
+      const initialInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
       const infoWindow = new window.google.maps.InfoWindow({
-        content: contentString,
+        content: initialInfoWindowContent,
       });
+
       newMarker.addListener("click", () => {
-        openInfoWindowRef.current?.close();
+        openInfoWindowRef.current?.close(); // Cierra cualquier InfoWindow abierta anteriormente
         infoWindow.open(mapRef.current, newMarker);
-        openInfoWindowRef.current = infoWindow;
+        openInfoWindowRef.current = infoWindow; // Guarda la referencia a la InfoWindow abierta
       });
-      activeMarkerRef.current = newMarker;
-    },
-    [usingExternalGps]
-  );
+      activeMarkerRef.current = newMarker; // Guarda la referencia al nuevo marcador
+    }
+  },
+  [usingExternalGps, openInfoWindowRef] );
 
   const toggleGpsSource = useCallback(() => {
     const newUsingExternalGps = !usingExternalGps;
@@ -954,6 +970,87 @@ export default function GoogleMaps() {
       }
     }
   }, [usingExternalGps, externalGpsLocation, location, requestLocation]);
+
+
+
+// ... otros useEffects ...
+
+useEffect(() => {
+  const handleOrientation = (event) => {
+    let currentHeading = null;
+    if (event.webkitCompassHeading) { // Para iOS Safari
+      currentHeading = event.webkitCompassHeading;
+    } else if (event.absolute === true && event.alpha !== null) { // Estándar, si es absoluto
+      // El valor de alpha es 0-360, donde 0 es el Norte magnético.
+      // Si tu ícono de flecha apunta hacia arriba por defecto (0 grados de rotación SVG),
+      // y alpha = 0 es Norte, entonces el heading es directamente alpha.
+      // Si tu flecha por defecto apunta al Este, necesitarías restar 90 grados, etc.
+      // Asumiremos que la flecha SVG está orientada para que 'rotate(0)' apunte hacia arriba (Norte en el mapa).
+      currentHeading = event.alpha;
+    }
+    // Considera un umbral para evitar actualizaciones constantes por pequeñas variaciones
+    if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) { // Actualiza si cambia más de 1 grado
+      setHeading(currentHeading);
+    }
+  };
+
+  const requestDeviceOrientationPermission = async () => {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const permissionState = await DeviceOrientationEvent.requestPermission();
+        if (permissionState === 'granted') {
+          if ('ondeviceorientationabsolute' in window) {
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+          } else {
+            window.addEventListener('deviceorientation', handleOrientation, true);
+          }
+          setMapStatusMessage("Orientación del dispositivo activada.");
+          setTimeout(() => setMapStatusMessage(""), 3000);
+        } else {
+          console.warn('Permiso para DeviceOrientationEvent no concedido.');
+          setMapStatusMessage('Permiso de orientación no concedido.');
+          setTimeout(() => setMapStatusMessage(""), 3000);
+          // Podrías querer un estado setError más persistente aquí
+        }
+      } catch (error) {
+        console.error('Error solicitando permiso para DeviceOrientationEvent:', error);
+        setMapStatusMessage('Error al solicitar permiso de orientación.');
+        setTimeout(() => setMapStatusMessage(""), 3000);
+      }
+    } else if (typeof DeviceOrientationEvent !== 'undefined') {
+      if ('ondeviceorientationabsolute' in window) {
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      } else if ('ondeviceorientation' in window) {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+      } else {
+        console.warn('DeviceOrientationEvent no soportado (event listener).');
+      }
+    } else {
+      console.warn('DeviceOrientationEvent no soportado.');
+    }
+  };
+
+  if (mapLoaded && !usingExternalGps && window.google?.maps) {
+   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
+       if ('ondeviceorientationabsolute' in window) {
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      } else if ('ondeviceorientation' in window) {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+      }
+    }
+  }
+
+  return () => {
+    window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+    window.removeEventListener('deviceorientation', handleOrientation, true);
+  };
+
+}, [mapLoaded, usingExternalGps, setMapStatusMessage, heading]); 
+
+
+
+
+
 
   useEffect(() => {
     const initMap = async () => {
@@ -1304,6 +1401,7 @@ export default function GoogleMaps() {
       }
     }
 
+
     if (!mapRef.current && currentDisplayLocation) {
       console.log("[GoogleMaps] Initializing Google Map instance.");
       mapRef.current = new window.google.maps.Map(
@@ -1571,11 +1669,12 @@ export default function GoogleMaps() {
     }
 
     if (currentDisplayLocation) {
+      const currentMarkerHeading = usingExternalGps ? 0: heading;
       updateMarker(
         currentDisplayLocation.lat,
         currentDisplayLocation.lng,
         isExternalSourceForMarker,
-        0,
+        currentMarkerHeading,
         markerData
       );
     } else {
@@ -1594,6 +1693,7 @@ export default function GoogleMaps() {
     handlePoiRouteRequest,
     drawConnectingWalkingRoutes,
     getRoadSnappedLocation,
+    heading
   ]);
 
   useEffect(() => {
