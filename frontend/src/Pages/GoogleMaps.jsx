@@ -1683,16 +1683,8 @@ export default function GoogleMaps() {
         scaledSize: new window.google.maps.Size(32, 32),
         anchor: new window.google.maps.Point(16, 32),
       };
-      if (poiDefinition) {
-        if (poiDefinition.svgString) {
-          iconOptions = {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-              poiDefinition.svgString
-            )}`,
-            scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 16),
-          };
-        } else if (poiDefinition.emoji && poiDefinition.tipo !== "Todos") {
+       if (poiDefinition) {
+
           const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
           iconOptions = {
             url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
@@ -1702,7 +1694,7 @@ export default function GoogleMaps() {
             anchor: new window.google.maps.Point(16, 16),
           };
         }
-      }
+
 
       if (!iconOptions.url || !iconOptions.url) {
         return;
