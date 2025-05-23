@@ -1661,10 +1661,7 @@ useEffect(() => {
         mapRef.current.getCenter().lat() !== currentDisplayLocation.lat ||
         mapRef.current.getCenter().lng() !== currentDisplayLocation.lng
       ) {
-        mapRef.current.panTo({
-          lat: currentDisplayLocation.lat,
-          lng: currentDisplayLocation.lng,
-        });
+
       }
     }
 
