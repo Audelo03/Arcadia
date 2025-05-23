@@ -4,14 +4,10 @@ import serial.tools.list_ports
 import time
 import sys
 import os
-import ctypes # Importar ctypes
-# from dotenv import load_dotenv # Opcional si se quieren usar variables de entorno para configuración
-
-# load_dotenv() # Descomentar si se usa dotenv
-
+import ctypes 
 # --- Carga de la biblioteca C para tokenizar (de gps_reader_asm.py) ---
 lib_gps_tokenizer = None
-MAX_TOKEN_LEN_PY = 32  # Debe coincidir con MAX_TOKEN_LEN en C
+MAX_TOKEN_LEN_PY = 32  
 
 try:
     lib_name_tokenizer = None
@@ -32,12 +28,7 @@ try:
     if lib_name_tokenizer and os.path.exists(lib_name_tokenizer):
         lib_gps_tokenizer = ctypes.CDLL(lib_name_tokenizer)
 
-        # Prototipo de la función C desde gps_tokenizer.c:
-        # int tokenize_and_extract_gps_fields_asm(
-        #     const char *input_str, char delim,
-        #     char *out_lat, char *out_lon, char *out_hum, char *out_temp,
-        #     int max_len
-        # );
+
         lib_gps_tokenizer.tokenize_and_extract_gps_fields_asm.argtypes = [
             ctypes.c_char_p, ctypes.c_char,
             ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p,
@@ -111,7 +102,6 @@ def connect_to_gps():
         return False
 
 def parse_gps_data_python_fallback(data_to_parse):
-    """Implementación de parseo puramente en Python (adaptada de gps_reader_asm.py)."""
     try:
         parts = data_to_parse.split(',')
         if len(parts) >= 2: 
@@ -135,12 +125,7 @@ def parse_gps_data_python_fallback(data_to_parse):
     except Exception as e:
         print(f"Error general en fallback Python (parseando '{data_to_parse}'): {e}")
     return None
-
 def parse_gps_data(line):
-    """
-    Parsea una línea de datos GPS. Intenta usar la biblioteca C; si falla o no está disponible,
-    usa el fallback en Python.
-    """
     try:
         data_part_to_process = None
         if "GPS_DATA:" in line: # Asumiendo que este prefijo aún puede estar
@@ -224,8 +209,7 @@ def read_gps_and_process():
                         print(f"Línea recibida: '{line}'") # Para depuración
                         gps_data = parse_gps_data(line)
                         if gps_data:
-                            # En lugar de enviar a Django, imprimimos como en el gps_reader original
-                            # o se podría convertir a JSON y luego imprimir.
+                        
                             output_line = f"GPS_DATA_PARSED: lat={gps_data['lat']},lng={gps_data['lng']}"
                             if "humidity" in gps_data and gps_data["humidity"] is not None:
                                 output_line += f",humidity={gps_data['humidity']}"
@@ -269,4 +253,4 @@ if __name__ == "__main__":
     # (gps_tokenizer.dll, .so, o .dylib) en el mismo directorio o ruta correcta.
     read_gps_and_process()
     
-    print("Script gps_reader_modified.py finalizado.")
+    print("Script .py finalizado.")

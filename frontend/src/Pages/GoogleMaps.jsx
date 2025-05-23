@@ -1743,25 +1743,86 @@ export default function GoogleMaps() {
     </svg>`;
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
 
-      const infoWindowContent = `<style>.gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; } .gm-style .gm-style-iw-d { overflow: hidden !important; } .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; } .info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; } .info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; } .info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); } .info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; } .info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; } .info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); } .info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; } .info-window-image-gallery { margin-bottom: 16px; position: relative; } .info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); } .info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .info-window-image:hover { transform: scale(1.02); } .info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; } .info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; } .info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; } .info-window-gallery-button:hover::before { left: 100%; } .info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; } .info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); } .info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; } .info-window-gallery-button:disabled::before { display: none; } .info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; } .info-window-details { font-size: 0.85rem; color: #2d3748; text-align: center; } .info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; } .info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); } .info-window-detail-item:last-child { margin-bottom: 0; } .info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; } .info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; } .info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); } .info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); } .info-window-route-button svg { width: 20px; height: 20px; } @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } .info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } @media (max-width: 480px) { .info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; } .info-window-header { padding: 12px 16px; } .info-window-custom-title { font-size: 1rem; } .info-window-body { padding: 16px; max-height: 50vh; } .info-window-image-wrapper { height: 150px; } .info-window-gallery-button { width: 44px; height: 44px; } .info-window-gallery-button svg { width: 20px; height: 20px; } .info-window-description { font-size: 0.85rem; padding: 12px 14px; } .info-window-details { font-size: 0.8rem; } .info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; } .info-window-detail-label { margin-bottom: 4px; margin-right: 0; } } @media (max-width: 320px) { .info-window-custom-container { max-width: 260px; } .info-window-gallery-controls { gap: 12px; } } @media (hover: none) and (pointer: coarse) { .info-window-gallery-button:hover { transform: none; } .info-window-detail-item:hover { transform: none; } .info-window-image:hover { transform: none; } .info-window-route-button:hover { transform: none; } } </style><div class="info-window-custom-container" id="${id}-container"><div class="info-window-header"><h3 class="info-window-custom-title">${
-        lugar.nombre
-      }</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${
-        imagenes[0]
-      }" id="${id}-img" class="info-window-image" alt="Imagen de ${
-        lugar.nombre
-      }" /></div>${
-        imagenes.length > 1
-          ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button></div>`
-          : ""
-      }</div><p class="info-window-description">${
-        lugar.descripcion || "No hay descripción disponible."
-      }</p><div class="info-window-details"><div class="info-window-detail-item"><span class="info-window-detail-label">Tipo:</span><span class="info-window-detail-value">${
-        lugar.tipo
-      }</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Costo:</span><span class="info-window-detail-value">${
-        lugar.costo_entrada || "Gratis"
-      }</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Horario:</span><span class="info-window-detail-value">${
-        lugar.horario || "No especificado"
-      }</span></div><button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button></div></div></div>`;
+     const infoWindowContent = `<style>
+.gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; } 
+.gm-style .gm-style-iw-d { overflow: hidden !important; } 
+.gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; } 
+.info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; } 
+.info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; } 
+.info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); } 
+.info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; } 
+.info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; } 
+.info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); } 
+.info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; } 
+.info-window-image-gallery { margin-bottom: 16px; position: relative; text-align: center; } /* MODIFICADO AQUÍ */
+.info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); } 
+.info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); } 
+.info-window-image:hover { transform: scale(1.02); } 
+.info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; } 
+.info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; } 
+.info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; } 
+.info-window-gallery-button:hover::before { left: 100%; } 
+.info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; } 
+.info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); } 
+.info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; } 
+.info-window-gallery-button:disabled::before { display: none; } 
+.info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; } 
+.info-window-details { font-size: 0.85rem; color: #2d3748; text-align: center; } 
+.info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; } 
+.info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); } 
+.info-window-detail-item:last-child { margin-bottom: 0; } 
+.info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; } 
+.info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; } 
+.info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); } 
+.info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); } 
+.info-window-route-button svg { width: 20px; height: 20px; } 
+@keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
+.info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } 
+@media (max-width: 480px) { 
+.info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; } 
+.info-window-header { padding: 12px 16px; } 
+.info-window-custom-title { font-size: 1rem; } 
+.info-window-body { padding: 16px; max-height: 50vh; } 
+.info-window-image-wrapper { height: 150px; } 
+.info-window-gallery-button { width: 44px; height: 44px; } 
+.info-window-gallery-button svg { width: 20px; height: 20px; } 
+.info-window-description { font-size: 0.85rem; padding: 12px 14px; } 
+.info-window-details { font-size: 0.8rem; } 
+.info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; } 
+.info-window-detail-label { margin-bottom: 4px; margin-right: 0; } 
+} 
+@media (max-width: 320px) { 
+.info-window-custom-container { max-width: 260px; } 
+.info-window-gallery-controls { gap: 12px; } 
+} 
+@media (hover: none) and (pointer: coarse) { 
+.info-window-gallery-button:hover { transform: none; } 
+.info-window-detail-item:hover { transform: none; } 
+.info-window-image:hover { transform: none; } 
+.info-window-route-button:hover { transform: none; } 
+} 
+</style><div class="info-window-custom-container" id="${id}-container"><div class="info-window-header"><h3 class="info-window-custom-title">${
+  lugar.nombre
+}</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${
+  imagenes[0]
+}" id="${id}-img" class="info-window-image" alt="Imagen de ${
+  lugar.nombre
+}" /></div>${
+  imagenes.length > 1
+    ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button>
+      
+
+      </div>`
+    : ""
+}<button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button></div><p class="info-window-description">${
+  lugar.descripcion || "No hay descripción disponible."
+}</p><div class="info-window-details"><div class="info-window-detail-item"><span class="info-window-detail-label">Tipo:</span><span class="info-window-detail-value">${
+  lugar.tipo
+}</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Costo:</span><span class="info-window-detail-value">${
+  lugar.costo_entrada || "Gratis"
+}</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Horario:</span><span class="info-window-detail-value">${
+  lugar.horario || "No especificado"
+}</span></div></div></div></div>`;
       const infoWindow = new window.google.maps.InfoWindow({
         content: infoWindowContent,
         ariaLabel: lugar.nombre,

@@ -849,3 +849,23 @@ select:focus-visible {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
+
+/* En tu archivo ../Estilos/inicioSesion.module.css */
+.forgot-password-link {
+  text-align: left;
+  margin-bottom: 10px; /* o el margen que prefieras */
+  font-size: 0.9em;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #007bff; 
+  cursor: pointer;
+  padding: 0;
+
+}
+
+.link-button:hover {
+  color: #0056b3; /* Un color más oscuro al pasar el mouse */
+}

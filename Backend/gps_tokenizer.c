@@ -10,16 +10,9 @@
     #define DLL_EXPORT
 #endif
 
-// Constantes para el número máximo de campos y longitud máxima de token
 #define MAX_GPS_FIELDS 4
-#define MAX_TOKEN_LEN 32 // Asigna suficiente espacio para cada token (ej: "-123.456789")
+#define MAX_TOKEN_LEN 32 
 
-/*
- * Función auxiliar que copia un token desde 'src' a 'dest' hasta encontrar 'delim'
- * o alcanzar 'max_dest_len' o fin de 'src'.
- * Usa ensamblador inline para la copia del bucle.
- * Devuelve el número de caracteres copiados (excluyendo el terminador nulo).
- */
 static int copy_token_asm(const char *src, char delim, char *dest, int max_dest_len) {
     int copied_len = 0;
     if (!src || !dest || max_dest_len <= 0) {
