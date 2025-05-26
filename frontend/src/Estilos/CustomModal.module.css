@@ -1,0 +1,59 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Fondo semi-transparente */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Para que aparezca encima */
+}
+
+.modalContent {
+  color: #000;
+  background-color: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  border: 3px solid #4a90e2; /* Se adapta según el tipo */
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease;
+}
+
+.modalContent h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.5em;
+}
+
+.modalContent p {
+  margin-bottom: 20px;
+}
+
+.modalContent button {
+  padding: 10px 20px;
+  background-color: #4a90e2; /* Azul por defecto */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.modalContent button:hover {
+  background-color: #357abd; /* Azul más oscuro al pasar el ratón */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

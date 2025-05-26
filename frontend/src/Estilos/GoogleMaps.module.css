@@ -9,7 +9,7 @@
   --text-light: #ffffff;
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   --transition: all 0.3s ease;
-   --sidebar-mobile-button-size: 50px;
+  --sidebar-mobile-button-size: 50px;
   --sidebar-collapsed-width: 60px;
 }
 .reload {
@@ -25,15 +25,11 @@
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background-color: var(--dark-bg);
-  font-family: "Inter", Arial, sans-serif;
-  color: var(--text-light);
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
   width: 100%;
   height: 100%;
+  background-color: var(--dark-bg); /* O el color de fondo que prefieras */
 }
+
 .poiMenuItemActive {
   background-color: rgba(0, 0, 0, 0.15); /* O el color que prefieras */
   font-weight: bold;
@@ -97,7 +93,7 @@
   gap: 0.5rem;
 }
 
-.mapHeader > * { 
+.mapHeader > * {
   pointer-events: auto;
 }
 
@@ -329,10 +325,9 @@
 
 /* Contenedor FAB para POIs */
 .poiFabContainer {
-  
   position: fixed;
   bottom: 5rem;
-  right: .3rem;
+  right: 0.3rem;
   z-index: 1010;
   display: flex;
   flex-direction: column-reverse;
@@ -349,7 +344,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   outline: none;
@@ -357,7 +352,7 @@
 
 .poiFab:hover {
   transform: translateY(-4px) scale(1.08);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.25);
 }
 
 .poiFab:active {
@@ -369,14 +364,14 @@
 .poiMenu {
   display: flex;
   flex-direction: column;
-  align-items: flex-end; 
+  align-items: flex-end;
   background-color: transparent;
-  padding: 1rem; 
-  margin-bottom: 1rem; 
-  width: max-content; 
-  gap: 0.3rem; 
-  max-height: calc(100vh - 12rem); 
-  overflow-y: hidden; 
+  padding: 1rem;
+  margin-bottom: 1rem;
+  width: max-content;
+  gap: 0.3rem;
+  max-height: calc(100vh - 12rem);
+  overflow-y: hidden;
   pointer-events: none;
 }
 
@@ -397,53 +392,53 @@
 
 /* Ítems de menú POI */
 .poiMenuItem {
-  background-color: rgba(45, 55, 72, 0.92); 
-  color: #e8e8e8; 
+  background-color: rgba(45, 55, 72, 0.92);
+  color: #e8e8e8;
   border: none;
-  border-radius: 22px; 
-  height: 44px; 
-  padding: 0 11px; 
+  border-radius: 22px;
+  height: 44px;
+  padding: 0 11px;
   cursor: pointer;
   display: flex;
-  align-items: center; 
+  align-items: center;
   overflow: hidden;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25); 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
   pointer-events: auto;
-  
+
   opacity: 0;
   transform: scale(0.6) translateY(10px);
   animation-name: emergeItem;
   animation-duration: 0.35s;
   animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1);
   animation-fill-mode: forwards;
-  
+
   transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .poiMenuItem svg {
-  flex-shrink: 0; 
+  flex-shrink: 0;
   transition: transform 0.2s ease-in-out;
 }
 
 .poiMenuItemText {
-  font-size: 0.9rem; 
+  font-size: 0.9rem;
   font-weight: 500;
-  white-space: nowrap; 
+  white-space: nowrap;
   opacity: 0;
   max-width: 0;
   margin-left: 0;
-  transition: opacity 0.25s ease-out 0.1s, 
-              max-width 0.3s cubic-bezier(0.23, 1, 0.32, 1),
-              margin-left 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: opacity 0.25s ease-out 0.1s,
+    max-width 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+    margin-left 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   overflow: hidden;
 }
 
 .poiMenuItem:hover,
 .poiMenuItem:focus {
-  background-color: rgba(76, 136, 255, 0.95); 
-  color: #ffffff; 
-  outline: none; 
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); 
+  background-color: rgba(76, 136, 255, 0.95);
+  color: #ffffff;
+  outline: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .poiMenuItem:hover svg,
@@ -454,8 +449,8 @@
 .poiMenuItem:hover .poiMenuItemText,
 .poiMenuItem:focus .poiMenuItemText {
   opacity: 1;
-  max-width: 180px; 
-  margin-left: 0.85rem; 
+  max-width: 180px;
+  margin-left: 0.85rem;
 }
 
 /* En GoogleMaps.module.css */
@@ -470,12 +465,13 @@
   border-radius: 8px;
   z-index: 1001; /* Encima del mapa */
   font-size: 0.9rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
 
-.gpsToggle.externalActive svg { /* Ejemplo para resaltar el botón de GPS Externo activo */
-  color: #EF4444; /* Rojo, por ejemplo */
+.gpsToggle.externalActive svg {
+  /* Ejemplo para resaltar el botón de GPS Externo activo */
+  color: #ef4444; /* Rojo, por ejemplo */
 }
 
 /* ... (tus estilos existentes) ... */
@@ -489,17 +485,19 @@
   padding: 10px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  z-index: 500; 
-  max-height: 200px; 
+  z-index: 500;
+  max-height: 200px;
   overflow-y: auto;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   max-width: 250px;
   transition: left 0.3s ease-in-out; /* Para una transición suave si la posición cambia */
 }
 
-@media (min-width: 1024px) { /* Puedes ajustar este breakpoint según sea necesario */
+@media (min-width: 1024px) {
+  /* Puedes ajustar este breakpoint según sea necesario */
   .routeLegendContainer {
-    left: 5%; }
+    left: 5%;
+  }
 }
 
 .routeLegendHeader {
@@ -543,10 +541,6 @@
   text-overflow: ellipsis;
 }
 
-
-
-
-
 /* frontend/src/Estilos/GoogleMaps.module.css */
 
 /* Make sure these variables from Sidebar.css are globally available or define fallbacks */
@@ -561,23 +555,26 @@
 
 .transportInfoContainer {
   display: flex;
-  flex-direction: row;   /* Items laid out horizontally */
-  flex-wrap: nowrap;     /* Items do not wrap to the next line */
-  
+  flex-direction: row; /* Items laid out horizontally */
+  flex-wrap: nowrap; /* Items do not wrap to the next line */
+
   /* --- MODIFICATION HERE --- */
   /* align-items: flex-start; */ /* This was causing the button to move up */
-  align-items: flex-end;   /* This will align the button and panel along their bottom edges */
+  align-items: flex-end; /* This will align the button and panel along their bottom edges */
   /* --- END MODIFICATION --- */
-  
+
   position: fixed;
   left: 25px;
   /* The container's bottom edge is fixed. When height increases, it grows upwards. */
   bottom: calc(25px + var(--sidebar-mobile-button-size, 50px) + 10px);
-  
+
   width: auto; /* Container width adjusts to content */
-  min-height: var(--sidebar-mobile-button-size, 50px); /* Ensures container is at least as tall as the button */
+  min-height: var(
+    --sidebar-mobile-button-size,
+    50px
+  ); /* Ensures container is at least as tall as the button */
   z-index: 50;
-  
+
   transition: left 0.3s ease-in-out, bottom 0.3s ease-in-out;
 }
 
@@ -586,7 +583,7 @@
   /* Assuming styles similar to these: */
   background: linear-gradient(to right, #3a2c4a, #1a1523);
   color: white;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   width: 50px;
   height: 50px;
@@ -594,19 +591,20 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease-out;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.15s ease-out;
   flex-shrink: 0;
 }
 
 .transportInfoButton:hover {
   background: linear-gradient(to right, #4a3c5a, #2a2533);
-  box-shadow: 0 3px 7px rgba(0,0,0,0.25);
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25);
 }
 
 .transportInfoButton.infoButtonActive {
   background: linear-gradient(to right, #2a1533, #0a0513);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .transportInfoPanel {
@@ -615,7 +613,7 @@
   color: #333740;
   padding: 8px 12px;
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border: 1px solid #ddd;
   font-size: 0.8rem;
   word-wrap: break-word;
@@ -639,6 +637,9 @@
 @media (min-width: 769px) {
   .transportInfoContainer {
     /* Desktop positioning: Bottom-left, adjusted for sidebar width */
-    left: calc(var(--sidebar-collapsed-width, 60px) + 25px); /* sidebar width + desired offset */
+    left: calc(
+      var(--sidebar-collapsed-width, 60px) + 25px
+    ); /* sidebar width + desired offset */
     bottom: 25px;
-  }}
+  }
+}
