@@ -6,14 +6,16 @@ import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { app, db } from "./firebase-config";
 import logopng from "../Images/logopng.png";
-import ErrorBanner from "../Components/errorbanner"; // Asumo que este es tu banner de error
-import SuccessBanner from "../Components/SuccessBanner"; // Importa el SuccessBanner
+import ErrorBanner from "../Components/errorbanner";
+import SuccessBanner from "../Components/SuccessBanner";
 import { IoEye } from "react-icons/io5";
 import { IoEyeOffSharp } from "react-icons/io5";
 
-
 const auth = getAuth(app);
 
+// OPTIMIZACIÓN: `memo` es un Higher Order Component (HOC) que memoriza el componente `InputField`.
+// React omitirá el re-renderizado del componente si sus props no han cambiado.
+// Esto es una optimización de rendimiento, especialmente útil en listas largas o componentes complejos.
 const InputField = memo(
   ({ label, id, name, type, placeholder, value, onChange, required }) => (
     <div className={styles["input-group"]}>
@@ -30,8 +32,9 @@ const InputField = memo(
     </div>
   )
 );
-InputField.displayName = "InputField";
+InputField.displayName = "InputField"; // Buena práctica para debugging con React DevTools
 
+// OPTIMIZACIÓN: Similar a InputField, PasswordField está memorizado con `memo`.
 const PasswordField = memo(
   ({
     label,
@@ -61,7 +64,7 @@ const PasswordField = memo(
                 onClick={onTogglePassword}
                 className={styles["toggle-password"]}
               >
-                {showPassword ? <IoEye size={24}/> : <IoEyeOffSharp size={24}/>} {/* Aquí está el cambio */}
+                {showPassword ? <IoEye size={24}/> : <IoEyeOffSharp size={24}/>}
               </button>
       </div>
     </div>
@@ -69,6 +72,7 @@ const PasswordField = memo(
 );
 PasswordField.displayName = "PasswordField";
 
+// OPTIMIZACIÓN: RadioGroup también está memorizado con `memo`.
 const RadioGroup = memo(
   ({ label, name, options, selectedValue, onChange, required }) => (
     <div className={styles["form-group"]}>
@@ -113,8 +117,8 @@ export default function Registro() {
 
   const [errorMessage, setErrorMessage] = useState("");
   const [errorKey, setErrorKey] = useState(0);
-  const [successMessage, setSuccessMessage] = useState(""); // Estado para mensaje de éxito
-  const [successKey, setSuccessKey] = useState(0); // Key para reiniciar animación de éxito
+  const [successMessage, setSuccessMessage] = useState("");
+  const [successKey, setSuccessKey] = useState(0);
 
   useEffect(() => {
     let errorTimer;
@@ -127,7 +131,7 @@ export default function Registro() {
   useEffect(() => {
     let successTimer;
     if (successMessage) {
-      successTimer = setTimeout(() => setSuccessMessage(""), 2000); // El banner se limpia, la navegación ocurre después
+      successTimer = setTimeout(() => setSuccessMessage(""), 2000);
     }
     return () => clearTimeout(successTimer);
   }, [successMessage, successKey]);
@@ -135,23 +139,25 @@ export default function Registro() {
   const showError = (message) => {
     setErrorMessage(message);
     setErrorKey(prevKey => prevKey + 1);
-    setSuccessMessage(""); // Limpia cualquier mensaje de éxito si hay un error
+    setSuccessMessage("");
   };
 
   const showSuccess = (message, redirectPath) => {
     setSuccessMessage(message);
     setSuccessKey(prevKey => prevKey + 1);
-    setErrorMessage(""); // Limpia cualquier mensaje de error
+    setErrorMessage("");
     setTimeout(() => {
       navigate(redirectPath);
-    }, 2000); // Navega DESPUÉS de 2 segundos
+    }, 2000);
   };
 
+  // OPTIMIZACIÓN: `useCallback` memoriza la función `handleInputChange`.
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);
 
+  // OPTIMIZACIÓN: `useCallback` memoriza la función `togglePasswordVisibility`.
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword((prev) => !prev);
   }, []);
@@ -161,6 +167,10 @@ export default function Registro() {
       e.preventDefault();
       const { email, password, firstName, lastName, gender } = formData;
 
+      // ANÁLISIS SEMÁNTICO: Estas validaciones (contraseña no vacía, longitud mínima,
+      // campos obligatorios) verifican que los datos ingresados por el usuario cumplan
+      // con las reglas de negocio (semántica) antes de proceder con el registro.
+      // Si no se cumplen, se muestra un error y la operación se detiene.
       if (!password || password.trim() === "") {
         showError("La contraseña no puede estar vacía.");
         return;
@@ -187,8 +197,9 @@ export default function Registro() {
           showSuccess("¡Registro exitoso! Redirigiendo...", "/inicioSesion");
         })
         .catch((error) => {
-          console.error("Error al registrar:", error.code, error.message);
           let friendlyMessage = "Error al registrarse. Inténtalo de nuevo.";
+          // ANÁLISIS SEMÁNTICO: Similar al inicio de sesión, el switch case analiza el `error.code`
+          // de Firebase para interpretar el significado del error y dar retroalimentación precisa.
           switch (error.code) {
             case "auth/email-already-in-use":
               friendlyMessage = "Este correo electrónico ya está en uso.";
@@ -208,9 +219,15 @@ export default function Registro() {
           showError(friendlyMessage);
         });
     },
-    [formData, navigate]
+    [formData, navigate] // `auth` y `db` también son dependencias si se definen dentro o pueden cambiar.
+                           // `showError` y `showSuccess` si no están memorizadas y se definen en el componente.
   );
 
+  // GENERACIÓN DE CÓDIGO INTERMEDIO: El JSX que se utiliza a continuación para definir la interfaz de usuario
+  // (formularios, campos de entrada, botones) es una extensión de la sintaxis de JavaScript.
+  // No es interpretado directamente por los navegadores. Herramientas como Babel
+  // lo transforman en llamadas a `React.createElement()`. Este paso de transformación
+  // es análogo a la generación de código intermedio en un proceso de compilación.
   return (
     <div className={styles["signup-container"]}>
       {errorMessage && <ErrorBanner key={errorKey} message={errorMessage} />}
@@ -303,4 +320,10 @@ export default function Registro() {
       </div>
     </div>
   );
+  // GENERACIÓN DE CÓDIGO OBJETO: El código JavaScript resultante (después de la transpilación de JSX,
+  // la lógica de los componentes y el empaquetado por herramientas como Webpack) es lo que finalmente
+  // se envía al navegador. El motor JavaScript del navegador (como V8 en Chrome) interpreta y ejecuta
+  // este código. Para mejorar el rendimiento, estos motores a menudo realizan una compilación
+  // Just-In-Time (JIT), convirtiendo el JavaScript en código máquina nativo para la CPU.
+  // Este código máquina es el equivalente al "código objeto" en este contexto de desarrollo web.
 }

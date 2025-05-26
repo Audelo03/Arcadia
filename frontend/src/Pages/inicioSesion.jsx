@@ -1,4 +1,3 @@
-// src/Pages/inicioSesion.jsx
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -6,7 +5,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  sendPasswordResetEmail, 
+  sendPasswordResetEmail,
   signOut,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
@@ -18,7 +17,6 @@ import { db } from "./firebase-config";
 import ConfirmationDialog from "../Components/ConfirmationDialog";
 import ErrorBanner from "../Components/errorbanner";
 import SuccessBanner from "../Components/SuccessBanner";
-
 import { IoEye } from "react-icons/io5";
 import { IoEyeOffSharp } from "react-icons/io5";
 
@@ -38,7 +36,7 @@ export default function InicioSesion() {
   const [successMessage, setSuccessMessage] = useState("");
   const [successKey, setSuccessKey] = useState(0);
 
-  const [viewMode, setViewMode] = useState("login"); // 'login' or 'forgotPassword'
+  const [viewMode, setViewMode] = useState("login");
   const [resetEmail, setResetEmail] = useState("");
 
   const navigate = useNavigate();
@@ -46,15 +44,19 @@ export default function InicioSesion() {
   useEffect(() => {
     let errorTimer;
     if (errorMessage) {
-      errorTimer = setTimeout(() => setErrorMessage(""), 3000); // Aumentado a 3s para mejor visibilidad
+      errorTimer = setTimeout(() => setErrorMessage(""), 3000);
     }
     return () => clearTimeout(errorTimer);
+    // ANÁLISIS SEMÁNTICO: Las dependencias [errorMessage, errorKey] aseguran que este efecto,
+    // encargado de limpiar el mensaje de error después de un tiempo, se ejecute
+    // correctamente cuando el mensaje de error cambie o su key (para forzar el reinicio) se actualice.
+    // Esto mantiene una semántica de "mensaje temporal".
   }, [errorMessage, errorKey]);
 
   useEffect(() => {
     let successTimer;
     if (successMessage) {
-      successTimer = setTimeout(() => setSuccessMessage(""), 3000); // Aumentado a 3s
+      successTimer = setTimeout(() => setSuccessMessage(""), 3000);
     }
     return () => clearTimeout(successTimer);
   }, [successMessage, successKey]);
@@ -76,6 +78,9 @@ export default function InicioSesion() {
     }
   };
 
+  // OPTIMIZACIÓN: `useCallback` memoriza la función `handleInputChange`.
+  // Esto evita que la función se cree de nuevo en cada renderizado si no cambian sus dependencias (ninguna en este caso).
+  // Es útil si esta función se pasa como prop a componentes hijos optimizados.
   const handleInputChange = useCallback((e) => {
     const { id, value } = e.target;
     setFormData((prevState) => ({
@@ -116,8 +121,10 @@ export default function InicioSesion() {
           showSuccess(`¡Bienvenido, ${displayName}!`, "/mapa");
         })
         .catch((error) => {
-          console.error("Error al iniciar sesión:", error.code, error.message);
           let friendlyMessage = "Error al iniciar sesión. Inténtalo de nuevo.";
+          // ANÁLISIS SEMÁNTICO: El switch case analiza el `error.code` de Firebase
+          // para determinar la naturaleza del error y proporcionar un mensaje más específico y
+          // comprensible al usuario. Esto es una interpretación semántica del código de error.
           switch (error.code) {
             case "auth/user-not-found":
             case "auth/invalid-user-token":
@@ -141,7 +148,7 @@ export default function InicioSesion() {
           showError(friendlyMessage);
         });
     },
-    [formData, navigate] // showSuccess removido de aquí, showError también.
+    [formData, navigate]
   );
 
   const handleGoogleSignIn = useCallback(() => {
@@ -168,7 +175,6 @@ export default function InicioSesion() {
         showSuccess(`¡Bienvenido, ${displayName}!`, "/mapa");
       })
       .catch((error) => {
-        console.error("Error al iniciar sesión con Google:", error.code, error.message);
         let friendlyMessage = "Error con Google. Inténtalo de nuevo.";
         if (error.code === "auth/popup-closed-by-user") {
           friendlyMessage = "Cancelaste el inicio de sesión con Google.";
@@ -179,7 +185,7 @@ export default function InicioSesion() {
         }
         showError(friendlyMessage);
       });
-  }, [navigate]); // showSuccess y showError removidos
+  }, [navigate]);
 
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword((prevState) => !prevState);
@@ -214,6 +220,8 @@ export default function InicioSesion() {
 
   const handleSendResetEmail = useCallback((e) => {
     e.preventDefault();
+    // ANÁLISIS SEMÁNTICO: Se verifica que `resetEmail` no esté vacío antes de intentar
+    // enviar el correo. Esta es una validación semántica simple para asegurar que la operación tiene sentido.
     if (!resetEmail) {
       showError("Por favor, ingresa tu correo electrónico.");
       return;
@@ -222,10 +230,8 @@ export default function InicioSesion() {
       .then(() => {
         showSuccess("Correo de restablecimiento enviado. Revisa tu bandeja de entrada (y spam).", null, 5000);
         setViewMode("login");
-        // setResetEmail("");
       })
       .catch((error) => {
-        console.error("Error al enviar correo de restablecimiento:", error.code, error.message);
         if (error.code === "auth/user-not-found") {
           showError("No se encontró un usuario con ese correo electrónico.");
         } else if (error.code === "auth/invalid-email") {
@@ -234,8 +240,13 @@ export default function InicioSesion() {
           showError("Error al enviar el correo. Inténtalo de nuevo.");
         }
       });
-  }, [resetEmail, auth]); // showError y showSuccess removidos
+  }, [resetEmail, auth]);
 
+  // GENERACIÓN DE CÓDIGO INTERMEDIO: El JSX que sigue (elementos div, form, input, button, Link)
+  // no es JavaScript estándar. Herramientas como Babel lo traducen a llamadas
+  // `React.createElement(...)`. Esta traducción es análoga a la generación de código intermedio
+  // en un compilador, donde una sintaxis de alto nivel se convierte a una forma más manejable
+  // por el runtime (en este caso, React).
   return (
     <div className={styles["login-container"]}>
       {errorMessage && <ErrorBanner key={`err-${errorKey}`} message={errorMessage} />}
@@ -250,6 +261,9 @@ export default function InicioSesion() {
           />
         </div>
         <div className={styles["login-form-panel"]}>
+          {/* OPTIMIZACIÓN: El renderizado condicional (viewMode === 'login' o 'forgotPassword')
+              asegura que solo se renderice el formulario necesario. Esto reduce la cantidad
+              de nodos en el DOM y el trabajo que React tiene que hacer para las actualizaciones. */}
           {viewMode === "login" && (
             <>
               <div>
@@ -379,4 +393,9 @@ export default function InicioSesion() {
       </div>
     </div>
   );
+  // GENERACIÓN DE CÓDIGO OBJETO: Aunque no es visible aquí, el motor JavaScript del navegador
+  // toma el código JavaScript final (producto de la transpilación y empaquetado) y lo ejecuta.
+  // Para optimizar la ejecución, los motores modernos realizan compilación Just-In-Time (JIT),
+  // convirtiendo partes del JavaScript en código máquina específico para la CPU del usuario.
+  // Este código máquina es el "código objeto" en este contexto.
 }

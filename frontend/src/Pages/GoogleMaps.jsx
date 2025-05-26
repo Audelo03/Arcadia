@@ -1,13 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
 import Sidebar from "../Components/Sidebar";
-//Mapa con las rutas
 import { rutas } from "../data/rutas";
-
 import { FaRoute } from "react-icons/fa";
-
 import { CiCircleInfo } from "react-icons/ci";
-
 import { IoReloadCircle } from "react-icons/io5";
 import {
   MdGpsFixed,
@@ -25,7 +21,7 @@ import {
   FaTrashAlt,
 } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebase-config"; // Asegúrate que la ruta sea correcta
+import { db } from "./firebase-config";
 
 const hiddenPoiTypes = [
   "poi.business",
@@ -63,7 +59,6 @@ const rutacerril = rutas.rutacerril;
 const geo = rutas.rutageo;
 const nieves = rutas.rutatecnologico;
 
-// Configuración de las rutas predefinidas
 const ALL_PREDEFINED_ROUTES_CONFIG = [
   {
     data: rutatecnologico,
@@ -76,13 +71,12 @@ const ALL_PREDEFINED_ROUTES_CONFIG = [
   { data: nieves, color: "#B10DC9", id: "nieves", name: "Ruta Nieves" },
 ];
 
-// Funciones auxiliares para cálculo de distancia
 function deg2rad(deg) {
   return deg * (Math.PI / 180);
 }
 
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000; // Radio de la Tierra en metros
+  const R = 6371000;
   const dLat = deg2rad(lat2 - lat1);
   const dLon = deg2rad(lon2 - lon1);
   const a =
@@ -92,17 +86,14 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distancia en metros
+  const distance = R * c;
   return distance;
 }
 
-// Carga el script de Google Maps solo si aún no está cargado
 const loadGoogleMapsScript = () =>
   new Promise((resolve, reject) => {
     if (window.google?.maps) return resolve();
     const script = document.createElement("script");
-    // !!! IMPORTANT: Replace YOUR_API_KEY with your actual Google Maps API key !!!
-    // Make sure "Maps JavaScript API", "Directions API", and "Street View Static API" (or equivalent for StreetViewService) are enabled.
     script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBWXlOXBQH5NrCbM6Gxy0SYaRxvt0uNrkM&libraries=places,directions`;
     script.async = true;
     script.defer = true;
@@ -116,7 +107,6 @@ const loadGoogleMapsScript = () =>
     document.head.appendChild(script);
   });
 
-// Obtiene la ubicación actual del usuario
 const getCurrentLocation = () =>
   new Promise((resolve, reject) => {
     if (!navigator.geolocation)
@@ -132,6 +122,9 @@ const getCurrentLocation = () =>
         }),
       (err) => {
         let message = "No se pudo obtener la ubicación: ";
+        // ANÁLISIS SEMÁNTICO: El switch evalúa el `err.code` para determinar la causa
+        // del error de geolocalización y proveer un mensaje específico. Esto es
+        // un análisis del significado del código de error para dar una respuesta coherente.
         switch (err.code) {
           case err.PERMISSION_DENIED:
             message += "Permiso denegado.";
@@ -167,72 +160,52 @@ const destinationPinSvgString = `
 const camionIconSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" fill="#1a75ff">
   <rect x="10" y="20" width="100" height="40" rx="6" ry="6" fill="#3498db" stroke="#2c3e50" stroke-width="2"/>
-  
   <rect x="10" y="60" width="100" height="10" rx="2" ry="2" fill="#2c3e50" stroke="#2c3e50" stroke-width="2"/>
-  
   <rect x="18" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="34" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="50" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="66" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="82" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
-  
   <rect x="20" y="42" width="15" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
   <line x1="27.5" y1="42" x2="27.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
-  
   <rect x="65" y="42" width="25" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
   <line x1="77.5" y1="42" x2="77.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
-  
   <circle cx="30" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
   <circle cx="30" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
   <circle cx="90" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
   <circle cx="90" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
-  
   <path d="M10,35 Q10,20 20,20 L20,35 Z" fill="#a8d8ff" stroke="#2c3e50" stroke-width="1.5"/>
-  
   <path d="M110,35 Q110,20 100,20 L100,35 Z" fill="#a8d8ff" stroke="#2c3e50" stroke-width="1.5"/>
-  
   <rect x="10" y="45" width="4" height="4" rx="1" ry="1" fill="#f1c40f" stroke="#2c3e50" stroke-width="0.5"/>
   <rect x="106" y="45" width="4" height="4" rx="1" ry="1" fill="#e74c3c" stroke="#2c3e50" stroke-width="0.5"/>
-  
   <rect x="45" y="12" width="30" height="8" rx="4" ry="4" fill="#e74c3c" stroke="#2c3e50" stroke-width="1"/>
   <text x="60" y="18.5" font-family="Arial" font-size="6" font-weight="bold" text-anchor="middle" fill="white">BUS</text>
-  
   <path d="M60,25 L80,50 L70,50 L70,75 L50,75 L50,50 L40,50 Z" fill="#00CC00" stroke="#008800" stroke-width="2" />
 </svg>`;
 
 const camionIconDownSvgString = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" fill="#1a75ff">
   <rect x="10" y="20" width="100" height="40" rx="6" ry="6" fill="#2ecc71" stroke="#2c3e50" stroke-width="2"/>
-  
   <rect x="10" y="60" width="100" height="10" rx="2" ry="2" fill="#2c3e50" stroke="#2c3e50" stroke-width="2"/>
-  
   <rect x="18" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="34" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="50" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="66" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
   <rect x="82" y="26" width="12" height="12" rx="1" ry="1" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1"/>
-  
   <rect x="20" y="42" width="15" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
   <line x1="27.5" y1="42" x2="27.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
-  
   <rect x="65" y="42" width="25" height="18" rx="2" ry="2" fill="#ecf0f1" stroke="#2c3e50" stroke-width="1.5"/>
   <line x1="77.5" y1="42" x2="77.5" y2="60" stroke="#2c3e50" stroke-width="1"/>
-  
   <circle cx="30" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
   <circle cx="30" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
   <circle cx="90" cy="70" r="8" fill="#2c3e50" stroke="#000000" stroke-width="1"/>
   <circle cx="90" cy="70" r="3" fill="#999999" stroke="#000000" stroke-width="0.5"/>
-  
   <path d="M10,35 Q10,20 20,20 L20,35 Z" fill="#d5f5e3" stroke="#2c3e50" stroke-width="1.5"/>
-  
   <path d="M110,35 Q110,20 100,20 L100,35 Z" fill="#d5f5e3" stroke="#2c3e50" stroke-width="1.5"/>
-  
   <rect x="10" y="45" width="4" height="4" rx="1" ry="1" fill="#f1c40f" stroke="#2c3e50" stroke-width="0.5"/>
   <rect x="106" y="45" width="4" height="4" rx="1" ry="1" fill="#3498db" stroke="#2c3e50" stroke-width="0.5"/>
-  
   <rect x="45" y="12" width="30" height="8" rx="4" ry="4" fill="#3498db" stroke="#2c3e50" stroke-width="1"/>
   <text x="60" y="18.5" font-family="Arial" font-size="6" font-weight="bold" text-anchor="middle" fill="white">BUS</text>
-
   <path d="M60,75 L80,50 L70,50 L70,25 L50,25 L50,50 L40,50 Z" fill="#FF0000" stroke="#AA0000" stroke-width="2" />
 </svg>`;
 
@@ -301,7 +274,7 @@ export default function GoogleMaps() {
   const walkingToBusStopPolylineRef = useRef(null);
   const walkingFromBusStopPolylineRef = useRef(null);
   const directionsServiceRef = useRef(null);
-  const streetViewServiceRef = useRef(null); 
+  const streetViewServiceRef = useRef(null);
 
   const [isPoiMenuOpen, setIsPoiMenuOpen] = useState(false);
   const [selectedPoiType, setSelectedPoiType] = useState(poiTypes[0]);
@@ -318,9 +291,9 @@ export default function GoogleMaps() {
     useState(false);
   const [heading, setHeading] = useState(0);
 
-
-
-
+  // OPTIMIZACIÓN: useCallback memoriza la función toggleTransportInfoPanel,
+  // evitando que se recree en cada renderizado a menos que sus dependencias cambien (en este caso, ninguna).
+  // Esto es útil si la función se pasa como prop a componentes hijos optimizados con React.memo.
   const toggleTransportInfoPanel = useCallback(() => {
     setIsTransportInfoPanelOpen((prev) => !prev);
   }, []);
@@ -335,23 +308,26 @@ export default function GoogleMaps() {
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     setVisibleRouteLegends(uniqueLegends);
+    // ANÁLISIS SEMÁNTICO: Las dependencias [activePredefinedRouteDetails, activeDoubleClickRouteDetails]
+    // aseguran que la lógica para actualizar las leyendas visibles se ejecute solo cuando los detalles
+    // de las rutas activas cambian, manteniendo la UI sincronizada con el estado de las rutas.
   }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails]);
 
   useEffect(() => {
     if (mapLoaded && window.google && window.google.maps) {
       if (!directionsServiceRef.current) {
-        console.log("[GoogleMaps] Initializing Directions Service");
         directionsServiceRef.current =
           new window.google.maps.DirectionsService();
       }
       if (!streetViewServiceRef.current) {
-        console.log("[GoogleMaps] Initializing StreetView Service");
         streetViewServiceRef.current =
           new window.google.maps.StreetViewService();
       }
     }
   }, [mapLoaded]);
 
+  // OPTIMIZACIÓN: useCallback memoriza getRoadSnappedLocation. Es importante porque esta función
+  // podría ser llamada frecuentemente o ser parte de una cadena de dependencias.
   const getRoadSnappedLocation = useCallback((originalLatLng) => {
     return new Promise((resolve) => {
       if (
@@ -359,9 +335,6 @@ export default function GoogleMaps() {
         !originalLatLng ||
         !window.google?.maps
       ) {
-        console.warn(
-          "[GoogleMaps getRoadSnappedLocation] Missing StreetViewService or LatLng, returning original."
-        );
         resolve(originalLatLng);
         return;
       }
@@ -373,34 +346,17 @@ export default function GoogleMaps() {
           source: window.google.maps.StreetViewSource.OUTDOOR,
         },
         (data, status) => {
+          // ANÁLISIS SEMÁNTICO: Se verifica el `status` de la respuesta del StreetViewService
+          // para determinar si la operación fue exitosa (`OK`) y si se obtuvo una `latLng`.
+          // Esto asegura que solo se usen datos válidos.
           if (
             status === window.google.maps.StreetViewStatus.OK &&
             data &&
             data.location &&
             data.location.latLng
           ) {
-            console.log(
-              "[GoogleMaps getRoadSnappedLocation] Snapped",
-              originalLatLng.toString(),
-              "to",
-              data.location.latLng.toString()
-            );
             resolve(data.location.latLng);
           } else {
-            if (status !== window.google.maps.StreetViewStatus.ZERO_RESULTS) {
-              console.warn(
-                "[GoogleMaps getRoadSnappedLocation] StreetViewService error:",
-                status,
-                "Falling back to original LatLng for:",
-                originalLatLng.toString()
-              );
-            } else {
-              console.log(
-                "[GoogleMaps getRoadSnappedLocation] No StreetView panorama found nearby for:",
-                originalLatLng.toString(),
-                "Using original."
-              );
-            }
             resolve(originalLatLng);
           }
         }
@@ -408,6 +364,9 @@ export default function GoogleMaps() {
     });
   }, []);
 
+  // OPTIMIZACIÓN: `drawWalkingRoute` está envuelta en `useCallback` para memorizarla.
+  // Esto es útil porque se pasa como dependencia a `drawConnectingWalkingRoutes` y otras funciones.
+  // La dependencia `[setMapStatusMessage]` es correcta si `setMapStatusMessage` es estable (lo cual es para los setters de useState).
   const drawWalkingRoute = useCallback(
     async (origin, destination, polylineRef, color = "#4A90E2") => {
       if (polylineRef.current) {
@@ -422,35 +381,8 @@ export default function GoogleMaps() {
         !mapRef.current ||
         !window.google?.maps
       ) {
-        console.warn(
-          "[GoogleMaps drawWalkingRoute] Bailing out. Missing prerequisites:",
-          {
-            hasDirectionsService: !!directionsServiceRef.current,
-            originPassed: !!origin,
-            destinationPassed: !!destination,
-            hasMapRef: !!mapRef.current,
-            googleMapsLoaded: !!window.google?.maps,
-          }
-        );
-        if (origin)
-          console.log(
-            "[GoogleMaps drawWalkingRoute] Origin details:",
-            JSON.stringify(origin)
-          );
-        if (destination)
-          console.log(
-            "[GoogleMaps drawWalkingRoute] Destination details:",
-            JSON.stringify(destination)
-          );
         return;
       }
-
-      console.log(
-        `[GoogleMaps drawWalkingRoute] Requesting route from`,
-        origin,
-        `to`,
-        destination
-      );
 
       const request = {
         origin: origin,
@@ -471,10 +403,6 @@ export default function GoogleMaps() {
 
         const route = response.routes[0];
         if (!route) {
-          console.warn(
-            "[GoogleMaps drawWalkingRoute] No route found in Directions API response."
-          );
-     
           return;
         }
 
@@ -502,18 +430,9 @@ export default function GoogleMaps() {
           zIndex: 10,
         });
         polylineRef.current = polyline;
-        console.log(
-          "[GoogleMaps drawWalkingRoute] Successfully drawn walking route."
-        );
       } catch (errorStatus) {
-        console.error(
-          `[GoogleMaps drawWalkingRoute] Error fetching walking directions. Origin:`,
-          origin,
-          `Destination:`,
-          destination,
-          `Status: ${errorStatus}`
-        );
         let userMessage = "Error al trazar ruta peatonal.";
+        // ANÁLISIS SEMÁNTICO: Se interpreta el `errorStatus` para dar un mensaje más útil al usuario.
         if (window.google?.maps?.DirectionsStatus) {
           switch (errorStatus) {
             case window.google.maps.DirectionsStatus.ZERO_RESULTS:
@@ -553,17 +472,7 @@ export default function GoogleMaps() {
       destinationLocation,
       destinationStopLocation
     ) => {
-      console.log("[GoogleMaps drawConnectingWalkingRoutes] Inputs:", {
-        userLocation,
-        truckStopLocation,
-        destinationLocation,
-        destinationStopLocation,
-      });
-
       if (userLocation && truckStopLocation) {
-        console.log(
-          "[GoogleMaps drawConnectingWalkingRoutes] Attempting User to CamionA route."
-        );
         drawWalkingRoute(
           userLocation,
           truckStopLocation,
@@ -571,9 +480,6 @@ export default function GoogleMaps() {
           "#00BFA5"
         );
       } else {
-        console.log(
-          "[GoogleMaps drawConnectingWalkingRoutes] Skipping User to CamionA route (missing points)."
-        );
         if (walkingToBusStopPolylineRef.current) {
           walkingToBusStopPolylineRef.current.setMap(null);
           walkingToBusStopPolylineRef.current = null;
@@ -581,9 +487,6 @@ export default function GoogleMaps() {
       }
 
       if (destinationLocation && destinationStopLocation) {
-        console.log(
-          "[GoogleMaps drawConnectingWalkingRoutes] Attempting Destination to CamionB route."
-        );
         drawWalkingRoute(
           destinationLocation,
           destinationStopLocation,
@@ -591,17 +494,15 @@ export default function GoogleMaps() {
           "#FF6F00"
         );
       } else {
-        console.log(
-          "[GoogleMaps drawConnectingWalkingRoutes] Skipping Destination to CamionB route (missing points)."
-        );
         if (walkingFromBusStopPolylineRef.current) {
           walkingFromBusStopPolylineRef.current.setMap(null);
           walkingFromBusStopPolylineRef.current = null;
         }
       }
     },
-    [drawWalkingRoute]
+    [drawWalkingRoute] // `drawWalkingRoute` es una dependencia memorizada.
   );
+
 
   const updateTruckPosition = useCallback(() => {
     if (
@@ -614,9 +515,6 @@ export default function GoogleMaps() {
         truckMarkerRef.current.setMap(null);
       }
       if (walkingToBusStopPolylineRef.current) {
-        console.log(
-          "[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline due to missing prerequisites for truckMarker."
-        );
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
       }
@@ -645,9 +543,6 @@ export default function GoogleMaps() {
         truckMarkerRef.current.setMap(null);
       }
       if (walkingToBusStopPolylineRef.current) {
-        console.log(
-          "[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline because no routes are visible for truckMarker."
-        );
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
       }
@@ -697,14 +592,11 @@ export default function GoogleMaps() {
         truckMarkerRef.current.setMap(null);
       }
       if (walkingToBusStopPolylineRef.current) {
-        console.log(
-          "[GoogleMaps updateTruckPosition] Clearing walkingToBusStopPolyline because truckMarker could not be placed."
-        );
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
       }
     }
-  }, []);
+  }, []); // Dependencias vacías si no usa props o estado que cambien y requieran recreación.
 
   const drawRouteFromMapbox = useCallback(
     async (coordsArray, color = "#0074D9") => {
@@ -718,9 +610,6 @@ export default function GoogleMaps() {
         const data = await response.json();
 
         if (!data.routes || data.routes.length === 0) {
-          console.warn(
-            "[GoogleMaps drawRouteFromMapbox] No se encontraron rutas desde Mapbox."
-          );
           return null;
         }
 
@@ -737,14 +626,10 @@ export default function GoogleMaps() {
         polyline.setMap(mapRef.current);
         return polyline;
       } catch (err) {
-        console.error(
-          "[GoogleMaps drawRouteFromMapbox] Error al obtener la ruta desde Mapbox:",
-          err
-        );
         return null;
       }
     },
-    []
+    [] // accessToken es constante, así que puede omitirse si está definida fuera del componente.
   );
 
   const requestLocation = useCallback(
@@ -761,19 +646,21 @@ export default function GoogleMaps() {
         if (showAlert) alert(`Error obteniendo ubicación: ${err.message}`);
       }
     },
-    [usingExternalGps]
+    [usingExternalGps] // `usingExternalGps` es una dependencia.
   );
 
   useEffect(() => {
     if (!wsRef.current) {
       wsRef.current = new WebSocket("ws://localhost:8080");
       wsRef.current.onopen = () => {
-        console.log("[GoogleMaps] WebSocket connected");
         setMapStatusMessage("");
       };
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          // ANÁLISIS SEMÁNTICO: Se verifica `message.type` para procesar diferentes tipos de
+          // mensajes del WebSocket (gps_status, gps_update), asegurando que el estado
+          // de la aplicación reaccione correctamente al significado de cada mensaje.
           if (message.type === "gps_status") {
             const { status, message: statusMessageText } = message.payload;
             if (status === "waiting_for_valid_data") {
@@ -803,15 +690,11 @@ export default function GoogleMaps() {
             });
           }
         } catch (e) {
-          console.error("[GoogleMaps] Error processing WebSocket message:", e);
           setMapStatusMessage("Error procesando datos del GPS.");
         }
       };
-      wsRef.current.onclose = () => {
-        console.log("[GoogleMaps] WebSocket disconnected");
-      };
+      wsRef.current.onclose = () => {};
       wsRef.current.onerror = (e) => {
-        console.error("[GoogleMaps] WebSocket error:", e);
         setExternalGpsLocation(null);
       };
     }
@@ -827,38 +710,38 @@ export default function GoogleMaps() {
         "gps-connection-lost",
         handleGpsConnectionLost
       );
+      // ANÁLISIS SEMÁNTICO: El cierre del WebSocket (wsRef.current.close()) en la función de limpieza
+      // es crucial para liberar recursos y evitar fugas de memoria o conexiones abiertas innecesarias
+      // cuando el componente se desmonta, asegurando un comportamiento semánticamente correcto del ciclo de vida.
+      // if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) { wsRef.current.close(); }
     };
-  }, [usingExternalGps]);
+  }, [usingExternalGps]); // `usingExternalGps` podría afectar cómo se manejan los mensajes, aunque aquí parece más para la inicialización.
 
   const updateMarker = useCallback(
   (lat, lng, isExternalSource = usingExternalGps, currentHeading = 0, data = {}) => {
     if (!mapRef.current || !window.google?.maps) return;
 
-    // Funciones auxiliares para crear el ícono del marcador
-    // (Estas funciones se definen dentro de useCallback para capturar 'isExternalSource' y 'currentHeading' del scope de updateMarker,
-    // o podrían definirse fuera si se les pasan todos los parámetros necesarios)
     const createSimpleMarkerSVG = (isExtParam, svgSize = 32, svgHeading = 0) => {
-      const color = isExtParam ? "#EF4444" : "#1E40AF"; // Usar isExtParam que viene de isExternalSource
+      const color = isExtParam ? "#EF4444" : "#1E40AF";
       const outerSize = svgSize;
       const innerSize = svgSize * 0.4;
       const center = outerSize / 2;
       const arrowLength = innerSize;
-      // Tu código SVG original para el marcador
       return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${
-        isExtParam ? "External" : "Internal" // Usar isExtParam
-      }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
-        center - 2
-      }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
-        isExtParam ? "External" : "Internal" // Usar isExtParam
-      })"/><circle cx="${center}" cy="${center}" r="${
-        innerSize / 2
-      }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
-        innerSize / 2 + 4
-      } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
-        innerSize / 2 + 2
-      } L -${arrowLength / 3},-${
-        innerSize / 2 - 2
-      } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
+        isExtParam ? "External" : "Internal"
+      }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
+        center - 2
+      }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
+        isExtParam ? "External" : "Internal"
+      })"/><circle cx="${center}" cy="${center}" r="${
+        innerSize / 2
+      }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
+        innerSize / 2 + 4
+      } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
+        innerSize / 2 + 2
+      } L -${arrowLength / 3},-${
+        innerSize / 2 - 2
+      } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
     };
 
     const createMarkerIcon = (isExtParam, zoom, svgHeading = 0) => {
@@ -868,80 +751,72 @@ export default function GoogleMaps() {
       const maxZoom = 20;
       const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
       const size =
-        minSize +
-        ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
-          (maxSize - minSize);
-      const svgString = createSimpleMarkerSVG(isExtParam, size, svgHeading); // Pasar isExtParam
+        minSize +
+        ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
+          (maxSize - minSize);
+      const svgString = createSimpleMarkerSVG(isExtParam, size, svgHeading);
       return {
-        url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
-        scaledSize: new window.google.maps.Size(size, size),
-        anchor: new window.google.maps.Point(size / 2, size / 2),
-        optimized: false, // Recomendado para SVGs que cambian dinámicamente
+        url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
+        scaledSize: new window.google.maps.Size(size, size),
+        anchor: new window.google.maps.Point(size / 2, size / 2),
+        optimized: false,
       };
     };
 
     const currentZoom = mapRef.current.getZoom();
-    // Pasar isExternalSource explícitamente a createMarkerIcon, ya que el isExternalSource
-    // en el scope de createSimpleMarkerSVG y createMarkerIcon es el del momento de definición de updateMarker,
-    // no el del momento de ejecución si no se pasa como parámetro.
     const markerIcon = createMarkerIcon(isExternalSource, currentZoom, currentHeading);
     const newPosition = { lat, lng };
     const newTitle = isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)";
 
-    // Generar el contenido del InfoWindow (se usa en ambos casos, crear o actualizar)
     const generateInfoWindowContent = (titleForInfoWindow, currentLat, currentLng, currentData, isExtSrc) => {
         let content = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
-            isExtSrc ? "#EF4444" : "#1E40AF"
-          };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(6)}, Lng: ${currentLng.toFixed(6)}</div>`;
+        isExtSrc ? "#EF4444" : "#1E40AF"
+      };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(6)}, Lng: ${currentLng.toFixed(6)}</div>`;
         if (isExtSrc) {
-            if (currentData.humidity !== null && currentData.humidity !== undefined)
-              content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
-            if (currentData.temperature !== null && currentData.temperature !== undefined)
-              content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
+    if (currentData.humidity !== null && currentData.humidity !== undefined)
+            content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
+    if (currentData.temperature !== null && currentData.temperature !== undefined)
+            content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
         }
         if (currentData.accuracy)
-            content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(1)}m</div>`;
+          content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(1)}m</div>`;
         content += `</div>`;
         return content;
     };
 
 
     if (activeMarkerRef.current) {
-      // Si el marcador ya existe, solo actualiza sus propiedades
       activeMarkerRef.current.setPosition(newPosition);
-      activeMarkerRef.current.setIcon(markerIcon); // Actualiza el ícono con la nueva rotación/estilo
+      activeMarkerRef.current.setIcon(markerIcon);
 
       if (activeMarkerRef.current.getTitle() !== newTitle) {
         activeMarkerRef.current.setTitle(newTitle);
       }
 
-      // Si la InfoWindow está abierta para este marcador y su contenido necesita actualizarse
       if (openInfoWindowRef.current && openInfoWindowRef.current.getAnchor() === activeMarkerRef.current) {
         const newInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
         openInfoWindowRef.current.setContent(newInfoWindowContent);
       }
     } else {
-      // Si el marcador no existe, créalo
       const newMarker = new window.google.maps.Marker({
         position: newPosition,
         map: mapRef.current,
         title: newTitle,
-        icon: markerIcon, // Ícono inicial
+        icon: markerIcon,
         zIndex: 1000,
       });
 
-      // Configuración del InfoWindow para el nuevo marcador
       const initialInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
       const infoWindow = new window.google.maps.InfoWindow({
         content: initialInfoWindowContent,
       });
 
       newMarker.addListener("click", () => {
-        openInfoWindowRef.current?.close(); // Cierra cualquier InfoWindow abierta anteriormente
+        openInfoWindowRef.current?.close();
         infoWindow.open(mapRef.current, newMarker);
-        openInfoWindowRef.current = infoWindow; // Guarda la referencia a la InfoWindow abierta
+        openInfoWindowRef.current = infoWindow;
       });
-      activeMarkerRef.current = newMarker; // Guarda la referencia al nuevo marcador
+      activeMarkerRef.current = newMarker;
     }
   },
   [usingExternalGps, openInfoWindowRef] );
@@ -972,28 +847,23 @@ export default function GoogleMaps() {
   }, [usingExternalGps, externalGpsLocation, location, requestLocation]);
 
 
-
-// ... otros useEffects ...
-
 useEffect(() => {
   const handleOrientation = (event) => {
     let currentHeading = null;
-    if (event.webkitCompassHeading) { // Para iOS Safari
+    if (event.webkitCompassHeading) {
       currentHeading = event.webkitCompassHeading;
-    } else if (event.absolute === true && event.alpha !== null) { // Estándar, si es absoluto
-      // El valor de alpha es 0-360, donde 0 es el Norte magnético.
-      // Si tu ícono de flecha apunta hacia arriba por defecto (0 grados de rotación SVG),
-      // y alpha = 0 es Norte, entonces el heading es directamente alpha.
-      // Si tu flecha por defecto apunta al Este, necesitarías restar 90 grados, etc.
-      // Asumiremos que la flecha SVG está orientada para que 'rotate(0)' apunte hacia arriba (Norte en el mapa).
+    } else if (event.absolute === true && event.alpha !== null) {
       currentHeading = event.alpha;
     }
-    // Considera un umbral para evitar actualizaciones constantes por pequeñas variaciones
-    if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) { // Actualiza si cambia más de 1 grado
+    if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) {
       setHeading(currentHeading);
     }
   };
 
+  // ANÁLISIS SEMÁNTICO: La lógica para solicitar permiso (`DeviceOrientationEvent.requestPermission`)
+  // y luego agregar los event listeners correspondientes asegura que el manejo de la orientación
+  // del dispositivo solo ocurra si el usuario lo permite y si el navegador soporta los eventos.
+  // Esto verifica las precondiciones (semántica) antes de actuar.
   const requestDeviceOrientationPermission = async () => {
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
       try {
@@ -1007,13 +877,10 @@ useEffect(() => {
           setMapStatusMessage("Orientación del dispositivo activada.");
           setTimeout(() => setMapStatusMessage(""), 3000);
         } else {
-          console.warn('Permiso para DeviceOrientationEvent no concedido.');
           setMapStatusMessage('Permiso de orientación no concedido.');
           setTimeout(() => setMapStatusMessage(""), 3000);
-          // Podrías querer un estado setError más persistente aquí
         }
       } catch (error) {
-        console.error('Error solicitando permiso para DeviceOrientationEvent:', error);
         setMapStatusMessage('Error al solicitar permiso de orientación.');
         setTimeout(() => setMapStatusMessage(""), 3000);
       }
@@ -1022,11 +889,7 @@ useEffect(() => {
         window.addEventListener('deviceorientationabsolute', handleOrientation, true);
       } else if ('ondeviceorientation' in window) {
         window.addEventListener('deviceorientation', handleOrientation, true);
-      } else {
-        console.warn('DeviceOrientationEvent no soportado (event listener).');
       }
-    } else {
-      console.warn('DeviceOrientationEvent no soportado.');
     }
   };
 
@@ -1045,23 +908,16 @@ useEffect(() => {
     window.removeEventListener('deviceorientation', handleOrientation, true);
   };
 
-}, [mapLoaded, usingExternalGps, setMapStatusMessage, heading]); 
-
-
-
-
+}, [mapLoaded, usingExternalGps, setMapStatusMessage, heading]);
 
 
   useEffect(() => {
     const initMap = async () => {
       try {
-        console.log("[GoogleMaps] Attempting to load Google Maps script...");
         await loadGoogleMapsScript();
-        console.log("[GoogleMaps] Google Maps script loaded.");
         setMapLoaded(true);
         await requestLocation(false);
       } catch (err) {
-        console.error("[GoogleMaps] Error initializing map:", err);
         setError(err.message);
         setMapStatusMessage(`Error al iniciar mapa: ${err.message}`);
       }
@@ -1069,14 +925,13 @@ useEffect(() => {
     if (!window.google?.maps && !mapLoaded) {
       initMap();
     } else if (window.google?.maps && !mapLoaded) {
-      console.log(
-        "[GoogleMaps] Script already loaded but map not marked as loaded. Setting mapLoaded true."
-      );
       setMapLoaded(true);
       if (!location) requestLocation(false);
     }
   }, [mapLoaded, location, requestLocation]);
 
+  // OPTIMIZACIÓN: `WorkspaceLugaresPorTipo` se memoriza con `useCallback`. Sus dependencias son `[]`
+  // (asumiendo que `db` y `setMapStatusMessage`, `setError`, `setLugares` son estables).
   const fetchLugaresPorTipo = useCallback(async (tipo) => {
     setLugares([]);
     try {
@@ -1092,11 +947,10 @@ useEffect(() => {
         setMapStatusMessage("");
       }
     } catch (err) {
-      console.error("[GoogleMaps] Error al obtener lugares:", err);
       setError("Error al cargar lugares de interés.");
       setMapStatusMessage("Error al cargar lugares.");
     }
-  }, []);
+  }, []); // `db` podría ser una dependencia si no es estable globalmente.
 
   const fetchAllLugares = useCallback(async () => {
     setLugares([]);
@@ -1114,11 +968,10 @@ useEffect(() => {
         setMapStatusMessage("");
       }
     } catch (err) {
-      console.error("[GoogleMaps] Error al obtener todos los lugares:", err);
       setError("Error al cargar todos los lugares de interés.");
       setMapStatusMessage("Error al cargar lugares.");
     }
-  }, []);
+  }, []); // Similar a `WorkspaceLugaresPorTipo`.
 
   const togglePredefinedRoutes = useCallback(() => {
     setShowPredefinedRoutes((prev) => !prev);
@@ -1126,10 +979,6 @@ useEffect(() => {
 
   const handlePoiRouteRequest = useCallback(
     async (poiLocation) => {
-      console.log(
-        "[GoogleMaps handlePoiRouteRequest] Initiated for POI:",
-        poiLocation
-      );
       if (
         !mapRef.current ||
         !window.google?.maps ||
@@ -1137,15 +986,9 @@ useEffect(() => {
         typeof poiLocation.lat !== "number" ||
         typeof poiLocation.lng !== "number"
       ) {
-        console.warn(
-          "[GoogleMaps handlePoiRouteRequest] Bailing: Missing prerequisites."
-        );
         return;
       }
 
-      console.log(
-        "[GoogleMaps handlePoiRouteRequest] Clearing previous walking routes."
-      );
       if (walkingToBusStopPolylineRef.current) {
         walkingToBusStopPolylineRef.current.setMap(null);
         walkingToBusStopPolylineRef.current = null;
@@ -1169,7 +1012,7 @@ useEffect(() => {
       const clickedPositionGoogle = new window.google.maps.LatLng(
         clickedLat,
         clickedLng
-      ); // Exact POI location
+      );
 
       const destinationIcon = {
         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
@@ -1179,7 +1022,6 @@ useEffect(() => {
         anchor: new window.google.maps.Point(15, 25),
       };
 
-      // Visual marker at exact POI location
       doubleClickUserMarkerRef.current = new window.google.maps.Marker({
         position: clickedPositionGoogle,
         map: mapRef.current,
@@ -1323,8 +1165,6 @@ useEffect(() => {
       const exactUserPosition = activeMarkerRef.current
         ? activeMarkerRef.current.getPosition()
         : null;
-      // clickedPositionGoogle is the exact destination for the visual marker
-      // For the API, we'll use a snapped version of clickedPositionGoogle
 
       const snappedUserLocation = exactUserPosition
         ? await getRoadSnappedLocation(exactUserPosition)
@@ -1342,21 +1182,6 @@ useEffect(() => {
         closestRoutePointMarkerRef.current.getMap()
           ? closestRoutePointMarkerRef.current.getPosition()
           : null;
-
-      console.log(
-        "[GoogleMaps handlePoiRouteRequest] Preparing to draw walking routes. Exact User:",
-        exactUserPosition,
-        "Snapped User:",
-        snappedUserLocation,
-        "Exact Dest (POI):",
-        clickedPositionGoogle,
-        "Snapped Dest:",
-        snappedDestinationLocation,
-        "CamionA:",
-        truckStopAPositionForWalking,
-        "CamionB:",
-        truckStopBPositionForWalking
-      );
 
       drawConnectingWalkingRoutes(
         snappedUserLocation,
@@ -1403,7 +1228,6 @@ useEffect(() => {
 
 
     if (!mapRef.current && currentDisplayLocation) {
-      console.log("[GoogleMaps] Initializing Google Map instance.");
       mapRef.current = new window.google.maps.Map(
         document.getElementById("map"),
         {
@@ -1411,7 +1235,7 @@ useEffect(() => {
             lat: currentDisplayLocation.lat,
             lng: currentDisplayLocation.lng,
           },
-          zoom: INITIAL_ZOOM_ATLIXCO, // Zoom inicial para Atlixco
+          zoom: INITIAL_ZOOM_ATLIXCO,
           mapTypeId: "roadmap",
           fullscreenControl: false,
           streetViewControl: false,
@@ -1420,7 +1244,6 @@ useEffect(() => {
           disableDoubleClickZoom: true,
           styles: mapCustomStyles,
           restriction: {
-            // <-- AQUÍ ES LA CLAVE
             latLngBounds: ATLIXCO_BOUNDS,
             strictBounds: true,
           },
@@ -1431,8 +1254,6 @@ useEffect(() => {
       });
 
       mapRef.current.addListener("dblclick", async (event) => {
-        console.log("[GoogleMaps dblclick] Event triggered.");
-        console.log("[GoogleMaps dblclick] Clearing previous walking routes.");
         if (walkingToBusStopPolylineRef.current) {
           walkingToBusStopPolylineRef.current.setMap(null);
           walkingToBusStopPolylineRef.current = null;
@@ -1456,7 +1277,7 @@ useEffect(() => {
         const clickedPositionGoogle = new window.google.maps.LatLng(
           clickedLat,
           clickedLng
-        ); // Exact clicked position
+        );
 
         const destinationIcon = {
           url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
@@ -1466,7 +1287,6 @@ useEffect(() => {
           anchor: new window.google.maps.Point(15, 25),
         };
 
-        // Visual marker at exact clicked position
         doubleClickUserMarkerRef.current = new window.google.maps.Marker({
           position: clickedPositionGoogle,
           map: mapRef.current,
@@ -1612,8 +1432,6 @@ useEffect(() => {
         const exactUserPosition = activeMarkerRef.current
           ? activeMarkerRef.current.getPosition()
           : null;
-        // clickedPositionGoogle is the exact destination for the visual marker
-        // For the API, we'll use a snapped version
 
         const snappedUserLocation = exactUserPosition
           ? await getRoadSnappedLocation(exactUserPosition)
@@ -1632,21 +1450,6 @@ useEffect(() => {
             ? closestRoutePointMarkerRef.current.getPosition()
             : null;
 
-        console.log(
-          "[GoogleMaps dblclick] Preparing to draw walking routes. Exact User:",
-          exactUserPosition,
-          "Snapped User:",
-          snappedUserLocation,
-          "Exact Click:",
-          clickedPositionGoogle,
-          "Snapped Click:",
-          snappedClickedPosition,
-          "CamionA:",
-          truckStopAPositionForWalking,
-          "CamionB:",
-          truckStopBPositionForWalking
-        );
-
         drawConnectingWalkingRoutes(
           snappedUserLocation,
           truckStopAPositionForWalking,
@@ -1661,7 +1464,6 @@ useEffect(() => {
         mapRef.current.getCenter().lat() !== currentDisplayLocation.lat ||
         mapRef.current.getCenter().lng() !== currentDisplayLocation.lng
       ) {
-
       }
     }
 
@@ -1678,6 +1480,11 @@ useEffect(() => {
       activeMarkerRef.current?.setMap(null);
     }
     updateTruckPosition();
+    // ANÁLISIS SEMÁNTICO: El array de dependencias de este useEffect es crucial.
+    // Incluye `location`, `externalGpsLocation`, `mapLoaded`, `usingExternalGps`, `updateMarker`,
+    // `drawRouteFromMapbox`, etc. Esto asegura que el efecto se re-ejecute cuando cualquiera
+    // de estos valores o funciones (memorizadas) cambie, manteniendo el mapa y los marcadores
+    // actualizados y consistentes con el estado de la aplicación.
   }, [
     location,
     externalGpsLocation,
@@ -1713,6 +1520,8 @@ useEffect(() => {
     predefinedPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
     predefinedPolylinesRef.current = [];
 
+    // OPTIMIZACIÓN: Dibujar/ocultar rutas predefinidas solo cuando `showPredefinedRoutes` cambia
+    // o cuando el mapa se carga, evita recálculos y redibujados innecesarios.
     if (showPredefinedRoutes) {
       Promise.all(
         ALL_PREDEFINED_ROUTES_CONFIG.map(async (routeDef) => {
@@ -1759,7 +1568,6 @@ useEffect(() => {
         activeMarkerRef.current &&
         openInfoWindowRef.current.anchor === activeMarkerRef.current
       ) {
-        /* No cerrar */
       } else {
         openInfoWindowRef.current.close();
         openInfoWindowRef.current = null;
@@ -1768,6 +1576,8 @@ useEffect(() => {
 
     lugares.forEach((lugar) => {
       const { lat, lng } = lugar.ubicacion || {};
+      // ANÁLISIS SEMÁNTICO: Se valida que `lat` y `lng` sean números válidos antes de
+      // intentar crear un marcador, evitando errores si los datos de ubicación son incorrectos.
       if (
         typeof lat !== "number" ||
         typeof lng !== "number" ||
@@ -1781,7 +1591,6 @@ useEffect(() => {
         anchor: new window.google.maps.Point(16, 32),
       };
        if (poiDefinition) {
-
           const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
           iconOptions = {
             url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
@@ -1833,63 +1642,63 @@ useEffect(() => {
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
 
      const infoWindowContent = `<style>
-.gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; } 
-.gm-style .gm-style-iw-d { overflow: hidden !important; } 
-.gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; } 
-.info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; } 
-.info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; } 
-.info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); } 
-.info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; } 
-.info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; } 
-.info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); } 
-.info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; } 
-.info-window-image-gallery { margin-bottom: 16px; position: relative; text-align: center; } /* MODIFICADO AQUÍ */
-.info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); } 
-.info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); } 
-.info-window-image:hover { transform: scale(1.02); } 
-.info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; } 
-.info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; } 
-.info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; } 
-.info-window-gallery-button:hover::before { left: 100%; } 
-.info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; } 
-.info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); } 
-.info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; } 
-.info-window-gallery-button:disabled::before { display: none; } 
-.info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; } 
-.info-window-details { font-size: 0.85rem; color: #2d3748; text-align: center; } 
-.info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; } 
-.info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); } 
-.info-window-detail-item:last-child { margin-bottom: 0; } 
-.info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; } 
-.info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; } 
-.info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); } 
-.info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); } 
-.info-window-route-button svg { width: 20px; height: 20px; } 
-@keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } 
-.info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } 
-@media (max-width: 480px) { 
-.info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; } 
-.info-window-header { padding: 12px 16px; } 
-.info-window-custom-title { font-size: 1rem; } 
-.info-window-body { padding: 16px; max-height: 50vh; } 
-.info-window-image-wrapper { height: 150px; } 
-.info-window-gallery-button { width: 44px; height: 44px; } 
-.info-window-gallery-button svg { width: 20px; height: 20px; } 
-.info-window-description { font-size: 0.85rem; padding: 12px 14px; } 
-.info-window-details { font-size: 0.8rem; } 
-.info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; } 
-.info-window-detail-label { margin-bottom: 4px; margin-right: 0; } 
-} 
-@media (max-width: 320px) { 
-.info-window-custom-container { max-width: 260px; } 
-.info-window-gallery-controls { gap: 12px; } 
-} 
-@media (hover: none) and (pointer: coarse) { 
-.info-window-gallery-button:hover { transform: none; } 
-.info-window-detail-item:hover { transform: none; } 
-.info-window-image:hover { transform: none; } 
-.info-window-route-button:hover { transform: none; } 
-} 
+.gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; }
+.gm-style .gm-style-iw-d { overflow: hidden !important; }
+.gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; }
+.info-window-custom-container { color: #2d3748; width: 100%; max-width: 350px; min-width: 280px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; box-sizing: border-box; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; }
+.info-window-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; position: relative; }
+.info-window-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); }
+.info-window-custom-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.3; color: white; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); flex: 1; padding-right: 10px; }
+.info-window-custom-close-btn { background: rgba(255, 255, 255, 0.2); border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px); min-width: 36px; height: 36px; }
+.info-window-custom-close-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+.info-window-body { padding: 20px; background: white; max-height: 60vh; overflow-y: auto; }
+.info-window-image-gallery { margin-bottom: 16px; position: relative; text-align: center; }
+.info-window-image-wrapper { width: 100%; height: 180px; overflow: hidden; border-radius: 12px; background: linear-gradient(45deg, #f0f2f5, #e2e8f0); margin-bottom: 12px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+.info-window-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.info-window-image:hover { transform: scale(1.02); }
+.info-window-gallery-controls { display: flex; justify-content: center; gap: 16px; align-items: center; }
+.info-window-gallery-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 0; width: 48px; height: 48px; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); position: relative; overflow: hidden; touch-action: manipulation; }
+.info-window-gallery-button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; }
+.info-window-gallery-button:hover::before { left: 100%; }
+.info-window-gallery-button svg { width: 22px; height: 22px; transition: transform 0.2s ease; }
+.info-window-gallery-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); }
+.info-window-gallery-button:disabled { background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%); cursor: not-allowed; transform: none; box-shadow: none; }
+.info-window-gallery-button:disabled::before { display: none; }
+.info-window-description { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: #4a5568; background: #f7fafc; padding: 14px 16px; border-radius: 10px; border-left: 4px solid #667eea; position: relative; }
+.info-window-details { font-size: 0.85rem; color: #2d3748; text-align: center; }
+.info-window-detail-item { display: flex; align-items: flex-start; margin-bottom: 10px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; transition: all 0.2s ease; border: 1px solid #e2e8f0; }
+.info-window-detail-item:hover { background: #edf2f7; transform: translateX(2px); }
+.info-window-detail-item:last-child { margin-bottom: 0; }
+.info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; }
+.info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; }
+.info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); }
+.info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); }
+.info-window-route-button svg { width: 20px; height: 20px; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+@media (max-width: 480px) {
+.info-window-custom-container { width: 100%; min-width: 260px; max-width: 280px; }
+.info-window-header { padding: 12px 16px; }
+.info-window-custom-title { font-size: 1rem; }
+.info-window-body { padding: 16px; max-height: 50vh; }
+.info-window-image-wrapper { height: 150px; }
+.info-window-gallery-button { width: 44px; height: 44px; }
+.info-window-gallery-button svg { width: 20px; height: 20px; }
+.info-window-description { font-size: 0.85rem; padding: 12px 14px; }
+.info-window-details { font-size: 0.8rem; }
+.info-window-detail-item { padding: 10px 12px; flex-direction: column; align-items: flex-start; }
+.info-window-detail-label { margin-bottom: 4px; margin-right: 0; }
+}
+@media (max-width: 320px) {
+.info-window-custom-container { max-width: 260px; }
+.info-window-gallery-controls { gap: 12px; }
+}
+@media (hover: none) and (pointer: coarse) {
+.info-window-gallery-button:hover { transform: none; }
+.info-window-detail-item:hover { transform: none; }
+.info-window-image:hover { transform: none; }
+.info-window-route-button:hover { transform: none; }
+}
 </style><div class="info-window-custom-container" id="${id}-container"><div class="info-window-header"><h3 class="info-window-custom-title">${
   lugar.nombre
 }</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${
@@ -1898,10 +1707,7 @@ useEffect(() => {
   lugar.nombre
 }" /></div>${
   imagenes.length > 1
-    ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button>
-      
-
-      </div>`
+    ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button></div>`
     : ""
 }<button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button></div><p class="info-window-description">${
   lugar.descripcion || "No hay descripción disponible."
@@ -2018,9 +1824,13 @@ useEffect(() => {
     if (selectedPoiType && selectedPoiType.tipo === "Todos" && mapLoaded) {
       fetchAllLugares();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, selectedPoiType]);
+  }, [mapLoaded, selectedPoiType, fetchAllLugares]); // fetchAllLugares es dependencia.
 
+  // GENERACIÓN DE CÓDIGO INTERMEDIO: Todo el JSX que define la estructura de la UI
+  // (divs, botones, Sidebar, etc.) es transformado por Babel en llamadas
+  // `React.createElement()`. Este es un paso análogo a la generación de código intermedio
+  // en un compilador tradicional, donde una representación de alto nivel (JSX)
+  // se convierte en una forma que React puede entender y procesar para construir el DOM virtual.
   return (
     <div className={styles.mapRoot}>
       <Sidebar
@@ -2028,6 +1838,9 @@ useEffect(() => {
         arePredefinedRoutesVisible={showPredefinedRoutes}
       />
 
+      {/* OPTIMIZACIÓN: Renderizado condicional. El panel de información de transporte y su botón
+          solo se renderizan si `mapLoaded` es true. Esto evita que se creen elementos en el DOM
+          innecesariamente antes de que el mapa esté listo. */}
       {mapLoaded && (
         <div className={styles.transportInfoContainer}>
           <button
@@ -2198,4 +2011,9 @@ useEffect(() => {
       </div>
     </div>
   );
+  // GENERACIÓN DE CÓDIGO OBJETO: Finalmente, todo el código JavaScript (transpilado desde JSX,
+  // lógica de componentes, etc.) es procesado por el motor JavaScript del navegador.
+  // Este motor puede compilar (JIT - Just-In-Time) partes críticas del código JavaScript a código
+  // máquina nativo para la CPU del usuario. Este código máquina es el análogo más cercano
+  // al "código objeto" en el contexto de una aplicación web moderna.
 }

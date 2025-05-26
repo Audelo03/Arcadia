@@ -18,7 +18,7 @@ const CuentaDeUsuario = () => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
-  const [firestoreData, setFirestoreData] = useState({ // Still useful for reference if needed
+  const [firestoreData, setFirestoreData] = useState({
     firstName: "",
     lastName: "",
     gender: "",
@@ -28,20 +28,16 @@ const CuentaDeUsuario = () => {
   const [loading, setLoading] = useState(true);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Editable profile fields - these are the source of truth for the form
   const [photoURL, setPhotoURL] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
-  // displayName is derived, not directly edited in a field
-  const [, setDisplayNameState] = useState(''); // Renamed to avoid conflict if 'displayName' is used elsewhere
+  const [, setDisplayNameState] = useState('');
 
-  // Password change fields
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
-  // Feedback states
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -52,43 +48,37 @@ const CuentaDeUsuario = () => {
     setSuccessMessage('');
   };
 
-  // Load user data from Auth and Firestore
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        setPhotoURL(currentUser.photoURL || ''); // Initialize photoURL from Auth
+        setPhotoURL(currentUser.photoURL || '');
 
         const userDocRef = doc(db, "usuarios", currentUser.uid);
         try {
           const docSnap = await getDoc(userDocRef);
           if (docSnap.exists()) {
             const userData = docSnap.data();
-            setFirestoreData(userData); // Store Firestore data for reference
+            setFirestoreData(userData);
             setFirstName(userData.firstName || '');
             setLastName(userData.lastName || '');
             setGender(userData.gender || '');
-            if (userData.photoURL) { // Prefer Firestore photoURL if it exists and is set
+            if (userData.photoURL) {
                 setPhotoURL(userData.photoURL);
             }
             setDisplayNameState(`${userData.firstName || ''} ${userData.lastName || ''}`.trim() || currentUser.displayName || '');
           } else {
-            // Document doesn't exist, use Auth data to populate fields
-            console.warn("User document not found in Firestore for UID:", currentUser.uid, "Populating from Auth.");
             const nameParts = currentUser.displayName?.split(' ') || [''];
             setFirstName(nameParts[0] || '');
             setLastName(nameParts.slice(1).join(' ') || '');
-            setGender(''); // Default gender
-            // photoURL is already set from currentUser.photoURL
+            setGender('');
             setDisplayNameState(currentUser.displayName || '');
           }
         } catch (firestoreError) {
-          console.error("Error fetching user data from Firestore:", firestoreError);
           setError("Error al cargar datos adicionales del perfil. Usando datos de autenticación como respaldo.");
           const nameParts = currentUser.displayName?.split(' ') || [''];
           setFirstName(nameParts[0] || '');
           setLastName(nameParts.slice(1).join(' ') || '');
-          // photoURL already set from Auth, gender remains default
           setDisplayNameState(currentUser.displayName || '');
         }
       } else {
@@ -97,10 +87,13 @@ const CuentaDeUsuario = () => {
       setLoading(false);
     });
     return () => unsubscribe();
+    // ANÁLISIS SEMÁNTICO: Las dependencias [auth, navigate] aseguran que el efecto se ejecute
+    // solo cuando estas referencias cambian, evitando ejecuciones innecesarias y manteniendo
+    // la coherencia del estado del componente con respecto a sus dependencias.
   }, [auth, navigate]);
 
   const handleProfileSaveChanges = async (e) => {
-    e.preventDefault(); // Important as this is form onSubmit handler
+    e.preventDefault();
     if (!user) return;
     resetMessages();
     setIsSaving(true);
@@ -108,37 +101,36 @@ const CuentaDeUsuario = () => {
     const newDisplayNameForAuth = `${firstName} ${lastName}`.trim();
 
     try {
-      // Update Firebase Auth profile
       await updateProfile(auth.currentUser, {
         displayName: newDisplayNameForAuth,
         photoURL: photoURL,
       });
 
-      // Update Firestore document
       const userDocRef = doc(db, "usuarios", user.uid);
       const updatedFirestoreData = {
         firstName,
         lastName,
         gender,
-        photoURL, // Save photoURL to Firestore as well
-        email: user.email, // Keep email, though it's not edited here
+        photoURL,
+        email: user.email,
         updatedAt: new Date().toISOString(),
       };
       await setDoc(userDocRef, updatedFirestoreData, { merge: true });
 
-      // Update local state to reflect changes (important if not reloading page)
       setUser(prevUser => ({ ...prevUser, displayName: newDisplayNameForAuth, photoURL }));
       setFirestoreData(prevData => ({ ...prevData, ...updatedFirestoreData }));
       setDisplayNameState(newDisplayNameForAuth);
-      // Individual field states (firstName, lastName, gender, photoURL) are already up-to-date from user input
 
       setSuccessMessage('Perfil actualizado con éxito.');
+      // OPTIMIZACIÓN: Recargar la página (window.location.reload()) puede no ser la forma más óptima
+      // en una SPA, ya que React está diseñado para actualizaciones dinámicas sin recarga completa.
+      // Sin embargo, puede ser una solución simple para asegurar la resincronización de todos los estados.
+      // Idealmente, se actualizaría el estado local de forma precisa.
       setTimeout(() => {
-        window.location.reload(); // As per your existing code
+        window.location.reload();
       }, 1000);
 
     } catch (err) {
-      console.error("Error updating profile:", err);
       setError(err.message || 'No se pudo actualizar el perfil. Inténtalo de nuevo.');
     } finally {
       setIsSaving(false);
@@ -150,6 +142,9 @@ const CuentaDeUsuario = () => {
     if (!user) return;
     resetMessages();
 
+    // ANÁLISIS SEMÁNTICO: Estas comprobaciones (longitud de contraseña, coincidencia de contraseñas,
+    // contraseña actual no vacía) son validaciones semánticas para asegurar que los datos
+    // ingresados por el usuario cumplen con las reglas de negocio antes de procesarlos.
     if (newPassword.length < 6) {
       setError("La nueva contraseña debe tener al menos 6 caracteres.");
       return;
@@ -175,7 +170,9 @@ const CuentaDeUsuario = () => {
       setNewPassword('');
       setConfirmNewPassword('');
     } catch (err) {
-      console.error("Error updating password:", err);
+      // ANÁLISIS SEMÁNTICO: El manejo de errores específico basado en `err.code`
+      // permite dar retroalimentación más precisa al usuario, lo cual es una forma
+      // de validación semántica post-operación.
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError("La contraseña actual es incorrecta.");
       } else if (err.code === 'auth/too-many-requests') {
@@ -188,6 +185,8 @@ const CuentaDeUsuario = () => {
     }
   };
 
+  // OPTIMIZACIÓN: La carga condicional (mostrar "Cargando..." mientras `loading` es true)
+  // mejora la experiencia del usuario al evitar mostrar una UI incompleta o vacía.
   if (loading) {
     return <div className={styles.loadingContainer}>Cargando datos del usuario...</div>;
   }
@@ -196,6 +195,10 @@ const CuentaDeUsuario = () => {
     return null;
   }
 
+  // GENERACIÓN DE CÓDIGO INTERMEDIO: El JSX que sigue es una sintaxis similar a HTML que no es
+  // entendida directamente por los navegadores. Herramientas como Babel lo transforman
+  // (transpilan) a llamadas de función `React.createElement()`, que es una especie de
+  // código intermedio antes de que React genere la representación final en el DOM.
   return (
     <div className={styles.pageContainer}>
       <div className={styles.accountWrapper}>
@@ -207,16 +210,17 @@ const CuentaDeUsuario = () => {
         {successMessage && <p className={styles.successMessage}>{successMessage}</p>}
 
         <button
-          type="button" // Important: type="button" if not submitting a form
+          type="button"
           className={`${styles.button} ${styles.mapButton}`}
-          style={{ marginBottom: '20px' }} // Added some bottom margin
+          style={{ marginBottom: '20px' }}
           onClick={() => navigate('/mapa')}
         >
           <IoArrowBack size={30} />
-        
         </button>
 
-        {/* Profile Information Form */}
+        {/* OPTIMIZACIÓN: El renderizado condicional (className={isChangingPassword ? styles.hiddenSection : ''})
+            oculta o muestra secciones del formulario. Esto es una optimización porque el DOM no se
+            manipula innecesariamente para elementos que no necesitan ser visibles. */}
         <form onSubmit={handleProfileSaveChanges} className={isChangingPassword ? styles.hiddenSection : ''}>
           <section className={styles.userDetailsSection}>
             <h2>Información del Perfil</h2>
@@ -295,15 +299,13 @@ const CuentaDeUsuario = () => {
           </div>
         </form>
 
-        {/* Toggle Change Password Section Button */}
-        {/* Show this button only if profile form is not hidden (i.e., not changing password) */}
         {!isChangingPassword && (
              <div className={styles.actionButtons} style={{ marginTop: '20px' }}>
                 <button
                     type="button"
-                    className={`${styles.button} ${styles.changePasswordToggleButton}`} // You might need to style this
+                    className={`${styles.button} ${styles.changePasswordToggleButton}`}
                     onClick={() => {
-                        setIsChangingPassword(true); // Show password section
+                        setIsChangingPassword(true);
                         resetMessages();
                     }}
                 >
@@ -312,13 +314,10 @@ const CuentaDeUsuario = () => {
             </div>
         )}
 
-
-        {/* Password Change Form */}
         {isChangingPassword && (
           <form onSubmit={handlePasswordUpdate} style={{marginTop: '20px'}}>
             <section className={styles.passwordChangeSection}>
               <h2>Cambiar Contraseña</h2>
-              {/* Inputs for password change */}
               <div className={styles.formGroup}>
                 <label htmlFor="currentPassword">Contraseña Actual</label>
                 <input type="password" id="currentPassword" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className={styles.formInput} required />
@@ -335,14 +334,13 @@ const CuentaDeUsuario = () => {
                 <button type="submit" className={`${styles.button} ${styles.saveButton}`} disabled={isUpdatingPassword}>
                   {isUpdatingPassword ? 'Actualizando...' : 'Actualizar Contraseña'}
                 </button>
-                <button 
-                    type="button" 
-                    className={`${styles.button} ${styles.cancelButton}`} 
+                <button
+                    type="button"
+                    className={`${styles.button} ${styles.cancelButton}`}
                     style={{marginLeft: '10px'}}
                     onClick={() => {
                         setIsChangingPassword(false);
                         resetMessages();
-                        // Clear password fields on cancel
                         setCurrentPassword('');
                         setNewPassword('');
                         setConfirmNewPassword('');
@@ -356,7 +354,6 @@ const CuentaDeUsuario = () => {
           </form>
         )}
 
-        {/* Saved Routes Section */}
         <section className={`${styles.savedRoutesSection} ${isChangingPassword ? styles.hiddenSection : ''}`}>
           <h2>Rutas Guardadas</h2>
           <div className={styles.routesList}>
@@ -366,6 +363,11 @@ const CuentaDeUsuario = () => {
       </div>
     </div>
   );
+  // GENERACIÓN DE CÓDIGO OBJETO: Aunque no lo vemos directamente aquí, el código JavaScript final
+  // (después de la transpilación de JSX y el empaquetado) es interpretado y ejecutado por el motor
+  // JavaScript del navegador. Este motor puede realizar compilación Just-In-Time (JIT) para convertir
+  // el JavaScript en código máquina nativo para una ejecución más rápida. Ese código máquina es
+  // análogo al "código objeto".
 };
 
 export default CuentaDeUsuario;

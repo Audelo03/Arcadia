@@ -642,3 +642,125 @@
     left: calc(var(--sidebar-collapsed-width, 60px) + 25px); /* sidebar width + desired offset */
     bottom: 25px;
   }}
+
+
+
+  /* Estilos para el panel de control de rutas */
+.routeControlsContainer {
+  position: absolute;
+  top: 10px; /* Ajusta según sea necesario */
+  left: 70px; /* Ajusta si tienes una sidebar, o colócalo donde prefieras */
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  max-width: 280px;
+  max-height: calc(100vh - 100px); /* Altura máxima para evitar desbordamiento */
+  overflow-y: auto; /* Scroll si hay muchas rutas */
+  backdrop-filter: blur(5px);
+}
+
+.routeControlHeader {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.routeControlGlobalButtons {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.routeControlButton {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  color: #333;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.routeControlButton:hover {
+  background-color: #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.routeButtonList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.routeButtonItem {
+  margin-bottom: 5px;
+}
+
+.routeToggleButton {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Para el ícono de ojo */
+}
+
+.routeButtonColorSquare {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  margin-right: 8px;
+  border: 1px solid rgba(0,0,0,0.2); /* Borde sutil para el cuadradito de color */
+  flex-shrink: 0;
+}
+
+.routeToggleButton .FaEye, .routeToggleButton .FaEyeSlash {
+    margin-left: auto; /* Empuja el ícono al final si el texto es corto */
+    padding-left: 5px;
+    flex-shrink: 0;
+}
+
+
+/* Estilo para el botón cuando la ruta está visible */
+.routeVisible {
+  /* El estilo se aplica inline ahora para usar route.color */
+  /* font-weight: bold; */
+}
+
+/* Estilo para el botón cuando la ruta está oculta */
+.routeHidden {
+   /* El estilo se aplica inline ahora para usar route.color */
+}
+
+.routeLegendTitle {
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+  color: #555;
+}
+
+/* Ajustes al contenedor de leyenda existente si es necesario */
+.routeLegendContainer {
+  /* position: absolute;  Ya lo tienes así probablemente */
+  /* bottom: 40px; */ /* Ajusta para que no choque con doubleClickLegend */
+  /* right: 10px; */
+  /* ... otros estilos ... */
+  background-color: rgba(255, 255, 255, 0.85); /* Fondo un poco más opaco */
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.15);
+}
