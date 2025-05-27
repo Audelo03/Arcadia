@@ -22,6 +22,7 @@ import {
 } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase-config";
+import axios from 'axios';
 
 const hiddenPoiTypes = [
   "poi.business",
@@ -49,15 +50,30 @@ const ATLIXCO_BOUNDS = {
 const ATLIXCO_CENTER = { lat: 18.9031, lng: -98.4372 };
 const INITIAL_ZOOM_ATLIXCO = 15;
 
+// Helper function to check if location is within Atlixco bounds
+function isWithinAtlixcoBounds(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+    return false;
+  }
+  return (
+    lat >= ATLIXCO_BOUNDS.south &&
+    lat <= ATLIXCO_BOUNDS.north &&
+    lng >= ATLIXCO_BOUNDS.west &&
+    lng <= ATLIXCO_BOUNDS.east
+  );
+}
+
 const faRouteSVGString = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 512 512"><path d="M288 448H64V320H0v160c0 17.7 14.3 32 32 32h256c17.7 0 32-14.3 32-32V320H288v128zM112 224c61.9 0 112-50.1 112-112S173.9 0 112 0 0 50.1 0 112s50.1 112 112 112zm0-160c26.5 0 48 21.5 48 48s-21.5 48-48 48-48-21.5-48-48 21.5-48 48-48zM496 0H384c-17.7 0-32 14.3-32 32s14.3 32 32 32H422.7l-70.4 70.4c-25.1-19.5-58.1-30.4-92.3-30.4H147.3c-25.2 9.5-43.2 33.3-43.2 61.1V256H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H208c17.7 0 32-14.3 32-32V217.1c0-8.4 3.6-16.3 9.7-21.7l96-80c11.9-9.9 29.5-8.9 39.4 2s8.9 29.5-2 39.4l-30.9 25.7 54.6 54.6c25.1 19.5 58.1 30.4 92.3 30.4H496c17.7 0 32-14.3 32-32V32c0-17.7-14.3-32-32-32z"/></svg>`;
 
 const accessToken =
   "pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg";
 
+
+
 const rutatecnologico = rutas.rutatecnologico;
 const rutacerril = rutas.rutacerril;
 const geo = rutas.rutageo;
-const nieves = rutas.rutatecnologico;
+const nieves = rutas.rutatecnologico; // Asumo que esto es intencional, si no, debería ser rutas.ruranieves o similar
 
 const ALL_PREDEFINED_ROUTES_CONFIG = [
   {
@@ -122,9 +138,6 @@ const getCurrentLocation = () =>
         }),
       (err) => {
         let message = "No se pudo obtener la ubicación: ";
-        // ANÁLISIS SEMÁNTICO: El switch evalúa el `err.code` para determinar la causa
-        // del error de geolocalización y proveer un mensaje específico. Esto es
-        // un análisis del significado del código de error para dar una respuesta coherente.
         switch (err.code) {
           case err.PERMISSION_DENIED:
             message += "Permiso denegado.";
@@ -209,7 +222,6 @@ const camionIconDownSvgString = `
   <path d="M60,75 L80,50 L70,50 L70,25 L50,25 L50,50 L40,50 Z" fill="#FF0000" stroke="#AA0000" stroke-width="2" />
 </svg>`;
 
-
 const poiTypes = [
   { tipo: "Todos", Icono: FaThList, svgString: null, emoji: "🗺️" },
   {
@@ -258,10 +270,19 @@ export default function GoogleMaps() {
   const [usingExternalGps, setUsingExternalGps] = useState(false);
   const [lugares, setLugares] = useState([]);
 
+
+  
+
   const [showPredefinedRoutes, setShowPredefinedRoutes] = useState(false);
   const predefinedPolylinesRef = useRef([]);
-  const dynamicPolylineRef = useRef(null);
-  const doubleClickedRoutesPolylinesRef = useRef([]);
+// ...
+const dynamicPolylineRef = useRef(null);
+const aiOptimizedRouteSegmentsRef = useRef([]); // <--- Para los segmentos de la ruta AI
+const doubleClickedRoutesPolylinesRef = useRef([]);
+// ...
+const [activeAiOptimalRouteDetails, setActiveAiOptimalRouteDetails] = useState(null); // <--- Para la leyenda de la ruta AI
+// ...
+
 
   const mapRef = useRef(null);
   const activeMarkerRef = useRef(null);
@@ -291,9 +312,6 @@ export default function GoogleMaps() {
     useState(false);
   const [heading, setHeading] = useState(0);
 
-  // OPTIMIZACIÓN: useCallback memoriza la función toggleTransportInfoPanel,
-  // evitando que se recree en cada renderizado a menos que sus dependencias cambien (en este caso, ninguna).
-  // Esto es útil si la función se pasa como prop a componentes hijos optimizados con React.memo.
   const toggleTransportInfoPanel = useCallback(() => {
     setIsTransportInfoPanelOpen((prev) => !prev);
   }, []);
@@ -303,15 +321,15 @@ export default function GoogleMaps() {
       ...activePredefinedRouteDetails,
       ...activeDoubleClickRouteDetails,
     ];
+      if (activeAiOptimalRouteDetails) { // <--- NUEVA LÍNEA
+    combinedDetails.push(activeAiOptimalRouteDetails); // <--- NUEVA LÍNEA
+  }
     const uniqueLegends = Array.from(
       new Map(combinedDetails.map((route) => [route.id, route])).values()
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     setVisibleRouteLegends(uniqueLegends);
-    // ANÁLISIS SEMÁNTICO: Las dependencias [activePredefinedRouteDetails, activeDoubleClickRouteDetails]
-    // aseguran que la lógica para actualizar las leyendas visibles se ejecute solo cuando los detalles
-    // de las rutas activas cambian, manteniendo la UI sincronizada con el estado de las rutas.
-  }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails]);
+  }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails, activeAiOptimalRouteDetails]);
 
   useEffect(() => {
     if (mapLoaded && window.google && window.google.maps) {
@@ -326,8 +344,153 @@ export default function GoogleMaps() {
     }
   }, [mapLoaded]);
 
-  // OPTIMIZACIÓN: useCallback memoriza getRoadSnappedLocation. Es importante porque esta función
-  // podría ser llamada frecuentemente o ser parte de una cadena de dependencias.
+
+const fetchAiOptimalRoute = async (originCoords, destinationCoords) => {
+  console.log("[GoogleMaps fetchAiOptimalRoute] Solicitando ruta AI. Origen:", originCoords, "Destino:", destinationCoords);
+  // El backend de IA espera origen, incluso si es nulo (para rutas desde un punto X al destino)
+  // Si originCoords no está disponible (ej. usuario no ha compartido ubicación),
+  // tu backend debe poder manejarlo o debes decidir un origen por defecto o no llamar.
+  // Por ahora, asumimos que si originCoords es null, el backend podría no necesitarlo o fallar controladamente.
+  if (!destinationCoords) {
+      throw new Error("Se requieren coordenadas de destino para la ruta IA.");
+  }
+
+  const payload = {
+    origen: originCoords ? { lat: originCoords.lat, lng: originCoords.lng } : null, // Puede ser null si la lógica de IA lo permite
+    destino: { lat: destinationCoords.lat, lng: destinationCoords.lng },
+  };
+
+  console.log("[GoogleMaps fetchAiOptimalRoute] Payload enviado a IA:", JSON.stringify(payload));
+
+  try {
+    const response = await fetch('http://localhost:5000/api/optimal-route', { // <--- ENDPOINT ACTUALIZADO
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Error desconocido del servidor AI", mensaje: "Respuesta no JSON" }));
+      console.error("[GoogleMaps fetchAiOptimalRoute] Error del servidor AI:", response.status, errorData);
+      throw new Error(errorData.mensaje || errorData.error || `Error del servidor AI: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log("[GoogleMaps fetchAiOptimalRoute] Ruta AI recibida:", data);
+    return data; // Devuelve toda la respuesta para ser procesada
+  } catch (error) {
+    console.error("[GoogleMaps fetchAiOptimalRoute] Catch Error:", error);
+    throw error; 
+  }
+};
+
+
+
+// Función auxiliar para dibujar un segmento de polilínea
+const drawPolylineSegment = (pathCoords, mapInstance, color, weight, opacity = 0.9, zIndex = 15, isDashed = false) => {
+  if (!pathCoords || pathCoords.length === 0) return null;
+
+  // Convertir [lng, lat] a [{lat, lng}] si es necesario
+  const googleMapsPath = pathCoords.map(coord => {
+    if (Array.isArray(coord) && coord.length === 2) {
+      return { lat: coord[1], lng: coord[0] }; // Asume [lng, lat] y convierte
+    }
+    return coord; // Asume que ya está en formato {lat, lng}
+  });
+
+  const polylineOptions = {
+    path: googleMapsPath,
+    geodesic: true,
+    strokeColor: color,
+    strokeOpacity: opacity,
+    strokeWeight: weight,
+    zIndex: zIndex,
+    map: mapInstance,
+  };
+
+  if (isDashed) {
+    polylineOptions.icons = [{
+      icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3, strokeWeight: weight },
+      offset: '0',
+      repeat: '15px',
+    }];
+    polylineOptions.strokeOpacity = 0; // La opacidad la da el icono
+  }
+
+  return new window.google.maps.Polyline(polylineOptions);
+};
+
+// Función principal para dibujar la ruta óptima de IA
+const drawAiOptimalRoute = useCallback((responseData) => {
+  if (aiOptimizedRouteSegmentsRef.current.length > 0) {
+    aiOptimizedRouteSegmentsRef.current.forEach(segment => segment.setMap(null));
+    aiOptimizedRouteSegmentsRef.current = [];
+  }
+  setActiveAiOptimalRouteDetails(null);
+
+  if (!responseData || !mapRef.current || !window.google?.maps) return;
+
+  const newSegments = [];
+  let legendDetails = {
+    id: "ai-optimal-route",
+    name: "Ruta Óptima (IA)",
+    color: "#FF00FF" // Color por defecto si no hay combi
+  };
+
+  if (responseData.recomendacion === "usar_transporte") {
+    setMapStatusMessage(responseData.mensaje || "Ruta de transporte sugerida.");
+
+    // Segmento 1: Origen a parada de subida (caminando)
+    const seg1 = drawPolylineSegment(responseData.ruta_origen_a_subida, mapRef.current, "#4A90E2", 4, 0.9, 18, true); // Azul, punteado
+    if (seg1) newSegments.push(seg1);
+
+    // Segmento 2: Ruta de transporte (combi)
+    // Podrías intentar obtener el color de ALL_PREDEFINED_ROUTES_CONFIG si el ID coincide
+    let transportColor = "#FF00FF"; // Magenta por defecto para transporte IA
+    if (responseData.combi_id) {
+        const combiConfig = ALL_PREDEFINED_ROUTES_CONFIG.find(r => r.id === responseData.combi_id);
+        if (combiConfig && combiConfig.color) {
+            transportColor = combiConfig.color;
+        }
+        legendDetails.name = `Ruta IA: ${responseData.combi_nombre || responseData.combi_id}`;
+        legendDetails.color = transportColor;
+    }
+    const seg2 = drawPolylineSegment(responseData.ruta_transporte, mapRef.current, transportColor, 6, 0.9, 20, false); // Color de combi, sólido
+    if (seg2) newSegments.push(seg2);
+
+    // Segmento 3: Parada de bajada a destino (caminando)
+    const seg3 = drawPolylineSegment(responseData.ruta_bajada_a_destino, mapRef.current, "#FF6F00", 4, 0.9, 18, true); // Naranja, punteado
+    if (seg3) newSegments.push(seg3);
+
+    setActiveAiOptimalRouteDetails(legendDetails);
+
+  } else if (responseData.recomendacion === "caminar") {
+    setMapStatusMessage(responseData.mensaje || "Se recomienda caminar.");
+    legendDetails.name = "Ruta IA (Caminando)";
+    legendDetails.color = "#34A853"; // Verde para caminar directo
+    const directWalk = drawPolylineSegment(responseData.ruta_directa, mapRef.current, legendDetails.color, 5, 0.9, 19, true); // Verde, punteado
+    if (directWalk) newSegments.push(directWalk);
+    setActiveAiOptimalRouteDetails(legendDetails);
+  } else {
+    setMapStatusMessage(responseData.mensaje || "No se pudo generar la ruta IA.");
+  }
+
+  aiOptimizedRouteSegmentsRef.current = newSegments;
+
+}, [setActiveAiOptimalRouteDetails, setMapStatusMessage]);
+
+
+
+
+
+
+
+
+
+
+
+
   const getRoadSnappedLocation = useCallback((originalLatLng) => {
     return new Promise((resolve) => {
       if (
@@ -346,9 +509,6 @@ export default function GoogleMaps() {
           source: window.google.maps.StreetViewSource.OUTDOOR,
         },
         (data, status) => {
-          // ANÁLISIS SEMÁNTICO: Se verifica el `status` de la respuesta del StreetViewService
-          // para determinar si la operación fue exitosa (`OK`) y si se obtuvo una `latLng`.
-          // Esto asegura que solo se usen datos válidos.
           if (
             status === window.google.maps.StreetViewStatus.OK &&
             data &&
@@ -364,9 +524,6 @@ export default function GoogleMaps() {
     });
   }, []);
 
-  // OPTIMIZACIÓN: `drawWalkingRoute` está envuelta en `useCallback` para memorizarla.
-  // Esto es útil porque se pasa como dependencia a `drawConnectingWalkingRoutes` y otras funciones.
-  // La dependencia `[setMapStatusMessage]` es correcta si `setMapStatusMessage` es estable (lo cual es para los setters de useState).
   const drawWalkingRoute = useCallback(
     async (origin, destination, polylineRef, color = "#4A90E2") => {
       if (polylineRef.current) {
@@ -432,7 +589,6 @@ export default function GoogleMaps() {
         polylineRef.current = polyline;
       } catch (errorStatus) {
         let userMessage = "Error al trazar ruta peatonal.";
-        // ANÁLISIS SEMÁNTICO: Se interpreta el `errorStatus` para dar un mensaje más útil al usuario.
         if (window.google?.maps?.DirectionsStatus) {
           switch (errorStatus) {
             case window.google.maps.DirectionsStatus.ZERO_RESULTS:
@@ -488,8 +644,8 @@ export default function GoogleMaps() {
 
       if (destinationLocation && destinationStopLocation) {
         drawWalkingRoute(
-          destinationLocation,
-          destinationStopLocation,
+          destinationLocation, // Este debería ser el punto de inicio de la caminata (parada de autobús)
+          destinationStopLocation, // Este debería ser el destino final del usuario
           walkingFromBusStopPolylineRef,
           "#FF6F00"
         );
@@ -500,9 +656,8 @@ export default function GoogleMaps() {
         }
       }
     },
-    [drawWalkingRoute] // `drawWalkingRoute` es una dependencia memorizada.
+    [drawWalkingRoute]
   );
-
 
   const updateTruckPosition = useCallback(() => {
     if (
@@ -596,7 +751,7 @@ export default function GoogleMaps() {
         walkingToBusStopPolylineRef.current = null;
       }
     }
-  }, []); // Dependencias vacías si no usa props o estado que cambien y requieran recreación.
+  }, []);
 
   const drawRouteFromMapbox = useCallback(
     async (coordsArray, color = "#0074D9") => {
@@ -629,7 +784,7 @@ export default function GoogleMaps() {
         return null;
       }
     },
-    [] // accessToken es constante, así que puede omitirse si está definida fuera del componente.
+    []
   );
 
   const requestLocation = useCallback(
@@ -638,15 +793,14 @@ export default function GoogleMaps() {
       try {
         const loc = await getCurrentLocation();
         setLocation(loc);
-        if (!usingExternalGps && mapRef.current) {
-          mapRef.current.panTo({ lat: loc.lat, lng: loc.lng });
-        }
+        // Panning is handled by the main useEffect based on the new location and bounds checking
       } catch (err) {
         setError(err.message);
         if (showAlert) alert(`Error obteniendo ubicación: ${err.message}`);
+        // Main useEffect will handle centering on Atlixco if location is still null or error is set
       }
     },
-    [usingExternalGps] // `usingExternalGps` es una dependencia.
+    [/* Removed setLocation, setError as they are stable from useState */]
   );
 
   useEffect(() => {
@@ -658,9 +812,6 @@ export default function GoogleMaps() {
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          // ANÁLISIS SEMÁNTICO: Se verifica `message.type` para procesar diferentes tipos de
-          // mensajes del WebSocket (gps_status, gps_update), asegurando que el estado
-          // de la aplicación reaccione correctamente al significado de cada mensaje.
           if (message.type === "gps_status") {
             const { status, message: statusMessageText } = message.payload;
             if (status === "waiting_for_valid_data") {
@@ -684,7 +835,7 @@ export default function GoogleMaps() {
             setExternalGpsLocation({
               lat: message.payload.lat,
               lng: message.payload.lng,
-              accuracy: 5,
+              accuracy: 5, // Assuming a fixed accuracy for external GPS for now
               humidity: message.payload.humidity,
               temperature: message.payload.temperature,
             });
@@ -710,205 +861,200 @@ export default function GoogleMaps() {
         "gps-connection-lost",
         handleGpsConnectionLost
       );
-      // ANÁLISIS SEMÁNTICO: El cierre del WebSocket (wsRef.current.close()) en la función de limpieza
-      // es crucial para liberar recursos y evitar fugas de memoria o conexiones abiertas innecesarias
-      // cuando el componente se desmonta, asegurando un comportamiento semánticamente correcto del ciclo de vida.
       // if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) { wsRef.current.close(); }
     };
-  }, [usingExternalGps]); // `usingExternalGps` podría afectar cómo se manejan los mensajes, aunque aquí parece más para la inicialización.
+  }, [/* usingExternalGps might be relevant if ws logic changes based on it, but seems mostly init */]);
 
   const updateMarker = useCallback(
-  (lat, lng, isExternalSource = usingExternalGps, currentHeading = 0, data = {}) => {
-    if (!mapRef.current || !window.google?.maps) return;
+    (lat, lng, isExternalSource = usingExternalGps, currentHeading = 0, data = {}) => {
+      if (!mapRef.current || !window.google?.maps) return;
 
-    const createSimpleMarkerSVG = (isExtParam, svgSize = 32, svgHeading = 0) => {
-      const color = isExtParam ? "#EF4444" : "#1E40AF";
-      const outerSize = svgSize;
-      const innerSize = svgSize * 0.4;
-      const center = outerSize / 2;
-      const arrowLength = innerSize;
-      return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${
-        isExtParam ? "External" : "Internal"
-      }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
-        center - 2
-      }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
-        isExtParam ? "External" : "Internal"
-      })"/><circle cx="${center}" cy="${center}" r="${
-        innerSize / 2
-      }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
-        innerSize / 2 + 4
-      } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
-        innerSize / 2 + 2
-      } L -${arrowLength / 3},-${
-        innerSize / 2 - 2
-      } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
-    };
+      const createSimpleMarkerSVG = (isExtParam, svgSize = 32, svgHeading = 0) => {
+        const color = isExtParam ? "#EF4444" : "#1E40AF"; // Rojo para externo, Azul para interno
+        const outerSize = svgSize;
+        const innerSize = svgSize * 0.4;
+        const center = outerSize / 2;
+        const arrowLength = innerSize;
 
-    const createMarkerIcon = (isExtParam, zoom, svgHeading = 0) => {
-      const minSize = 24;
-      const maxSize = 48;
-      const minZoom = 10;
-      const maxZoom = 20;
-      const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
-      const size =
-        minSize +
-        ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
-          (maxSize - minSize);
-      const svgString = createSimpleMarkerSVG(isExtParam, size, svgHeading);
-      return {
-        url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
-        scaledSize: new window.google.maps.Size(size, size),
-        anchor: new window.google.maps.Point(size / 2, size / 2),
-        optimized: false,
+        return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${isExtParam ? "External" : "Internal"}" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${center - 2}" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${isExtParam ? "External" : "Internal"})"/><circle cx="${center}" cy="${center}" r="${innerSize / 2}" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${innerSize / 2 + 4} L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${innerSize / 2 + 2} L -${arrowLength / 3},-${innerSize / 2 - 2} Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
       };
-    };
 
-    const currentZoom = mapRef.current.getZoom();
-    const markerIcon = createMarkerIcon(isExternalSource, currentZoom, currentHeading);
-    const newPosition = { lat, lng };
-    const newTitle = isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)";
+      const createMarkerIcon = (isExtParam, zoom, svgHeading = 0) => {
+        const minSize = 24;
+        const maxSize = 48;
+        const minZoom = 10;
+        const maxZoom = 20;
 
-    const generateInfoWindowContent = (titleForInfoWindow, currentLat, currentLng, currentData, isExtSrc) => {
-        let content = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
-        isExtSrc ? "#EF4444" : "#1E40AF"
-      };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(6)}, Lng: ${currentLng.toFixed(6)}</div>`;
-        if (isExtSrc) {
-    if (currentData.humidity !== null && currentData.humidity !== undefined)
-            content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
-    if (currentData.temperature !== null && currentData.temperature !== undefined)
-            content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
+        const normalizedZoom = Math.max(minZoom, Math.min(maxZoom, zoom || 15));
+        const size =
+          minSize +
+          ((normalizedZoom - minZoom) / (maxZoom - minZoom)) *
+            (maxSize - minSize);
+
+        const svgString = createSimpleMarkerSVG(isExtParam, size, svgHeading);
+        return {
+          url: `data:image/svg+xml,${encodeURIComponent(svgString)}`,
+          scaledSize: new window.google.maps.Size(size, size),
+          anchor: new window.google.maps.Point(size / 2, size / 2),
+          optimized: false,
+        };
+      };
+
+      const currentZoom = mapRef.current.getZoom();
+      const markerIcon = createMarkerIcon(isExternalSource, currentZoom, currentHeading);
+      const newPosition = { lat, lng };
+      
+      // Determine title based on source and if data implies it's a fallback
+      let newTitle = "Ubicación"; // Default
+      if (data && data.isFallback) {
+          newTitle = "Centro de Atlixco (Ubicación predeterminada)";
+      } else {
+          newTitle = isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)";
+      }
+
+
+      const generateInfoWindowContent = (titleForInfoWindow, currentLat, currentLng, currentData, isExtSrc) => {
+          let content = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
+          isExtSrc ? "#EF4444" : "#1E40AF"
+          };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(6)}, Lng: ${currentLng.toFixed(6)}</div>`;
+          
+          if (!currentData?.isFallback) { // Only show extra data if not a fallback
+            if (isExtSrc) {
+                if (currentData.humidity !== null && currentData.humidity !== undefined)
+                    content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
+                if (currentData.temperature !== null && currentData.temperature !== undefined)
+                    content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
+            }
+            if (currentData.accuracy)
+                content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(1)}m</div>`;
+          }
+          content += `</div>`;
+          return content;
+      };
+
+
+      if (activeMarkerRef.current) {
+        activeMarkerRef.current.setPosition(newPosition);
+        activeMarkerRef.current.setIcon(markerIcon);
+
+        if (activeMarkerRef.current.getTitle() !== newTitle) {
+          activeMarkerRef.current.setTitle(newTitle);
         }
-        if (currentData.accuracy)
-          content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(1)}m</div>`;
-        content += `</div>`;
-        return content;
-    };
 
+        if (openInfoWindowRef.current && openInfoWindowRef.current.getAnchor() === activeMarkerRef.current) {
+          const newInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
+          openInfoWindowRef.current.setContent(newInfoWindowContent);
+        }
+      } else {
+        const newMarker = new window.google.maps.Marker({
+          position: newPosition,
+          map: mapRef.current,
+          title: newTitle,
+          icon: markerIcon,
+          zIndex: 1000,
+        });
 
-    if (activeMarkerRef.current) {
-      activeMarkerRef.current.setPosition(newPosition);
-      activeMarkerRef.current.setIcon(markerIcon);
+        const initialInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: initialInfoWindowContent,
+        });
 
-      if (activeMarkerRef.current.getTitle() !== newTitle) {
-        activeMarkerRef.current.setTitle(newTitle);
+        newMarker.addListener("click", () => {
+          openInfoWindowRef.current?.close();
+          infoWindow.open(mapRef.current, newMarker);
+          openInfoWindowRef.current = infoWindow;
+        });
+        activeMarkerRef.current = newMarker;
       }
-
-      if (openInfoWindowRef.current && openInfoWindowRef.current.getAnchor() === activeMarkerRef.current) {
-        const newInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
-        openInfoWindowRef.current.setContent(newInfoWindowContent);
-      }
-    } else {
-      const newMarker = new window.google.maps.Marker({
-        position: newPosition,
-        map: mapRef.current,
-        title: newTitle,
-        icon: markerIcon,
-        zIndex: 1000,
-      });
-
-      const initialInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: initialInfoWindowContent,
-      });
-
-      newMarker.addListener("click", () => {
-        openInfoWindowRef.current?.close();
-        infoWindow.open(mapRef.current, newMarker);
-        openInfoWindowRef.current = infoWindow;
-      });
-      activeMarkerRef.current = newMarker;
-    }
-  },
-  [usingExternalGps, openInfoWindowRef] );
+    },
+    [usingExternalGps, openInfoWindowRef] 
+  );
 
   const toggleGpsSource = useCallback(() => {
     const newUsingExternalGps = !usingExternalGps;
     setUsingExternalGps(newUsingExternalGps);
-    setMapStatusMessage("");
-    setError("");
+    setMapStatusMessage(""); 
+    setError(""); 
     if (newUsingExternalGps) {
       if (!externalGpsLocation) {
         setMapStatusMessage("Cambiado a GPS Externo. Esperando datos...");
-        activeMarkerRef.current?.setMap(null);
-      } else {
-        mapRef.current?.panTo({
-          lat: externalGpsLocation.lat,
-          lng: externalGpsLocation.lng,
-        });
+        activeMarkerRef.current?.setMap(null); 
       }
+      // Panning is handled by the main useEffect
     } else {
       if (!location) {
-        requestLocation(true);
+        requestLocation(true); 
         setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación...");
-      } else {
-        mapRef.current?.panTo({ lat: location.lat, lng: location.lng });
       }
+      // Panning is handled by the main useEffect
     }
-  }, [usingExternalGps, externalGpsLocation, location, requestLocation]);
+  }, [usingExternalGps, externalGpsLocation, location, requestLocation, setMapStatusMessage, setError]);
 
 
-useEffect(() => {
-  const handleOrientation = (event) => {
-    let currentHeading = null;
-    if (event.webkitCompassHeading) {
-      currentHeading = event.webkitCompassHeading;
-    } else if (event.absolute === true && event.alpha !== null) {
-      currentHeading = event.alpha;
-    }
-    if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) {
-      setHeading(currentHeading);
-    }
-  };
+  useEffect(() => {
+    const handleOrientation = (event) => {
+      let currentHeading = null;
+      if (event.webkitCompassHeading) { // Safari
+        currentHeading = event.webkitCompassHeading;
+      } else if (event.absolute === true && event.alpha !== null) { // Standard
+        currentHeading = event.alpha;
+      }
 
-  // ANÁLISIS SEMÁNTICO: La lógica para solicitar permiso (`DeviceOrientationEvent.requestPermission`)
-  // y luego agregar los event listeners correspondientes asegura que el manejo de la orientación
-  // del dispositivo solo ocurra si el usuario lo permite y si el navegador soporta los eventos.
-  // Esto verifica las precondiciones (semántica) antes de actuar.
-  const requestDeviceOrientationPermission = async () => {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      try {
-        const permissionState = await DeviceOrientationEvent.requestPermission();
-        if (permissionState === 'granted') {
-          if ('ondeviceorientationabsolute' in window) {
-            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) { // Update only on significant change
+        setHeading(currentHeading);
+      }
+    };
+
+    const requestDeviceOrientationPermission = async () => {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const permissionState = await DeviceOrientationEvent.requestPermission();
+          if (permissionState === 'granted') {
+            if ('ondeviceorientationabsolute' in window) {
+              window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+            } else {
+              window.addEventListener('deviceorientation', handleOrientation, true);
+            }
+            setMapStatusMessage("Orientación del dispositivo activada.");
+            setTimeout(() => setMapStatusMessage(""), 3000);
           } else {
-            window.addEventListener('deviceorientation', handleOrientation, true);
+            setMapStatusMessage('Permiso de orientación no concedido.');
+            setTimeout(() => setMapStatusMessage(""), 3000);
           }
-          setMapStatusMessage("Orientación del dispositivo activada.");
-          setTimeout(() => setMapStatusMessage(""), 3000);
-        } else {
-          setMapStatusMessage('Permiso de orientación no concedido.');
+        } catch (error) {
+          setMapStatusMessage('Error al solicitar permiso de orientación.');
           setTimeout(() => setMapStatusMessage(""), 3000);
         }
-      } catch (error) {
-        setMapStatusMessage('Error al solicitar permiso de orientación.');
-        setTimeout(() => setMapStatusMessage(""), 3000);
+      } else if (typeof DeviceOrientationEvent !== 'undefined') {
+        // For browsers that don't require explicit permission (e.g., Android Chrome)
+        if ('ondeviceorientationabsolute' in window) {
+          window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        } else if ('ondeviceorientation' in window) { // Fallback for non-absolute
+          window.addEventListener('deviceorientation', handleOrientation, true);
+        }
       }
-    } else if (typeof DeviceOrientationEvent !== 'undefined') {
-      if ('ondeviceorientationabsolute' in window) {
-        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-      } else if ('ondeviceorientation' in window) {
-        window.addEventListener('deviceorientation', handleOrientation, true);
+    };
+
+    if (mapLoaded && !usingExternalGps && window.google?.maps) {
+     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
+        // Auto-attach for browsers not needing explicit permission after initial load
+        if ('ondeviceorientationabsolute' in window) {
+          window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        } else if ('ondeviceorientation' in window) {
+          window.addEventListener('deviceorientation', handleOrientation, true);
+        }
       }
+      // For iOS, permission might need to be triggered by user interaction, e.g. a button.
+      // The current logic attempts to request it if available.
+      // requestDeviceOrientationPermission(); // You might call this, or attach it to a button.
     }
-  };
 
-  if (mapLoaded && !usingExternalGps && window.google?.maps) {
-   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
-       if ('ondeviceorientationabsolute' in window) {
-        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-      } else if ('ondeviceorientation' in window) {
-        window.addEventListener('deviceorientation', handleOrientation, true);
-      }
-    }
-  }
+    return () => {
+      window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+      window.removeEventListener('deviceorientation', handleOrientation, true);
+    };
 
-  return () => {
-    window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
-    window.removeEventListener('deviceorientation', handleOrientation, true);
-  };
-
-}, [mapLoaded, usingExternalGps, setMapStatusMessage, heading]);
+  }, [mapLoaded, usingExternalGps, setMapStatusMessage, heading]);
 
 
   useEffect(() => {
@@ -916,7 +1062,7 @@ useEffect(() => {
       try {
         await loadGoogleMapsScript();
         setMapLoaded(true);
-        await requestLocation(false);
+        await requestLocation(false); // Request location after map script is loaded
       } catch (err) {
         setError(err.message);
         setMapStatusMessage(`Error al iniciar mapa: ${err.message}`);
@@ -924,14 +1070,12 @@ useEffect(() => {
     };
     if (!window.google?.maps && !mapLoaded) {
       initMap();
-    } else if (window.google?.maps && !mapLoaded) {
+    } else if (window.google?.maps && !mapLoaded) { // Script loaded externally or race condition
       setMapLoaded(true);
       if (!location) requestLocation(false);
     }
-  }, [mapLoaded, location, requestLocation]);
+  }, [mapLoaded, location, requestLocation]); // Added requestLocation
 
-  // OPTIMIZACIÓN: `WorkspaceLugaresPorTipo` se memoriza con `useCallback`. Sus dependencias son `[]`
-  // (asumiendo que `db` y `setMapStatusMessage`, `setError`, `setLugares` son estables).
   const fetchLugaresPorTipo = useCallback(async (tipo) => {
     setLugares([]);
     try {
@@ -950,7 +1094,7 @@ useEffect(() => {
       setError("Error al cargar lugares de interés.");
       setMapStatusMessage("Error al cargar lugares.");
     }
-  }, []); // `db` podría ser una dependencia si no es estable globalmente.
+  }, [/* db, setMapStatusMessage, setError, setLugares are stable or component constants */]);
 
   const fetchAllLugares = useCallback(async () => {
     setLugares([]);
@@ -971,7 +1115,7 @@ useEffect(() => {
       setError("Error al cargar todos los lugares de interés.");
       setMapStatusMessage("Error al cargar lugares.");
     }
-  }, []); // Similar a `WorkspaceLugaresPorTipo`.
+  }, [/* db, setMapStatusMessage, setError, setLugares */]);
 
   const togglePredefinedRoutes = useCallback(() => {
     setShowPredefinedRoutes((prev) => !prev);
@@ -1170,7 +1314,7 @@ useEffect(() => {
         ? await getRoadSnappedLocation(exactUserPosition)
         : null;
       const snappedDestinationLocation = await getRoadSnappedLocation(
-        clickedPositionGoogle
+        clickedPositionGoogle // This is the POI location
       );
 
       const truckStopAPositionForWalking =
@@ -1182,12 +1326,15 @@ useEffect(() => {
         closestRoutePointMarkerRef.current.getMap()
           ? closestRoutePointMarkerRef.current.getPosition()
           : null;
-
+      
+      // For handlePoiRouteRequest, destination is the POI.
+      // So, walking from user to stop A (truckMarkerRef)
+      // And walking from stop B (closestRoutePointMarkerRef, near POI) to POI (clickedPositionGoogle / snappedDestinationLocation)
       drawConnectingWalkingRoutes(
-        snappedUserLocation,
-        truckStopAPositionForWalking,
-        snappedDestinationLocation,
-        truckStopBPositionForWalking
+        snappedUserLocation, // User's current location
+        truckStopAPositionForWalking, // Closest stop on active route to user
+        truckStopBPositionForWalking, // Closest stop on route near POI (this is start of walk)
+        snappedDestinationLocation    // The POI itself (this is end of walk)
       );
 
       setTimeout(() => setMapStatusMessage(""), 7000);
@@ -1206,16 +1353,16 @@ useEffect(() => {
 
     let currentDisplayLocation = null;
     let isExternalSourceForMarker = false;
-    let markerData = {};
+    let markerData = {}; // Will hold accuracy, temp, humidity, and isFallback flag
 
     if (usingExternalGps) {
       if (externalGpsLocation) {
         currentDisplayLocation = externalGpsLocation;
         isExternalSourceForMarker = true;
-        markerData = {
+        markerData = { 
+          accuracy: externalGpsLocation.accuracy,
           humidity: externalGpsLocation.humidity,
           temperature: externalGpsLocation.temperature,
-          accuracy: externalGpsLocation.accuracy,
         };
       }
     } else {
@@ -1226,129 +1373,342 @@ useEffect(() => {
       }
     }
 
+    let effectiveLat, effectiveLng, effectiveZoom;
+    let isEffectiveLocationFromUser = false; // True if using actual user data, false if fallback
+    let tempStatusMessageKey = ""; // To manage status messages
 
-    if (!mapRef.current && currentDisplayLocation) {
-      mapRef.current = new window.google.maps.Map(
-        document.getElementById("map"),
-        {
-          center: {
-            lat: currentDisplayLocation.lat,
-            lng: currentDisplayLocation.lng,
-          },
-          zoom: INITIAL_ZOOM_ATLIXCO,
-          mapTypeId: "roadmap",
-          fullscreenControl: false,
-          streetViewControl: false,
-          mapTypeControl: false,
-          gestureHandling: "greedy",
-          disableDoubleClickZoom: true,
-          styles: mapCustomStyles,
-          restriction: {
-            latLngBounds: ATLIXCO_BOUNDS,
-            strictBounds: true,
-          },
+    if (currentDisplayLocation) {
+      if (isWithinAtlixcoBounds(currentDisplayLocation.lat, currentDisplayLocation.lng)) {
+        effectiveLat = currentDisplayLocation.lat;
+        effectiveLng = currentDisplayLocation.lng;
+        effectiveZoom = mapRef.current ? mapRef.current.getZoom() : INITIAL_ZOOM_ATLIXCO;
+        isEffectiveLocationFromUser = true;
+        markerData.isFallback = false;
+        if (mapStatusMessage === "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco." || mapStatusMessage === "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") {
+            setMapStatusMessage(""); // Clear fallback message
         }
-      );
-      mapRef.current.addListener("zoom_changed", () => {
-        updateTruckPosition();
-      });
+      } else {
+        effectiveLat = ATLIXCO_CENTER.lat;
+        effectiveLng = ATLIXCO_CENTER.lng;
+        effectiveZoom = INITIAL_ZOOM_ATLIXCO;
+        isEffectiveLocationFromUser = false;
+        markerData = { isFallback: true, accuracy: null };
+        tempStatusMessageKey = "OUTSIDE_ATLIXCO";
+      }
+    } else { // No location obtained (error or still loading)
+      effectiveLat = ATLIXCO_CENTER.lat;
+      effectiveLng = ATLIXCO_CENTER.lng;
+      effectiveZoom = INITIAL_ZOOM_ATLIXCO;
+      isEffectiveLocationFromUser = false;
+      markerData = { isFallback: true, accuracy: null };
+      if (error) { // If there's a specific error from getCurrentLocation
+        // The error state is displayed by errorBox, no need for mapStatusMessage here for that
+      } else if (!mapRef.current) { // Initial load before any location attempt
+        // No specific message needed here, loading indicator handles it
+      } else {
+         tempStatusMessageKey = "NO_LOCATION_FALLBACK";
+      }
+    }
+    
+    if (tempStatusMessageKey === "OUTSIDE_ATLIXCO" && mapStatusMessage !== "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco.") {
+        setMapStatusMessage("Ubicación fuera de Atlixco. Mostrando el centro de Atlixco.");
+        setTimeout(() => {
+            if (mapStatusMessage === "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco.") setMapStatusMessage("");
+        }, 7000);
+    } else if (tempStatusMessageKey === "NO_LOCATION_FALLBACK" && mapStatusMessage !== "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") {
+        // setMapStatusMessage("No se pudo obtener ubicación. Mostrando el centro de Atlixco.");
+        // setTimeout(() => {
+        //     if (mapStatusMessage === "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") setMapStatusMessage("");
+        // }, 7000);
+        // This message can be noisy if it appears too often, e.g. during initial load.
+        // Error state from `error` prop is more explicit.
+    }
 
-      mapRef.current.addListener("dblclick", async (event) => {
-        if (walkingToBusStopPolylineRef.current) {
-          walkingToBusStopPolylineRef.current.setMap(null);
-          walkingToBusStopPolylineRef.current = null;
-        }
-        if (walkingFromBusStopPolylineRef.current) {
-          walkingFromBusStopPolylineRef.current.setMap(null);
-          walkingFromBusStopPolylineRef.current = null;
-        }
 
-        if (doubleClickUserMarkerRef.current) {
-          doubleClickUserMarkerRef.current.setMap(null);
-          doubleClickUserMarkerRef.current = null;
-        }
-        if (closestRoutePointMarkerRef.current) {
-          closestRoutePointMarkerRef.current.setMap(null);
-          closestRoutePointMarkerRef.current = null;
-        }
-
-        const clickedLat = event.latLng.lat();
-        const clickedLng = event.latLng.lng();
-        const clickedPositionGoogle = new window.google.maps.LatLng(
-          clickedLat,
-          clickedLng
+    if (!mapRef.current) {
+      if (typeof effectiveLat === 'number' && typeof effectiveLng === 'number') {
+        mapRef.current = new window.google.maps.Map(
+          document.getElementById("map"),
+          {
+            center: { lat: effectiveLat, lng: effectiveLng },
+            zoom: effectiveZoom,
+            mapTypeId: "roadmap",
+            fullscreenControl: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+            gestureHandling: "greedy",
+            disableDoubleClickZoom: true,
+            styles: mapCustomStyles,
+            restriction: {
+              latLngBounds: ATLIXCO_BOUNDS,
+              strictBounds: true,
+            },
+          }
         );
+        mapRef.current.addListener("zoom_changed", () => {
+           updateTruckPosition();
+           // Re-render marker if zoom changes its size representation (already handled by updateMarker getting current zoom)
+            if (activeMarkerRef.current && activeMarkerRef.current.getMap() && typeof effectiveLat === 'number') {
+                const pos = activeMarkerRef.current.getPosition();
+                const title = activeMarkerRef.current.getTitle();
+                // This re-call is a bit of a patch. Better if createMarkerIcon is pure based on zoom.
+                // The current updateMarker already gets the zoom.
+            }
 
-        const destinationIcon = {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-            destinationPinSvgString
-          )}`,
-          scaledSize: new window.google.maps.Size(30, 30),
-          anchor: new window.google.maps.Point(15, 25),
-        };
-
-        doubleClickUserMarkerRef.current = new window.google.maps.Marker({
-          position: clickedPositionGoogle,
-          map: mapRef.current,
-          title: "Destino seleccionado",
-          icon: destinationIcon,
-          zIndex: 955,
         });
 
-        doubleClickedRoutesPolylinesRef.current.forEach((polyline) =>
-          polyline.setMap(null)
-        );
-        doubleClickedRoutesPolylinesRef.current = [];
+        mapRef.current.addListener("dblclick", async (event) => {
+          if (walkingToBusStopPolylineRef.current) {
+            walkingToBusStopPolylineRef.current.setMap(null);
+            walkingToBusStopPolylineRef.current = null;
+          }
+          if (walkingFromBusStopPolylineRef.current) {
+            walkingFromBusStopPolylineRef.current.setMap(null);
+            walkingFromBusStopPolylineRef.current = null;
+          }
 
-        if (dynamicPolylineRef.current) {
-          dynamicPolylineRef.current.setMap(null);
-          dynamicPolylineRef.current = null;
+          if (doubleClickUserMarkerRef.current) {
+            doubleClickUserMarkerRef.current.setMap(null);
+            doubleClickUserMarkerRef.current = null;
+          }
+          if (closestRoutePointMarkerRef.current) {
+            closestRoutePointMarkerRef.current.setMap(null);
+            closestRoutePointMarkerRef.current = null;
+          }
+          if (aiOptimizedRouteSegmentsRef.current.length > 0) {
+  aiOptimizedRouteSegmentsRef.current.forEach(segment => segment.setMap(null));
+  aiOptimizedRouteSegmentsRef.current = [];
+  setActiveAiOptimalRouteDetails(null);
+}
+
+if (truckMarkerRef.current) {
+            truckMarkerRef.current.setMap(null);
+            truckMarkerRef.current = null;
         }
 
-        const radius = 200;
-        let routesInRadius = [];
-        let closestRouteData = { route: null, distance: Infinity };
-        let newDoubleClickDetails = [];
 
-        ALL_PREDEFINED_ROUTES_CONFIG.forEach((routeDef) => {
-          let isRouteInRadiusForCurrentRoute = false;
-          let minDistanceForThisRoute = Infinity;
 
-          routeDef.data.forEach((pointCoords) => {
-            const dist = getDistanceFromLatLonInMeters(
-              clickedLat,
-              clickedLng,
-              pointCoords[1],
-              pointCoords[0]
-            );
-            if (dist <= radius) {
-              isRouteInRadiusForCurrentRoute = true;
+
+
+
+
+          const clickedLat = event.latLng.lat();
+          const clickedLng = event.latLng.lng();
+          const clickedPositionGoogle = new window.google.maps.LatLng(
+            clickedLat,
+            clickedLng
+          );
+
+          const destinationIcon = {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+              destinationPinSvgString
+            )}`,
+            scaledSize: new window.google.maps.Size(30, 30),
+            anchor: new window.google.maps.Point(15, 25),
+          };
+
+          doubleClickUserMarkerRef.current = new window.google.maps.Marker({
+            position: clickedPositionGoogle,
+            map: mapRef.current,
+            title: "Destino seleccionado",
+            icon: destinationIcon,
+            zIndex: 955,
+          });
+          setMapStatusMessage("Calculando ruta óptima con IA...");
+const userCurrentPosition = activeMarkerRef.current ? activeMarkerRef.current.getPosition() : null;
+let aiRouteData = null;
+
+try {
+  aiRouteData = await fetchAiOptimalRoute(
+    userCurrentPosition ? { lat: userCurrentPosition.lat(), lng: userCurrentPosition.lng() } : null,
+    { lat: clickedLat, lng: clickedLng } // clickedLat/Lng es del evento de doble clic o del POI
+  );
+
+  if (aiRouteData) {
+    drawAiOptimalRoute(aiRouteData); // Llama a la nueva función para dibujar los segmentos
+
+    // Actualizar marcadores de Parada A (subida) y Parada B (bajada) basados en la respuesta de IA
+    if (aiRouteData.recomendacion === "usar_transporte" && aiRouteData.parada_subida_coords && aiRouteData.parada_bajada_coords) {
+
+      // Parada A (Subida) - truckMarkerRef
+      if (truckMarkerRef.current) truckMarkerRef.current.setMap(null);
+      const paradaSubidaLatLng = new window.google.maps.LatLng(aiRouteData.parada_subida_coords.lat, aiRouteData.parada_subida_coords.lng);
+      const camionSubidaIcon = { /* tu SVG para camionIconSvgString */ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconSvgString)}`, scaledSize: new window.google.maps.Size(35, 45), anchor: new window.google.maps.Point(17, 22) };
+      truckMarkerRef.current = new window.google.maps.Marker({
+        position: paradaSubidaLatLng,
+        map: mapRef.current,
+        icon: camionSubidaIcon,
+        title: `Parada de Subida IA: ${aiRouteData.combi_nombre || 'Combi'}`,
+        zIndex: 970
+      });
+
+      // Parada B (Bajada) - closestRoutePointMarkerRef
+      if (closestRoutePointMarkerRef.current) closestRoutePointMarkerRef.current.setMap(null);
+      const paradaBajaLatLng = new window.google.maps.LatLng(aiRouteData.parada_bajada_coords.lat, aiRouteData.parada_bajada_coords.lng);
+      const camionBajadaIcon = { /* tu SVG para camionIconDownSvgString */ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconDownSvgString)}`, scaledSize: new window.google.maps.Size(35, 45), anchor: new window.google.maps.Point(17, 22) };
+      closestRoutePointMarkerRef.current = new window.google.maps.Marker({
+        position: paradaBajaLatLng,
+        map: mapRef.current,
+        icon: camionBajadaIcon,
+        title: `Parada de Bajada IA: ${aiRouteData.combi_nombre || 'Combi'}`,
+        zIndex: 960
+      });
+
+      // Ya no necesitamos drawConnectingWalkingRoutes porque la IA provee los segmentos
+      // Sin embargo, si quieres usar DirectionsService para estos segmentos (por estilo o ajuste fino):
+      // const snappedUser = userCurrentPosition ? await getRoadSnappedLocation(userCurrentPosition) : null;
+      // const snappedDestinoFinal = await getRoadSnappedLocation(clickedPositionGoogle);
+      // drawWalkingRoute(snappedUser, paradaSubidaLatLng, walkingToBusStopPolylineRef, '#00BFA5');
+      // drawWalkingRoute(paradaBajaLatLng, snappedDestinoFinal, walkingFromBusStopPolylineRef, '#FF6F00');
+
+    } else if (aiRouteData.recomendacion === "caminar") {
+       // No hay paradas de camión si es solo caminar, quitar marcadores de paradas si existían
+       if (truckMarkerRef.current) truckMarkerRef.current.setMap(null);
+       if (closestRoutePointMarkerRef.current) closestRoutePointMarkerRef.current.setMap(null);
+       // También limpia las polilíneas de caminata a/desde paradas
+       if (walkingToBusStopPolylineRef.current) walkingToBusStopPolylineRef.current.setMap(null);
+       if (walkingFromBusStopPolylineRef.current) walkingFromBusStopPolylineRef.current.setMap(null);
+    }
+
+  } else {
+    setMapStatusMessage("No se pudo generar la ruta con IA. Mostrando sugerencias normales.");
+  }
+} catch (aiError) {
+  console.error("[GoogleMaps dblclick/handlePoiRouteRequest] Error detallado en fetchAiOptimalRoute:", aiError);
+  setMapStatusMessage(`Error ruta IA: ${aiError.message}. Mostrando sugerencias normales.`);
+  // Aquí, podrías decidir si quieres colocar los marcadores de camión basados en las rutas predefinidas como fallback.
+  // ... tu lógica de fallback para camionBajada y updateTruckPosition() si la ruta AI falla ...
+}
+// --- FIN: Nueva Lógica para Ruta IA ---
+
+// Si la ruta AI falló y quieres colocar paradas basadas en rutas predefinidas:
+if (!aiRouteData || aiRouteData.recomendacion !== "usar_transporte") {
+    // ... (tu lógica original para colocar closestRoutePointMarkerRef basada en doubleClickedRoutesPolylinesRef) ...
+    // ... (luego llamar a updateTruckPosition() para Parada A basada en predefinidas) ...
+    // ... (y luego tu lógica original para drawConnectingWalkingRoutes con estas paradas predefinidas) ...
+    updateTruckPosition(); // Re-calcular Parada A basada en rutas predefinidas visibles.
+    // Colocar Parada B basada en rutas predefinidas visibles y el destino (clickedPositionGoogle).
+    // ... (tu lógica existente para encontrar closestPointForCamionDown en rutas predefinidas y colocar closestRoutePointMarkerRef)
+
+    // Y luego dibujar las rutas peatonales con esas paradas de las rutas predefinidas
+    const exactUserPositionForFallback = activeMarkerRef.current ? activeMarkerRef.current.getPosition() : null;
+    const snappedUserLocationForFallback = exactUserPositionForFallback ? await getRoadSnappedLocation(exactUserPositionForFallback) : null;
+    const snappedDestinationLocationForFallback = await getRoadSnappedLocation(clickedPositionGoogle); // clickedPositionGoogle es el destino
+    const truckStopAPositionForWalkingFallback = truckMarkerRef.current && truckMarkerRef.current.getMap() ? truckMarkerRef.current.getPosition() : null;
+    const truckStopBPositionForWalkingFallback = closestRoutePointMarkerRef.current && closestRoutePointMarkerRef.current.getMap() ? closestRoutePointMarkerRef.current.getPosition() : null;
+
+    drawConnectingWalkingRoutes(
+        snappedUserLocationForFallback, 
+        truckStopAPositionForWalkingFallback,
+        snappedDestinationLocationForFallback, 
+        truckStopBPositionForWalkingFallback
+    );
+
+}
+
+setTimeout(() => setMapStatusMessage(''), 7000);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          doubleClickedRoutesPolylinesRef.current.forEach((polyline) =>
+            polyline.setMap(null)
+          );
+          doubleClickedRoutesPolylinesRef.current = [];
+
+          if (dynamicPolylineRef.current) {
+            dynamicPolylineRef.current.setMap(null);
+            dynamicPolylineRef.current = null;
+          }
+
+          const radius = 200;
+          let routesInRadius = [];
+          let closestRouteData = { route: null, distance: Infinity };
+          let newDoubleClickDetails = [];
+
+          ALL_PREDEFINED_ROUTES_CONFIG.forEach((routeDef) => {
+            let isRouteInRadiusForCurrentRoute = false;
+            let minDistanceForThisRoute = Infinity;
+
+            routeDef.data.forEach((pointCoords) => {
+              const dist = getDistanceFromLatLonInMeters(
+                clickedLat,
+                clickedLng,
+                pointCoords[1],
+                pointCoords[0]
+              );
+              if (dist <= radius) {
+                isRouteInRadiusForCurrentRoute = true;
+              }
+              if (dist < minDistanceForThisRoute) {
+                minDistanceForThisRoute = dist;
+              }
+            });
+
+            if (isRouteInRadiusForCurrentRoute) {
+              routesInRadius.push(routeDef);
             }
-            if (dist < minDistanceForThisRoute) {
-              minDistanceForThisRoute = dist;
+
+            if (minDistanceForThisRoute < closestRouteData.distance) {
+              closestRouteData = {
+                route: routeDef,
+                distance: minDistanceForThisRoute,
+              };
             }
           });
 
-          if (isRouteInRadiusForCurrentRoute) {
-            routesInRadius.push(routeDef);
-          }
-
-          if (minDistanceForThisRoute < closestRouteData.distance) {
-            closestRouteData = {
-              route: routeDef,
-              distance: minDistanceForThisRoute,
-            };
-          }
-        });
-
-        if (routesInRadius.length > 0) {
-          setMapStatusMessage(
-            `Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m.`
-          );
-          for (const routeDef of routesInRadius) {
+          if (routesInRadius.length > 0) {
+            setMapStatusMessage(
+              `Mostrando ${routesInRadius.length} ruta(s) en un radio de ${radius}m.`
+            );
+            for (const routeDef of routesInRadius) {
+              const polyline = await drawRouteFromMapbox(
+                routeDef.data,
+                routeDef.color
+              );
+              if (polyline) {
+                polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
+                doubleClickedRoutesPolylinesRef.current.push(polyline);
+                newDoubleClickDetails.push({
+                  id: routeDef.id,
+                  name: routeDef.name,
+                  color: routeDef.color,
+                });
+              }
+            }
+          } else if (closestRouteData.route) {
+            const routeDef = closestRouteData.route;
+            setMapStatusMessage(
+              `No hay rutas en ${radius}m. Mostrando la más cercana: ${
+                closestRouteData.route.name
+              } (a ${closestRouteData.distance.toFixed(0)}m).`
+            );
             const polyline = await drawRouteFromMapbox(
-              routeDef.data,
-              routeDef.color
+              closestRouteData.route.data,
+              closestRouteData.route.color
             );
             if (polyline) {
               polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
@@ -1359,132 +1719,124 @@ useEffect(() => {
                 color: routeDef.color,
               });
             }
+          } else {
+            setMapStatusMessage(
+              "No hay rutas predefinidas cerca del punto clickeado."
+            );
           }
-        } else if (closestRouteData.route) {
-          const routeDef = closestRouteData.route;
-          setMapStatusMessage(
-            `No hay rutas en ${radius}m. Mostrando la más cercana: ${
-              closestRouteData.route.name
-            } (a ${closestRouteData.distance.toFixed(0)}m).`
-          );
-          const polyline = await drawRouteFromMapbox(
-            closestRouteData.route.data,
-            closestRouteData.route.color
-          );
-          if (polyline) {
-            polyline.setOptions({ strokeWeight: 5, zIndex: 5 });
-            doubleClickedRoutesPolylinesRef.current.push(polyline);
-            newDoubleClickDetails.push({
-              id: routeDef.id,
-              name: routeDef.name,
-              color: routeDef.color,
-            });
-          }
-        } else {
-          setMapStatusMessage(
-            "No hay rutas predefinidas cerca del punto clickeado."
-          );
-        }
-        setActiveDoubleClickRouteDetails(newDoubleClickDetails);
+          setActiveDoubleClickRouteDetails(newDoubleClickDetails);
 
-        let pointsFromNewlySuggestedByClickRoutes = [];
-        doubleClickedRoutesPolylinesRef.current.forEach((polyline) => {
-          if (polyline.getMap()) {
-            const path = polyline.getPath().getArray();
-            pointsFromNewlySuggestedByClickRoutes.push(...path);
-          }
-        });
-
-        let closestPointForCamionDown = null;
-        let minDistanceSqForCamionDown = Infinity;
-
-        if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
-          pointsFromNewlySuggestedByClickRoutes.forEach((pointOnRoute) => {
-            const distSq =
-              Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
-              Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
-            if (distSq < minDistanceSqForCamionDown) {
-              minDistanceSqForCamionDown = distSq;
-              closestPointForCamionDown = pointOnRoute;
+          let pointsFromNewlySuggestedByClickRoutes = [];
+          doubleClickedRoutesPolylinesRef.current.forEach((polyline) => {
+            if (polyline.getMap()) {
+              const path = polyline.getPath().getArray();
+              pointsFromNewlySuggestedByClickRoutes.push(...path);
             }
           });
+
+          let closestPointForCamionDown = null;
+          let minDistanceSqForCamionDown = Infinity;
+
+          if (pointsFromNewlySuggestedByClickRoutes.length > 0) {
+            pointsFromNewlySuggestedByClickRoutes.forEach((pointOnRoute) => {
+              const distSq =
+                Math.pow(clickedPositionGoogle.lat() - pointOnRoute.lat(), 2) +
+                Math.pow(clickedPositionGoogle.lng() - pointOnRoute.lng(), 2);
+              if (distSq < minDistanceSqForCamionDown) {
+                minDistanceSqForCamionDown = distSq;
+                closestPointForCamionDown = pointOnRoute;
+              }
+            });
+          }
+
+          if (closestPointForCamionDown) {
+            const camionDownIcon = {
+              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                camionIconDownSvgString
+              )}`,
+              scaledSize: new window.google.maps.Size(35, 45),
+              anchor: new window.google.maps.Point(35 / 2, 45 / 2),
+            };
+            closestRoutePointMarkerRef.current = new window.google.maps.Marker(
+              {
+                position: closestPointForCamionDown,
+                map: mapRef.current,
+                icon: camionDownIcon,
+                title:
+                  "Parada más cercana en ruta sugerida (Parada B - Bajada)",
+                zIndex: 960,
+              }
+            );
+          }
+
+          updateTruckPosition();
+
+          const exactUserPosition = activeMarkerRef.current
+            ? activeMarkerRef.current.getPosition()
+            : null;
+
+          const snappedUserLocation = exactUserPosition
+            ? await getRoadSnappedLocation(exactUserPosition)
+            : null;
+          const snappedClickedPosition = await getRoadSnappedLocation( // This is the dblclick location
+            clickedPositionGoogle
+          );
+
+          const truckStopAPositionForWalking =
+            truckMarkerRef.current && truckMarkerRef.current.getMap()
+              ? truckMarkerRef.current.getPosition()
+              : null;
+          const truckStopBPositionForWalking =
+            closestRoutePointMarkerRef.current &&
+            closestRoutePointMarkerRef.current.getMap()
+              ? closestRoutePointMarkerRef.current.getPosition()
+              : null;
+          
+          // For dblclick, destination is the clicked point.
+          // Walking from user to stop A (truckMarkerRef)
+          // Walking from stop B (closestRoutePointMarkerRef, near clicked point) to clicked point (snappedClickedPosition)
+          drawConnectingWalkingRoutes(
+            snappedUserLocation,
+            truckStopAPositionForWalking,
+            truckStopBPositionForWalking, // Start of walk from bus stop
+            snappedClickedPosition      // Destination: the point clicked on map
+          );
+
+          setTimeout(() => setMapStatusMessage(""), 7000);
+        });
+      }
+    } else { // Map already initialized
+      const currentMapCenter = mapRef.current.getCenter();
+      const currentMapZoom = mapRef.current.getZoom();
+      let needsMapUpdate = false;
+
+      if (typeof effectiveLat === 'number' && typeof effectiveLng === 'number') {
+        if (!currentMapCenter ||
+            Math.abs(currentMapCenter.lat() - effectiveLat) > 0.000001 ||
+            Math.abs(currentMapCenter.lng() - effectiveLng) > 0.000001) {
+          needsMapUpdate = true;
+        }
+        if (currentMapZoom !== effectiveZoom) {
+          needsMapUpdate = true;
         }
 
-        if (closestPointForCamionDown) {
-          const camionDownIcon = {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-              camionIconDownSvgString
-            )}`,
-            scaledSize: new window.google.maps.Size(35, 45),
-            anchor: new window.google.maps.Point(35 / 2, 45 / 2),
-          };
-          closestRoutePointMarkerRef.current = new window.google.maps.Marker({
-            position: closestPointForCamionDown,
-            map: mapRef.current,
-            icon: camionDownIcon,
-            title: "Parada más cercana en ruta sugerida (Parada B - Bajada)",
-            zIndex: 960,
-          });
-        }
-
-        updateTruckPosition();
-
-        const exactUserPosition = activeMarkerRef.current
-          ? activeMarkerRef.current.getPosition()
-          : null;
-
-        const snappedUserLocation = exactUserPosition
-          ? await getRoadSnappedLocation(exactUserPosition)
-          : null;
-        const snappedClickedPosition = await getRoadSnappedLocation(
-          clickedPositionGoogle
-        );
-
-        const truckStopAPositionForWalking =
-          truckMarkerRef.current && truckMarkerRef.current.getMap()
-            ? truckMarkerRef.current.getPosition()
-            : null;
-        const truckStopBPositionForWalking =
-          closestRoutePointMarkerRef.current &&
-          closestRoutePointMarkerRef.current.getMap()
-            ? closestRoutePointMarkerRef.current.getPosition()
-            : null;
-
-        drawConnectingWalkingRoutes(
-          snappedUserLocation,
-          truckStopAPositionForWalking,
-          snappedClickedPosition,
-          truckStopBPositionForWalking
-        );
-
-        setTimeout(() => setMapStatusMessage(""), 7000);
-      });
-    } else if (mapRef.current && currentDisplayLocation) {
-      if (
-        mapRef.current.getCenter().lat() !== currentDisplayLocation.lat ||
-        mapRef.current.getCenter().lng() !== currentDisplayLocation.lng
-      ) {
+       
       }
     }
 
-    if (currentDisplayLocation) {
-      const currentMarkerHeading = usingExternalGps ? 0: heading;
+    if (typeof effectiveLat === 'number' && typeof effectiveLng === 'number') {
+      const markerHeading = (usingExternalGps && isEffectiveLocationFromUser) ? 0 : (isEffectiveLocationFromUser ? heading : 0);
       updateMarker(
-        currentDisplayLocation.lat,
-        currentDisplayLocation.lng,
-        isExternalSourceForMarker,
-        currentMarkerHeading,
-        markerData
+        effectiveLat,
+        effectiveLng,
+        (isExternalSourceForMarker && isEffectiveLocationFromUser), // True only if it's actual external GPS
+        markerHeading,
+        markerData // Contains .isFallback if applicable
       );
     } else {
       activeMarkerRef.current?.setMap(null);
     }
-    updateTruckPosition();
-    // ANÁLISIS SEMÁNTICO: El array de dependencias de este useEffect es crucial.
-    // Incluye `location`, `externalGpsLocation`, `mapLoaded`, `usingExternalGps`, `updateMarker`,
-    // `drawRouteFromMapbox`, etc. Esto asegura que el efecto se re-ejecute cuando cualquiera
-    // de estos valores o funciones (memorizadas) cambie, manteniendo el mapa y los marcadores
-    // actualizados y consistentes con el estado de la aplicación.
+    updateTruckPosition(); // Call this after marker and map might have changed
   }, [
     location,
     externalGpsLocation,
@@ -1492,12 +1844,14 @@ useEffect(() => {
     usingExternalGps,
     updateMarker,
     drawRouteFromMapbox,
-    setMapStatusMessage,
+    setMapStatusMessage, // mapStatusMessage added to allow clearing logic to have latest value
     updateTruckPosition,
     handlePoiRouteRequest,
     drawConnectingWalkingRoutes,
     getRoadSnappedLocation,
-    heading
+    heading,
+    error, // Added error
+    mapStatusMessage // Added to ensure timeout clearing logic has access to current message
   ]);
 
   useEffect(() => {
@@ -1505,6 +1859,11 @@ useEffect(() => {
       if (showPredefinedRoutes && activePredefinedRouteDetails.length > 0) {
         setActivePredefinedRouteDetails([]);
       }
+      if (aiOptimizedRouteSegmentsRef.current.length > 0) { // <--- NUEVO
+  aiOptimizedRouteSegmentsRef.current.forEach(segment => segment.setMap(null)); // <--- NUEVO
+  aiOptimizedRouteSegmentsRef.current = []; // <--- NUEVO
+  setActiveAiOptimalRouteDetails(null); // <--- NUEVO
+}
       if (!showPredefinedRoutes) {
         predefinedPolylinesRef.current.forEach((polyline) =>
           polyline.setMap(null)
@@ -1520,8 +1879,6 @@ useEffect(() => {
     predefinedPolylinesRef.current.forEach((polyline) => polyline.setMap(null));
     predefinedPolylinesRef.current = [];
 
-    // OPTIMIZACIÓN: Dibujar/ocultar rutas predefinidas solo cuando `showPredefinedRoutes` cambia
-    // o cuando el mapa se carga, evita recálculos y redibujados innecesarios.
     if (showPredefinedRoutes) {
       Promise.all(
         ALL_PREDEFINED_ROUTES_CONFIG.map(async (routeDef) => {
@@ -1568,6 +1925,7 @@ useEffect(() => {
         activeMarkerRef.current &&
         openInfoWindowRef.current.anchor === activeMarkerRef.current
       ) {
+        // Don't close if it's the user's marker's info window
       } else {
         openInfoWindowRef.current.close();
         openInfoWindowRef.current = null;
@@ -1576,8 +1934,6 @@ useEffect(() => {
 
     lugares.forEach((lugar) => {
       const { lat, lng } = lugar.ubicacion || {};
-      // ANÁLISIS SEMÁNTICO: Se valida que `lat` y `lng` sean números válidos antes de
-      // intentar crear un marcador, evitando errores si los datos de ubicación son incorrectos.
       if (
         typeof lat !== "number" ||
         typeof lng !== "number" ||
@@ -1590,20 +1946,22 @@ useEffect(() => {
         scaledSize: new window.google.maps.Size(32, 32),
         anchor: new window.google.maps.Point(16, 32),
       };
-       if (poiDefinition) {
+        if (poiDefinition) {
           const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
           iconOptions = {
             url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
               svgEmoji
             )}`,
             scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 16),
+            anchor: new window.google.maps.Point(16, 16), // Center anchor for emoji
           };
         }
 
 
-      if (!iconOptions.url || !iconOptions.url) {
-        return;
+      if (!iconOptions.url) { // Ensure there is a URL for the icon
+        // Fallback to default marker if no emoji/icon definition?
+        // For now, skip if no icon.url
+        return; 
       }
       const marker = new window.google.maps.Marker({
         position: { lat, lng },
@@ -1641,7 +1999,7 @@ useEffect(() => {
     </svg>`;
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
 
-     const infoWindowContent = `<style>
+    const infoWindowContent = `<style>
 .gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; }
 .gm-style .gm-style-iw-d { overflow: hidden !important; }
 .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; }
@@ -1824,13 +2182,8 @@ useEffect(() => {
     if (selectedPoiType && selectedPoiType.tipo === "Todos" && mapLoaded) {
       fetchAllLugares();
     }
-  }, [mapLoaded, selectedPoiType, fetchAllLugares]); // fetchAllLugares es dependencia.
+  }, [mapLoaded, selectedPoiType, fetchAllLugares]);
 
-  // GENERACIÓN DE CÓDIGO INTERMEDIO: Todo el JSX que define la estructura de la UI
-  // (divs, botones, Sidebar, etc.) es transformado por Babel en llamadas
-  // `React.createElement()`. Este es un paso análogo a la generación de código intermedio
-  // en un compilador tradicional, donde una representación de alto nivel (JSX)
-  // se convierte en una forma que React puede entender y procesar para construir el DOM virtual.
   return (
     <div className={styles.mapRoot}>
       <Sidebar
@@ -1838,9 +2191,6 @@ useEffect(() => {
         arePredefinedRoutesVisible={showPredefinedRoutes}
       />
 
-      {/* OPTIMIZACIÓN: Renderizado condicional. El panel de información de transporte y su botón
-          solo se renderizan si `mapLoaded` es true. Esto evita que se creen elementos en el DOM
-          innecesariamente antes de que el mapa esté listo. */}
       {mapLoaded && (
         <div className={styles.transportInfoContainer}>
           <button
@@ -1903,7 +2253,7 @@ useEffect(() => {
 
       {error && <div className={styles.errorBox}>{error}</div>}
       <div className={`${styles.mapHeader} ${styles.transparentHeader}`}>
-        {location && (
+        {location && ( // Show reload only if an internal location has been attempted/set
           <button
             onClick={() => requestLocation(true)}
             className={styles.mapButton}
@@ -1930,7 +2280,7 @@ useEffect(() => {
         {mapStatusMessage && (
           <div className={styles.mapOverlayMessage}>{mapStatusMessage}</div>
         )}
-        {!mapLoaded && !mapStatusMessage && (
+        {!mapLoaded && !error && !mapStatusMessage && ( // Show loading only if no error and no other status
           <div className={styles.loadingState}>
             <div className={styles.spinner}></div>Cargando mapa...
           </div>
@@ -2011,9 +2361,4 @@ useEffect(() => {
       </div>
     </div>
   );
-  // GENERACIÓN DE CÓDIGO OBJETO: Finalmente, todo el código JavaScript (transpilado desde JSX,
-  // lógica de componentes, etc.) es procesado por el motor JavaScript del navegador.
-  // Este motor puede compilar (JIT - Just-In-Time) partes críticas del código JavaScript a código
-  // máquina nativo para la CPU del usuario. Este código máquina es el análogo más cercano
-  // al "código objeto" en el contexto de una aplicación web moderna.
 }
