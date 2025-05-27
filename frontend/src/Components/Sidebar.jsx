@@ -1,5 +1,5 @@
 // frontend/src/Components/Sidebar.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef , useMemo } from 'react';
 import { FaBars, FaRoute, FaSignOutAlt, FaTrashAlt } from "react-icons/fa"; // FaListUl eliminada si no se usa más
 import { BiLogIn } from "react-icons/bi";
 import { IoPeopleOutline } from "react-icons/io5";
@@ -12,11 +12,10 @@ import { FaUserCircle } from "react-icons/fa";
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 
 
+
 const Sidebar = ({ 
 onTogglePredefinedRoutes, 
   arePredefinedRoutesVisible,
-   routeFilter={routeFilter},
-  setRouteFilter={setRouteFilter}
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenuIndex, setExpandedMenuIndex] = useState(null);
@@ -262,24 +261,6 @@ onTogglePredefinedRoutes,
         
 
 
-        <div className="route-filter">
-        <label htmlFor="routeSelect" style={{ color: 'white', marginLeft: '10px' }}>Filtrar rutas:</label>
-        <select
-          id="routeSelect"
-          value={routeFilter}
-          onChange={(e) => setRouteFilter(e.target.value)}
-          style={{ margin: '10px', width: '90%' }}
-          >
-          <option value="Todas">Todas</option>
-          <option value="Tecnológico">Ruta Tecnológico</option>
-          <option value="Cerril">Ruta Cerril</option>
-          <option value="Geo">Ruta Geo</option>
-          <option value="Nieves">Ruta Nieves</option>
-          <option value="chapu">Ruta Lomas/Chapulapa</option>
-          <option value="Lomas">Ruta Lomas/Gasolinera</option>
-          <option value="homex">Ruta Homex</option>
-          </select>
-        </div>
 
 
 

@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback} from "react";
 import styles from "../Estilos/GoogleMaps.module.css";
 import Sidebar from "../Components/Sidebar";
 import { rutas } from "../data/rutas";
 import { FaRoute } from "react-icons/fa";
 import { CiCircleInfo } from "react-icons/ci";
 import { IoReloadCircle } from "react-icons/io5";
+
 import {
   MdGpsFixed,
   MdGpsOff,
@@ -1915,7 +1916,7 @@ setTimeout(() => setMapStatusMessage(''), 7000);
     updateTruckPosition,
   ]);
   ///Modificacion para el filtro
-  const filteredRoutes = useMemo(() => {
+  /*const filteredRoutes = useMemo(() => {
     if (routeFilter === 'Todas') return rutas;
     return rutas.filter(route => route.tipo === routeFilter);
   }, [rutas, routeFilter]);
@@ -1935,6 +1936,7 @@ setTimeout(() => setMapStatusMessage(''), 7000);
       }
     });
   }, [filteredRoutes, map]);
+  */
 
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
