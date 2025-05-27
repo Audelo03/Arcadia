@@ -14,7 +14,9 @@ import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 
 const Sidebar = ({ 
 onTogglePredefinedRoutes, 
-  arePredefinedRoutesVisible 
+  arePredefinedRoutesVisible,
+   routeFilter={routeFilter},
+  setRouteFilter={setRouteFilter}
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedMenuIndex, setExpandedMenuIndex] = useState(null);
@@ -257,6 +259,30 @@ onTogglePredefinedRoutes,
     <> 
       <div className={`sidebar ${isOpen ? "open" : ""}`} style={{ width: isOpen ? "var(--sidebar-width)" : "60px" }}>
         <div className="top">
+        
+
+
+        <div className="route-filter">
+        <label htmlFor="routeSelect" style={{ color: 'white', marginLeft: '10px' }}>Filtrar rutas:</label>
+        <select
+          id="routeSelect"
+          value={routeFilter}
+          onChange={(e) => setRouteFilter(e.target.value)}
+          style={{ margin: '10px', width: '90%' }}
+          >
+          <option value="Todas">Todas</option>
+          <option value="Tecnológico">Ruta Tecnológico</option>
+          <option value="Cerril">Ruta Cerril</option>
+          <option value="Geo">Ruta Geo</option>
+          <option value="Nieves">Ruta Nieves</option>
+          <option value="chapu">Ruta Lomas/Chapulapa</option>
+          <option value="Lomas">Ruta Lomas/Gasolinera</option>
+          <option value="homex">Ruta Homex</option>
+          </select>
+        </div>
+
+
+
           <h1 style={{ display: isOpen ? "flex" : "none" }} className="logo">
             <img src={logoPng} alt="Logo" className="logoPng" />
           </h1>

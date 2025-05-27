@@ -1914,6 +1914,27 @@ setTimeout(() => setMapStatusMessage(''), 7000);
     drawRouteFromMapbox,
     updateTruckPosition,
   ]);
+  ///Modificacion para el filtro
+  const filteredRoutes = useMemo(() => {
+    if (routeFilter === 'Todas') return rutas;
+    return rutas.filter(route => route.tipo === routeFilter);
+  }, [rutas, routeFilter]);
+
+  useEffect(() => {
+
+    filteredRoutes.forEach(({ data, color, id }) => {
+      if (map && data) {
+        const polyline = new google.maps.Polyline({
+          path: data.routes[0].geometry.coordinates.map(([lng, lat]) => ({ lat, lng })),
+          geodesic: true,
+          strokeColor: color,
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+        });
+        polyline.setMap(map);
+      }
+    });
+  }, [filteredRoutes, map]);
 
   useEffect(() => {
     if (!mapLoaded || !window.google?.maps || !mapRef.current) return;
