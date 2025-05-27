@@ -5,6 +5,8 @@ import { rutas } from "../data/rutas";
 import { FaRoute } from "react-icons/fa";
 import { CiCircleInfo } from "react-icons/ci";
 import { IoReloadCircle } from "react-icons/io5";
+import GuardarRuta from "../Components/GuardarRuta";
+
 import {
   MdGpsFixed,
   MdGpsOff,
@@ -21,8 +23,9 @@ import {
   FaTrashAlt,
 } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db } from "./firebase-config";
-import axios from 'axios';
+import axios from "axios";
 
 const hiddenPoiTypes = [
   "poi.business",
@@ -52,7 +55,12 @@ const INITIAL_ZOOM_ATLIXCO = 15;
 
 // Helper function to check if location is within Atlixco bounds
 function isWithinAtlixcoBounds(lat, lng) {
-  if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+  if (
+    typeof lat !== "number" ||
+    typeof lng !== "number" ||
+    isNaN(lat) ||
+    isNaN(lng)
+  ) {
     return false;
   }
   return (
@@ -67,8 +75,6 @@ const faRouteSVGString = `<svg xmlns="http://www.w3.org/2000/svg" width="18" hei
 
 const accessToken =
   "pk.eyJ1Ijoic3RheTEyIiwiYSI6ImNtYWtqdTVsYzFhZGEya3B5bWtocno3eWgifQ.wZpjzpjOw_LpIvl0P446Jg";
-
-
 
 const rutatecnologico = rutas.rutatecnologico;
 const rutacerril = rutas.rutacerril;
@@ -269,20 +275,21 @@ export default function GoogleMaps() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [usingExternalGps, setUsingExternalGps] = useState(false);
   const [lugares, setLugares] = useState([]);
-
-
-  
+  //Formulario para guardar las rutas
+  const [showGuardarRutaModal, setShowGuardarRutaModal] = useState(false);
+  const [rutaCoordenadas, setRutaCoordenadas] = useState([]);
+  const [rutaNombreLugar, setRutaNombreLugar] = useState(""); // Aquí guardaremos el nombre del lugar
 
   const [showPredefinedRoutes, setShowPredefinedRoutes] = useState(false);
   const predefinedPolylinesRef = useRef([]);
-// ...
-const dynamicPolylineRef = useRef(null);
-const aiOptimizedRouteSegmentsRef = useRef([]); // <--- Para los segmentos de la ruta AI
-const doubleClickedRoutesPolylinesRef = useRef([]);
-// ...
-const [activeAiOptimalRouteDetails, setActiveAiOptimalRouteDetails] = useState(null); // <--- Para la leyenda de la ruta AI
-// ...
-
+  // ...
+  const dynamicPolylineRef = useRef(null);
+  const aiOptimizedRouteSegmentsRef = useRef([]); // <--- Para los segmentos de la ruta AI
+  const doubleClickedRoutesPolylinesRef = useRef([]);
+  // ...
+  const [activeAiOptimalRouteDetails, setActiveAiOptimalRouteDetails] =
+    useState(null); // <--- Para la leyenda de la ruta AI
+  // ...
 
   const mapRef = useRef(null);
   const activeMarkerRef = useRef(null);
@@ -321,15 +328,20 @@ const [activeAiOptimalRouteDetails, setActiveAiOptimalRouteDetails] = useState(n
       ...activePredefinedRouteDetails,
       ...activeDoubleClickRouteDetails,
     ];
-      if (activeAiOptimalRouteDetails) { // <--- NUEVA LÍNEA
-    combinedDetails.push(activeAiOptimalRouteDetails); // <--- NUEVA LÍNEA
-  }
+    if (activeAiOptimalRouteDetails) {
+      // <--- NUEVA LÍNEA
+      combinedDetails.push(activeAiOptimalRouteDetails); // <--- NUEVA LÍNEA
+    }
     const uniqueLegends = Array.from(
       new Map(combinedDetails.map((route) => [route.id, route])).values()
     ).sort((a, b) => a.name.localeCompare(b.name));
 
     setVisibleRouteLegends(uniqueLegends);
-  }, [activePredefinedRouteDetails, activeDoubleClickRouteDetails, activeAiOptimalRouteDetails]);
+  }, [
+    activePredefinedRouteDetails,
+    activeDoubleClickRouteDetails,
+    activeAiOptimalRouteDetails,
+  ]);
 
   useEffect(() => {
     if (mapLoaded && window.google && window.google.maps) {
@@ -344,152 +356,218 @@ const [activeAiOptimalRouteDetails, setActiveAiOptimalRouteDetails] = useState(n
     }
   }, [mapLoaded]);
 
-
-const fetchAiOptimalRoute = async (originCoords, destinationCoords) => {
-  console.log("[GoogleMaps fetchAiOptimalRoute] Solicitando ruta AI. Origen:", originCoords, "Destino:", destinationCoords);
-  // El backend de IA espera origen, incluso si es nulo (para rutas desde un punto X al destino)
-  // Si originCoords no está disponible (ej. usuario no ha compartido ubicación),
-  // tu backend debe poder manejarlo o debes decidir un origen por defecto o no llamar.
-  // Por ahora, asumimos que si originCoords es null, el backend podría no necesitarlo o fallar controladamente.
-  if (!destinationCoords) {
+  const fetchAiOptimalRoute = async (originCoords, destinationCoords) => {
+    console.log(
+      "[GoogleMaps fetchAiOptimalRoute] Solicitando ruta AI. Origen:",
+      originCoords,
+      "Destino:",
+      destinationCoords
+    );
+    // El backend de IA espera origen, incluso si es nulo (para rutas desde un punto X al destino)
+    // Si originCoords no está disponible (ej. usuario no ha compartido ubicación),
+    // tu backend debe poder manejarlo o debes decidir un origen por defecto o no llamar.
+    // Por ahora, asumimos que si originCoords es null, el backend podría no necesitarlo o fallar controladamente.
+    if (!destinationCoords) {
       throw new Error("Se requieren coordenadas de destino para la ruta IA.");
-  }
+    }
 
-  const payload = {
-    origen: originCoords ? { lat: originCoords.lat, lng: originCoords.lng } : null, // Puede ser null si la lógica de IA lo permite
-    destino: { lat: destinationCoords.lat, lng: destinationCoords.lng },
+    const payload = {
+      origen: originCoords
+        ? { lat: originCoords.lat, lng: originCoords.lng }
+        : null, // Puede ser null si la lógica de IA lo permite
+      destino: { lat: destinationCoords.lat, lng: destinationCoords.lng },
+    };
+
+    console.log(
+      "[GoogleMaps fetchAiOptimalRoute] Payload enviado a IA:",
+      JSON.stringify(payload)
+    );
+
+    try {
+      const response = await fetch("http://localhost:5000/api/optimal-route", {
+        // <--- ENDPOINT ACTUALIZADO
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          error: "Error desconocido del servidor AI",
+          mensaje: "Respuesta no JSON",
+        }));
+        console.error(
+          "[GoogleMaps fetchAiOptimalRoute] Error del servidor AI:",
+          response.status,
+          errorData
+        );
+        throw new Error(
+          errorData.mensaje ||
+            errorData.error ||
+            `Error del servidor AI: ${response.status}`
+        );
+      }
+      const data = await response.json();
+      console.log("[GoogleMaps fetchAiOptimalRoute] Ruta AI recibida:", data);
+      return data; // Devuelve toda la respuesta para ser procesada
+    } catch (error) {
+      console.error("[GoogleMaps fetchAiOptimalRoute] Catch Error:", error);
+      throw error;
+    }
   };
 
-  console.log("[GoogleMaps fetchAiOptimalRoute] Payload enviado a IA:", JSON.stringify(payload));
+  // Función auxiliar para dibujar un segmento de polilínea
+  const drawPolylineSegment = (
+    pathCoords,
+    mapInstance,
+    color,
+    weight,
+    opacity = 0.9,
+    zIndex = 15,
+    isDashed = false
+  ) => {
+    if (!pathCoords || pathCoords.length === 0) return null;
 
-  try {
-    const response = await fetch('http://localhost:5000/api/optimal-route', { // <--- ENDPOINT ACTUALIZADO
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+    // Convertir [lng, lat] a [{lat, lng}] si es necesario
+    const googleMapsPath = pathCoords.map((coord) => {
+      if (Array.isArray(coord) && coord.length === 2) {
+        return { lat: coord[1], lng: coord[0] }; // Asume [lng, lat] y convierte
+      }
+      return coord; // Asume que ya está en formato {lat, lng}
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Error desconocido del servidor AI", mensaje: "Respuesta no JSON" }));
-      console.error("[GoogleMaps fetchAiOptimalRoute] Error del servidor AI:", response.status, errorData);
-      throw new Error(errorData.mensaje || errorData.error || `Error del servidor AI: ${response.status}`);
+    const polylineOptions = {
+      path: googleMapsPath,
+      geodesic: true,
+      strokeColor: color,
+      strokeOpacity: opacity,
+      strokeWeight: weight,
+      zIndex: zIndex,
+      map: mapInstance,
+    };
+
+    if (isDashed) {
+      polylineOptions.icons = [
+        {
+          icon: {
+            path: "M 0,-1 0,1",
+            strokeOpacity: 1,
+            scale: 3,
+            strokeWeight: weight,
+          },
+          offset: "0",
+          repeat: "15px",
+        },
+      ];
+      polylineOptions.strokeOpacity = 0; // La opacidad la da el icono
     }
-    const data = await response.json();
-    console.log("[GoogleMaps fetchAiOptimalRoute] Ruta AI recibida:", data);
-    return data; // Devuelve toda la respuesta para ser procesada
-  } catch (error) {
-    console.error("[GoogleMaps fetchAiOptimalRoute] Catch Error:", error);
-    throw error; 
-  }
-};
 
-
-
-// Función auxiliar para dibujar un segmento de polilínea
-const drawPolylineSegment = (pathCoords, mapInstance, color, weight, opacity = 0.9, zIndex = 15, isDashed = false) => {
-  if (!pathCoords || pathCoords.length === 0) return null;
-
-  // Convertir [lng, lat] a [{lat, lng}] si es necesario
-  const googleMapsPath = pathCoords.map(coord => {
-    if (Array.isArray(coord) && coord.length === 2) {
-      return { lat: coord[1], lng: coord[0] }; // Asume [lng, lat] y convierte
-    }
-    return coord; // Asume que ya está en formato {lat, lng}
-  });
-
-  const polylineOptions = {
-    path: googleMapsPath,
-    geodesic: true,
-    strokeColor: color,
-    strokeOpacity: opacity,
-    strokeWeight: weight,
-    zIndex: zIndex,
-    map: mapInstance,
+    return new window.google.maps.Polyline(polylineOptions);
   };
 
-  if (isDashed) {
-    polylineOptions.icons = [{
-      icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3, strokeWeight: weight },
-      offset: '0',
-      repeat: '15px',
-    }];
-    polylineOptions.strokeOpacity = 0; // La opacidad la da el icono
-  }
+  // Función principal para dibujar la ruta óptima de IA
+  const drawAiOptimalRoute = useCallback(
+    (responseData) => {
+      if (aiOptimizedRouteSegmentsRef.current.length > 0) {
+        aiOptimizedRouteSegmentsRef.current.forEach((segment) =>
+          segment.setMap(null)
+        );
+        aiOptimizedRouteSegmentsRef.current = [];
+      }
+      setActiveAiOptimalRouteDetails(null);
 
-  return new window.google.maps.Polyline(polylineOptions);
-};
+      if (!responseData || !mapRef.current || !window.google?.maps) return;
 
-// Función principal para dibujar la ruta óptima de IA
-const drawAiOptimalRoute = useCallback((responseData) => {
-  if (aiOptimizedRouteSegmentsRef.current.length > 0) {
-    aiOptimizedRouteSegmentsRef.current.forEach(segment => segment.setMap(null));
-    aiOptimizedRouteSegmentsRef.current = [];
-  }
-  setActiveAiOptimalRouteDetails(null);
+      const newSegments = [];
+      let legendDetails = {
+        id: "ai-optimal-route",
+        name: "Ruta Óptima (IA)",
+        color: "#FF00FF", // Color por defecto si no hay combi
+      };
 
-  if (!responseData || !mapRef.current || !window.google?.maps) return;
+      if (responseData.recomendacion === "usar_transporte") {
+        setMapStatusMessage(
+          responseData.mensaje || "Ruta de transporte sugerida."
+        );
 
-  const newSegments = [];
-  let legendDetails = {
-    id: "ai-optimal-route",
-    name: "Ruta Óptima (IA)",
-    color: "#FF00FF" // Color por defecto si no hay combi
-  };
+        // Segmento 1: Origen a parada de subida (caminando)
+        const seg1 = drawPolylineSegment(
+          responseData.ruta_origen_a_subida,
+          mapRef.current,
+          "#4A90E2",
+          4,
+          0.9,
+          18,
+          true
+        ); // Azul, punteado
+        if (seg1) newSegments.push(seg1);
 
-  if (responseData.recomendacion === "usar_transporte") {
-    setMapStatusMessage(responseData.mensaje || "Ruta de transporte sugerida.");
-
-    // Segmento 1: Origen a parada de subida (caminando)
-    const seg1 = drawPolylineSegment(responseData.ruta_origen_a_subida, mapRef.current, "#4A90E2", 4, 0.9, 18, true); // Azul, punteado
-    if (seg1) newSegments.push(seg1);
-
-    // Segmento 2: Ruta de transporte (combi)
-    // Podrías intentar obtener el color de ALL_PREDEFINED_ROUTES_CONFIG si el ID coincide
-    let transportColor = "#FF00FF"; // Magenta por defecto para transporte IA
-    if (responseData.combi_id) {
-        const combiConfig = ALL_PREDEFINED_ROUTES_CONFIG.find(r => r.id === responseData.combi_id);
-        if (combiConfig && combiConfig.color) {
+        // Segmento 2: Ruta de transporte (combi)
+        // Podrías intentar obtener el color de ALL_PREDEFINED_ROUTES_CONFIG si el ID coincide
+        let transportColor = "#FF00FF"; // Magenta por defecto para transporte IA
+        if (responseData.combi_id) {
+          const combiConfig = ALL_PREDEFINED_ROUTES_CONFIG.find(
+            (r) => r.id === responseData.combi_id
+          );
+          if (combiConfig && combiConfig.color) {
             transportColor = combiConfig.color;
+          }
+          legendDetails.name = `Ruta IA: ${
+            responseData.combi_nombre || responseData.combi_id
+          }`;
+          legendDetails.color = transportColor;
         }
-        legendDetails.name = `Ruta IA: ${responseData.combi_nombre || responseData.combi_id}`;
-        legendDetails.color = transportColor;
-    }
-    const seg2 = drawPolylineSegment(responseData.ruta_transporte, mapRef.current, transportColor, 6, 0.9, 20, false); // Color de combi, sólido
-    if (seg2) newSegments.push(seg2);
+        const seg2 = drawPolylineSegment(
+          responseData.ruta_transporte,
+          mapRef.current,
+          transportColor,
+          6,
+          0.9,
+          20,
+          false
+        ); // Color de combi, sólido
+        if (seg2) newSegments.push(seg2);
 
-    // Segmento 3: Parada de bajada a destino (caminando)
-    const seg3 = drawPolylineSegment(responseData.ruta_bajada_a_destino, mapRef.current, "#FF6F00", 4, 0.9, 18, true); // Naranja, punteado
-    if (seg3) newSegments.push(seg3);
+        // Segmento 3: Parada de bajada a destino (caminando)
+        const seg3 = drawPolylineSegment(
+          responseData.ruta_bajada_a_destino,
+          mapRef.current,
+          "#FF6F00",
+          4,
+          0.9,
+          18,
+          true
+        ); // Naranja, punteado
+        if (seg3) newSegments.push(seg3);
 
-    setActiveAiOptimalRouteDetails(legendDetails);
+        setActiveAiOptimalRouteDetails(legendDetails);
+      } else if (responseData.recomendacion === "caminar") {
+        setMapStatusMessage(responseData.mensaje || "Se recomienda caminar.");
+        legendDetails.name = "Ruta IA (Caminando)";
+        legendDetails.color = "#34A853"; // Verde para caminar directo
+        const directWalk = drawPolylineSegment(
+          responseData.ruta_directa,
+          mapRef.current,
+          legendDetails.color,
+          5,
+          0.9,
+          19,
+          true
+        ); // Verde, punteado
+        if (directWalk) newSegments.push(directWalk);
+        setActiveAiOptimalRouteDetails(legendDetails);
+      } else {
+        setMapStatusMessage(
+          responseData.mensaje || "No se pudo generar la ruta IA."
+        );
+      }
 
-  } else if (responseData.recomendacion === "caminar") {
-    setMapStatusMessage(responseData.mensaje || "Se recomienda caminar.");
-    legendDetails.name = "Ruta IA (Caminando)";
-    legendDetails.color = "#34A853"; // Verde para caminar directo
-    const directWalk = drawPolylineSegment(responseData.ruta_directa, mapRef.current, legendDetails.color, 5, 0.9, 19, true); // Verde, punteado
-    if (directWalk) newSegments.push(directWalk);
-    setActiveAiOptimalRouteDetails(legendDetails);
-  } else {
-    setMapStatusMessage(responseData.mensaje || "No se pudo generar la ruta IA.");
-  }
-
-  aiOptimizedRouteSegmentsRef.current = newSegments;
-
-}, [setActiveAiOptimalRouteDetails, setMapStatusMessage]);
-
-
-
-
-
-
-
-
-
-
-
+      aiOptimizedRouteSegmentsRef.current = newSegments;
+    },
+    [setActiveAiOptimalRouteDetails, setMapStatusMessage]
+  );
 
   const getRoadSnappedLocation = useCallback((originalLatLng) => {
     return new Promise((resolve) => {
@@ -800,83 +878,114 @@ const drawAiOptimalRoute = useCallback((responseData) => {
         // Main useEffect will handle centering on Atlixco if location is still null or error is set
       }
     },
-    [/* Removed setLocation, setError as they are stable from useState */]
+    [
+      /* Removed setLocation, setError as they are stable from useState */
+    ]
   );
 
-  useEffect(() => {
-    if (!wsRef.current) {
-      wsRef.current = new WebSocket("ws://localhost:8080");
-      wsRef.current.onopen = () => {
-        setMapStatusMessage("");
-      };
-      wsRef.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === "gps_status") {
-            const { status, message: statusMessageText } = message.payload;
-            if (status === "waiting_for_valid_data") {
-              setMapStatusMessage(
-                statusMessageText || "Esperando datos GPS válidos..."
-              );
-              setExternalGpsLocation(null);
-            } else if (
-              status === "disconnected" ||
-              status === "disconnected_error" ||
-              status === "script_launch_error" ||
-              status === "script_error"
-            ) {
-              setMapStatusMessage(
-                statusMessageText || "GPS desconectado o con error."
-              );
-              setExternalGpsLocation(null);
+  useEffect(
+    () => {
+      if (!wsRef.current) {
+        wsRef.current = new WebSocket("ws://localhost:8080");
+        wsRef.current.onopen = () => {
+          setMapStatusMessage("");
+        };
+        wsRef.current.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "gps_status") {
+              const { status, message: statusMessageText } = message.payload;
+              if (status === "waiting_for_valid_data") {
+                setMapStatusMessage(
+                  statusMessageText || "Esperando datos GPS válidos..."
+                );
+                setExternalGpsLocation(null);
+              } else if (
+                status === "disconnected" ||
+                status === "disconnected_error" ||
+                status === "script_launch_error" ||
+                status === "script_error"
+              ) {
+                setMapStatusMessage(
+                  statusMessageText || "GPS desconectado o con error."
+                );
+                setExternalGpsLocation(null);
+              }
+            } else if (message.type === "gps_update" && message.payload.lat) {
+              setMapStatusMessage("");
+              setExternalGpsLocation({
+                lat: message.payload.lat,
+                lng: message.payload.lng,
+                accuracy: 5, // Assuming a fixed accuracy for external GPS for now
+                humidity: message.payload.humidity,
+                temperature: message.payload.temperature,
+              });
             }
-          } else if (message.type === "gps_update" && message.payload.lat) {
-            setMapStatusMessage("");
-            setExternalGpsLocation({
-              lat: message.payload.lat,
-              lng: message.payload.lng,
-              accuracy: 5, // Assuming a fixed accuracy for external GPS for now
-              humidity: message.payload.humidity,
-              temperature: message.payload.temperature,
-            });
+          } catch (e) {
+            setMapStatusMessage("Error procesando datos del GPS.");
           }
-        } catch (e) {
-          setMapStatusMessage("Error procesando datos del GPS.");
-        }
-      };
-      wsRef.current.onclose = () => {};
-      wsRef.current.onerror = (e) => {
+        };
+        wsRef.current.onclose = () => {};
+        wsRef.current.onerror = (e) => {
+          setExternalGpsLocation(null);
+        };
+      }
+      const handleGpsDataActive = () => setMapStatusMessage("");
+      const handleGpsConnectionLost = () => {
         setExternalGpsLocation(null);
       };
-    }
-    const handleGpsDataActive = () => setMapStatusMessage("");
-    const handleGpsConnectionLost = () => {
-      setExternalGpsLocation(null);
-    };
-    window.addEventListener("gps-data-active", handleGpsDataActive);
-    window.addEventListener("gps-connection-lost", handleGpsConnectionLost);
-    return () => {
-      window.removeEventListener("gps-data-active", handleGpsDataActive);
-      window.removeEventListener(
-        "gps-connection-lost",
-        handleGpsConnectionLost
-      );
-      // if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) { wsRef.current.close(); }
-    };
-  }, [/* usingExternalGps might be relevant if ws logic changes based on it, but seems mostly init */]);
+      window.addEventListener("gps-data-active", handleGpsDataActive);
+      window.addEventListener("gps-connection-lost", handleGpsConnectionLost);
+      return () => {
+        window.removeEventListener("gps-data-active", handleGpsDataActive);
+        window.removeEventListener(
+          "gps-connection-lost",
+          handleGpsConnectionLost
+        );
+        // if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) { wsRef.current.close(); }
+      };
+    },
+    [
+      /* usingExternalGps might be relevant if ws logic changes based on it, but seems mostly init */
+    ]
+  );
 
   const updateMarker = useCallback(
-    (lat, lng, isExternalSource = usingExternalGps, currentHeading = 0, data = {}) => {
+    (
+      lat,
+      lng,
+      isExternalSource = usingExternalGps,
+      currentHeading = 0,
+      data = {}
+    ) => {
       if (!mapRef.current || !window.google?.maps) return;
 
-      const createSimpleMarkerSVG = (isExtParam, svgSize = 32, svgHeading = 0) => {
+      const createSimpleMarkerSVG = (
+        isExtParam,
+        svgSize = 32,
+        svgHeading = 0
+      ) => {
         const color = isExtParam ? "#EF4444" : "#1E40AF"; // Rojo para externo, Azul para interno
         const outerSize = svgSize;
         const innerSize = svgSize * 0.4;
         const center = outerSize / 2;
         const arrowLength = innerSize;
 
-        return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${isExtParam ? "External" : "Internal"}" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${center - 2}" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${isExtParam ? "External" : "Internal"})"/><circle cx="${center}" cy="${center}" r="${innerSize / 2}" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${innerSize / 2 + 4} L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${innerSize / 2 + 2} L -${arrowLength / 3},-${innerSize / 2 - 2} Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
+        return `<svg width="${outerSize}" height="${outerSize}" viewBox="0 0 ${outerSize} ${outerSize}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="shadow${
+          isExtParam ? "External" : "Internal"
+        }" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.2)"/></filter></defs><circle cx="${center}" cy="${center}" r="${
+          center - 2
+        }" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1" stroke-opacity="0.4" filter="url(#shadow${
+          isExtParam ? "External" : "Internal"
+        })"/><circle cx="${center}" cy="${center}" r="${
+          innerSize / 2
+        }" fill="${color}" stroke="white" stroke-width="2"/><g transform="translate(${center}, ${center}) rotate(${svgHeading})"><path d="M 0,-${
+          innerSize / 2 + 4
+        } L ${arrowLength / 3},-${innerSize / 2 - 2} L 0,-${
+          innerSize / 2 + 2
+        } L -${arrowLength / 3},-${
+          innerSize / 2 - 2
+        } Z" fill="white" stroke="${color}" stroke-width="1"/></g></svg>`;
       };
 
       const createMarkerIcon = (isExtParam, zoom, svgHeading = 0) => {
@@ -901,37 +1010,58 @@ const drawAiOptimalRoute = useCallback((responseData) => {
       };
 
       const currentZoom = mapRef.current.getZoom();
-      const markerIcon = createMarkerIcon(isExternalSource, currentZoom, currentHeading);
+      const markerIcon = createMarkerIcon(
+        isExternalSource,
+        currentZoom,
+        currentHeading
+      );
       const newPosition = { lat, lng };
-      
+
       // Determine title based on source and if data implies it's a fallback
       let newTitle = "Ubicación"; // Default
       if (data && data.isFallback) {
-          newTitle = "Centro de Atlixco (Ubicación predeterminada)";
+        newTitle = "Centro de Atlixco (Ubicación predeterminada)";
       } else {
-          newTitle = isExternalSource ? "GPS Externo" : "Mi ubicación (GPS Interno)";
+        newTitle = isExternalSource
+          ? "GPS Externo"
+          : "Mi ubicación (GPS Interno)";
       }
 
-
-      const generateInfoWindowContent = (titleForInfoWindow, currentLat, currentLng, currentData, isExtSrc) => {
-          let content = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
+      const generateInfoWindowContent = (
+        titleForInfoWindow,
+        currentLat,
+        currentLng,
+        currentData,
+        isExtSrc
+      ) => {
+        let content = `<div style="color: #000; padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; max-width: 250px;"><div style="font-weight: 600; margin-bottom: 4px; color: ${
           isExtSrc ? "#EF4444" : "#1E40AF"
-          };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(6)}, Lng: ${currentLng.toFixed(6)}</div>`;
-          
-          if (!currentData?.isFallback) { // Only show extra data if not a fallback
-            if (isExtSrc) {
-                if (currentData.humidity !== null && currentData.humidity !== undefined)
-                    content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
-                if (currentData.temperature !== null && currentData.temperature !== undefined)
-                    content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
-            }
-            if (currentData.accuracy)
-                content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(1)}m</div>`;
-          }
-          content += `</div>`;
-          return content;
-      };
+        };">${titleForInfoWindow}</div><div style="color: #333; font-size: 12px;">Lat: ${currentLat.toFixed(
+          6
+        )}, Lng: ${currentLng.toFixed(6)}</div>`;
 
+        if (!currentData?.isFallback) {
+          // Only show extra data if not a fallback
+          if (isExtSrc) {
+            if (
+              currentData.humidity !== null &&
+              currentData.humidity !== undefined
+            )
+              content += `<div style="color: #333; font-size: 12px;">Humedad: ${currentData.humidity}%</div>`;
+            if (
+              currentData.temperature !== null &&
+              currentData.temperature !== undefined
+            )
+              content += `<div style="color: #333; font-size: 12px;">Temp: ${currentData.temperature}°C</div>`;
+          }
+          if (currentData.accuracy)
+            content += `<div style="color: #666; font-size: 11px;">Precisión: ${currentData.accuracy.toFixed(
+              1
+            )}m</div>`;
+        }
+        content += `</div>`;
+        return content;
+      };
 
       if (activeMarkerRef.current) {
         activeMarkerRef.current.setPosition(newPosition);
@@ -941,8 +1071,17 @@ const drawAiOptimalRoute = useCallback((responseData) => {
           activeMarkerRef.current.setTitle(newTitle);
         }
 
-        if (openInfoWindowRef.current && openInfoWindowRef.current.getAnchor() === activeMarkerRef.current) {
-          const newInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
+        if (
+          openInfoWindowRef.current &&
+          openInfoWindowRef.current.getAnchor() === activeMarkerRef.current
+        ) {
+          const newInfoWindowContent = generateInfoWindowContent(
+            newTitle,
+            lat,
+            lng,
+            data,
+            isExternalSource
+          );
           openInfoWindowRef.current.setContent(newInfoWindowContent);
         }
       } else {
@@ -954,7 +1093,13 @@ const drawAiOptimalRoute = useCallback((responseData) => {
           zIndex: 1000,
         });
 
-        const initialInfoWindowContent = generateInfoWindowContent(newTitle, lat, lng, data, isExternalSource);
+        const initialInfoWindowContent = generateInfoWindowContent(
+          newTitle,
+          lat,
+          lng,
+          data,
+          isExternalSource
+        );
         const infoWindow = new window.google.maps.InfoWindow({
           content: initialInfoWindowContent,
         });
@@ -967,81 +1112,114 @@ const drawAiOptimalRoute = useCallback((responseData) => {
         activeMarkerRef.current = newMarker;
       }
     },
-    [usingExternalGps, openInfoWindowRef] 
+    [usingExternalGps, openInfoWindowRef]
   );
 
   const toggleGpsSource = useCallback(() => {
     const newUsingExternalGps = !usingExternalGps;
     setUsingExternalGps(newUsingExternalGps);
-    setMapStatusMessage(""); 
-    setError(""); 
+    setMapStatusMessage("");
+    setError("");
     if (newUsingExternalGps) {
       if (!externalGpsLocation) {
         setMapStatusMessage("Cambiado a GPS Externo. Esperando datos...");
-        activeMarkerRef.current?.setMap(null); 
+        activeMarkerRef.current?.setMap(null);
       }
       // Panning is handled by the main useEffect
     } else {
       if (!location) {
-        requestLocation(true); 
+        requestLocation(true);
         setMapStatusMessage("Cambiado a GPS Interno. Obteniendo ubicación...");
       }
       // Panning is handled by the main useEffect
     }
-  }, [usingExternalGps, externalGpsLocation, location, requestLocation, setMapStatusMessage, setError]);
-
+  }, [
+    usingExternalGps,
+    externalGpsLocation,
+    location,
+    requestLocation,
+    setMapStatusMessage,
+    setError,
+  ]);
 
   useEffect(() => {
     const handleOrientation = (event) => {
       let currentHeading = null;
-      if (event.webkitCompassHeading) { // Safari
+      if (event.webkitCompassHeading) {
+        // Safari
         currentHeading = event.webkitCompassHeading;
-      } else if (event.absolute === true && event.alpha !== null) { // Standard
+      } else if (event.absolute === true && event.alpha !== null) {
+        // Standard
         currentHeading = event.alpha;
       }
 
-      if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) { // Update only on significant change
+      if (currentHeading !== null && Math.abs(currentHeading - heading) > 1) {
+        // Update only on significant change
         setHeading(currentHeading);
       }
     };
 
     const requestDeviceOrientationPermission = async () => {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+      ) {
         try {
-          const permissionState = await DeviceOrientationEvent.requestPermission();
-          if (permissionState === 'granted') {
-            if ('ondeviceorientationabsolute' in window) {
-              window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+          const permissionState =
+            await DeviceOrientationEvent.requestPermission();
+          if (permissionState === "granted") {
+            if ("ondeviceorientationabsolute" in window) {
+              window.addEventListener(
+                "deviceorientationabsolute",
+                handleOrientation,
+                true
+              );
             } else {
-              window.addEventListener('deviceorientation', handleOrientation, true);
+              window.addEventListener(
+                "deviceorientation",
+                handleOrientation,
+                true
+              );
             }
             setMapStatusMessage("Orientación del dispositivo activada.");
             setTimeout(() => setMapStatusMessage(""), 3000);
           } else {
-            setMapStatusMessage('Permiso de orientación no concedido.');
+            setMapStatusMessage("Permiso de orientación no concedido.");
             setTimeout(() => setMapStatusMessage(""), 3000);
           }
         } catch (error) {
-          setMapStatusMessage('Error al solicitar permiso de orientación.');
+          setMapStatusMessage("Error al solicitar permiso de orientación.");
           setTimeout(() => setMapStatusMessage(""), 3000);
         }
-      } else if (typeof DeviceOrientationEvent !== 'undefined') {
+      } else if (typeof DeviceOrientationEvent !== "undefined") {
         // For browsers that don't require explicit permission (e.g., Android Chrome)
-        if ('ondeviceorientationabsolute' in window) {
-          window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-        } else if ('ondeviceorientation' in window) { // Fallback for non-absolute
-          window.addEventListener('deviceorientation', handleOrientation, true);
+        if ("ondeviceorientationabsolute" in window) {
+          window.addEventListener(
+            "deviceorientationabsolute",
+            handleOrientation,
+            true
+          );
+        } else if ("ondeviceorientation" in window) {
+          // Fallback for non-absolute
+          window.addEventListener("deviceorientation", handleOrientation, true);
         }
       }
     };
 
     if (mapLoaded && !usingExternalGps && window.google?.maps) {
-     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission !== 'function') {
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission !== "function"
+      ) {
         // Auto-attach for browsers not needing explicit permission after initial load
-        if ('ondeviceorientationabsolute' in window) {
-          window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-        } else if ('ondeviceorientation' in window) {
-          window.addEventListener('deviceorientation', handleOrientation, true);
+        if ("ondeviceorientationabsolute" in window) {
+          window.addEventListener(
+            "deviceorientationabsolute",
+            handleOrientation,
+            true
+          );
+        } else if ("ondeviceorientation" in window) {
+          window.addEventListener("deviceorientation", handleOrientation, true);
         }
       }
       // For iOS, permission might need to be triggered by user interaction, e.g. a button.
@@ -1050,12 +1228,14 @@ const drawAiOptimalRoute = useCallback((responseData) => {
     }
 
     return () => {
-      window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
-      window.removeEventListener('deviceorientation', handleOrientation, true);
+      window.removeEventListener(
+        "deviceorientationabsolute",
+        handleOrientation,
+        true
+      );
+      window.removeEventListener("deviceorientation", handleOrientation, true);
     };
-
   }, [mapLoaded, usingExternalGps, setMapStatusMessage, heading]);
-
 
   useEffect(() => {
     const initMap = async () => {
@@ -1070,52 +1250,63 @@ const drawAiOptimalRoute = useCallback((responseData) => {
     };
     if (!window.google?.maps && !mapLoaded) {
       initMap();
-    } else if (window.google?.maps && !mapLoaded) { // Script loaded externally or race condition
+    } else if (window.google?.maps && !mapLoaded) {
+      // Script loaded externally or race condition
       setMapLoaded(true);
       if (!location) requestLocation(false);
     }
   }, [mapLoaded, location, requestLocation]); // Added requestLocation
 
-  const fetchLugaresPorTipo = useCallback(async (tipo) => {
-    setLugares([]);
-    try {
-      const querySnapshot = await getDocs(collection(db, "lugares"));
-      const data = querySnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((l) => l.tipo === tipo);
-      setLugares(data);
-      if (data.length === 0) {
-        setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`);
-        setTimeout(() => setMapStatusMessage(""), 3000);
-      } else {
-        setMapStatusMessage("");
+  const fetchLugaresPorTipo = useCallback(
+    async (tipo) => {
+      setLugares([]);
+      try {
+        const querySnapshot = await getDocs(collection(db, "lugares"));
+        const data = querySnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((l) => l.tipo === tipo);
+        setLugares(data);
+        if (data.length === 0) {
+          setMapStatusMessage(`No se encontraron lugares del tipo: ${tipo}`);
+          setTimeout(() => setMapStatusMessage(""), 3000);
+        } else {
+          setMapStatusMessage("");
+        }
+      } catch (err) {
+        setError("Error al cargar lugares de interés.");
+        setMapStatusMessage("Error al cargar lugares.");
       }
-    } catch (err) {
-      setError("Error al cargar lugares de interés.");
-      setMapStatusMessage("Error al cargar lugares.");
-    }
-  }, [/* db, setMapStatusMessage, setError, setLugares are stable or component constants */]);
+    },
+    [
+      /* db, setMapStatusMessage, setError, setLugares are stable or component constants */
+    ]
+  );
 
-  const fetchAllLugares = useCallback(async () => {
-    setLugares([]);
-    try {
-      const querySnapshot = await getDocs(collection(db, "lugares"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setLugares(data);
-      if (data.length === 0) {
-        setMapStatusMessage(`No se encontraron lugares.`);
-        setTimeout(() => setMapStatusMessage(""), 3000);
-      } else {
-        setMapStatusMessage("");
+  const fetchAllLugares = useCallback(
+    async () => {
+      setLugares([]);
+      try {
+        const querySnapshot = await getDocs(collection(db, "lugares"));
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setLugares(data);
+        if (data.length === 0) {
+          setMapStatusMessage(`No se encontraron lugares.`);
+          setTimeout(() => setMapStatusMessage(""), 3000);
+        } else {
+          setMapStatusMessage("");
+        }
+      } catch (err) {
+        setError("Error al cargar todos los lugares de interés.");
+        setMapStatusMessage("Error al cargar lugares.");
       }
-    } catch (err) {
-      setError("Error al cargar todos los lugares de interés.");
-      setMapStatusMessage("Error al cargar lugares.");
-    }
-  }, [/* db, setMapStatusMessage, setError, setLugares */]);
+    },
+    [
+      /* db, setMapStatusMessage, setError, setLugares */
+    ]
+  );
 
   const togglePredefinedRoutes = useCallback(() => {
     setShowPredefinedRoutes((prev) => !prev);
@@ -1326,7 +1517,7 @@ const drawAiOptimalRoute = useCallback((responseData) => {
         closestRoutePointMarkerRef.current.getMap()
           ? closestRoutePointMarkerRef.current.getPosition()
           : null;
-      
+
       // For handlePoiRouteRequest, destination is the POI.
       // So, walking from user to stop A (truckMarkerRef)
       // And walking from stop B (closestRoutePointMarkerRef, near POI) to POI (clickedPositionGoogle / snappedDestinationLocation)
@@ -1334,7 +1525,7 @@ const drawAiOptimalRoute = useCallback((responseData) => {
         snappedUserLocation, // User's current location
         truckStopAPositionForWalking, // Closest stop on active route to user
         truckStopBPositionForWalking, // Closest stop on route near POI (this is start of walk)
-        snappedDestinationLocation    // The POI itself (this is end of walk)
+        snappedDestinationLocation // The POI itself (this is end of walk)
       );
 
       setTimeout(() => setMapStatusMessage(""), 7000);
@@ -1359,7 +1550,7 @@ const drawAiOptimalRoute = useCallback((responseData) => {
       if (externalGpsLocation) {
         currentDisplayLocation = externalGpsLocation;
         isExternalSourceForMarker = true;
-        markerData = { 
+        markerData = {
           accuracy: externalGpsLocation.accuracy,
           humidity: externalGpsLocation.humidity,
           temperature: externalGpsLocation.temperature,
@@ -1378,14 +1569,26 @@ const drawAiOptimalRoute = useCallback((responseData) => {
     let tempStatusMessageKey = ""; // To manage status messages
 
     if (currentDisplayLocation) {
-      if (isWithinAtlixcoBounds(currentDisplayLocation.lat, currentDisplayLocation.lng)) {
+      if (
+        isWithinAtlixcoBounds(
+          currentDisplayLocation.lat,
+          currentDisplayLocation.lng
+        )
+      ) {
         effectiveLat = currentDisplayLocation.lat;
         effectiveLng = currentDisplayLocation.lng;
-        effectiveZoom = mapRef.current ? mapRef.current.getZoom() : INITIAL_ZOOM_ATLIXCO;
+        effectiveZoom = mapRef.current
+          ? mapRef.current.getZoom()
+          : INITIAL_ZOOM_ATLIXCO;
         isEffectiveLocationFromUser = true;
         markerData.isFallback = false;
-        if (mapStatusMessage === "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco." || mapStatusMessage === "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") {
-            setMapStatusMessage(""); // Clear fallback message
+        if (
+          mapStatusMessage ===
+            "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco." ||
+          mapStatusMessage ===
+            "No se pudo obtener ubicación. Mostrando el centro de Atlixco."
+        ) {
+          setMapStatusMessage(""); // Clear fallback message
         }
       } else {
         effectiveLat = ATLIXCO_CENTER.lat;
@@ -1395,38 +1598,57 @@ const drawAiOptimalRoute = useCallback((responseData) => {
         markerData = { isFallback: true, accuracy: null };
         tempStatusMessageKey = "OUTSIDE_ATLIXCO";
       }
-    } else { // No location obtained (error or still loading)
+    } else {
+      // No location obtained (error or still loading)
       effectiveLat = ATLIXCO_CENTER.lat;
       effectiveLng = ATLIXCO_CENTER.lng;
       effectiveZoom = INITIAL_ZOOM_ATLIXCO;
       isEffectiveLocationFromUser = false;
       markerData = { isFallback: true, accuracy: null };
-      if (error) { // If there's a specific error from getCurrentLocation
+      if (error) {
+        // If there's a specific error from getCurrentLocation
         // The error state is displayed by errorBox, no need for mapStatusMessage here for that
-      } else if (!mapRef.current) { // Initial load before any location attempt
+      } else if (!mapRef.current) {
+        // Initial load before any location attempt
         // No specific message needed here, loading indicator handles it
       } else {
-         tempStatusMessageKey = "NO_LOCATION_FALLBACK";
+        tempStatusMessageKey = "NO_LOCATION_FALLBACK";
       }
     }
-    
-    if (tempStatusMessageKey === "OUTSIDE_ATLIXCO" && mapStatusMessage !== "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco.") {
-        setMapStatusMessage("Ubicación fuera de Atlixco. Mostrando el centro de Atlixco.");
-        setTimeout(() => {
-            if (mapStatusMessage === "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco.") setMapStatusMessage("");
-        }, 7000);
-    } else if (tempStatusMessageKey === "NO_LOCATION_FALLBACK" && mapStatusMessage !== "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") {
-        // setMapStatusMessage("No se pudo obtener ubicación. Mostrando el centro de Atlixco.");
-        // setTimeout(() => {
-        //     if (mapStatusMessage === "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") setMapStatusMessage("");
-        // }, 7000);
-        // This message can be noisy if it appears too often, e.g. during initial load.
-        // Error state from `error` prop is more explicit.
+
+    if (
+      tempStatusMessageKey === "OUTSIDE_ATLIXCO" &&
+      mapStatusMessage !==
+        "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco."
+    ) {
+      setMapStatusMessage(
+        "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco."
+      );
+      setTimeout(() => {
+        if (
+          mapStatusMessage ===
+          "Ubicación fuera de Atlixco. Mostrando el centro de Atlixco."
+        )
+          setMapStatusMessage("");
+      }, 7000);
+    } else if (
+      tempStatusMessageKey === "NO_LOCATION_FALLBACK" &&
+      mapStatusMessage !==
+        "No se pudo obtener ubicación. Mostrando el centro de Atlixco."
+    ) {
+      // setMapStatusMessage("No se pudo obtener ubicación. Mostrando el centro de Atlixco.");
+      // setTimeout(() => {
+      //     if (mapStatusMessage === "No se pudo obtener ubicación. Mostrando el centro de Atlixco.") setMapStatusMessage("");
+      // }, 7000);
+      // This message can be noisy if it appears too often, e.g. during initial load.
+      // Error state from `error` prop is more explicit.
     }
 
-
     if (!mapRef.current) {
-      if (typeof effectiveLat === 'number' && typeof effectiveLng === 'number') {
+      if (
+        typeof effectiveLat === "number" &&
+        typeof effectiveLng === "number"
+      ) {
         mapRef.current = new window.google.maps.Map(
           document.getElementById("map"),
           {
@@ -1446,15 +1668,18 @@ const drawAiOptimalRoute = useCallback((responseData) => {
           }
         );
         mapRef.current.addListener("zoom_changed", () => {
-           updateTruckPosition();
-           // Re-render marker if zoom changes its size representation (already handled by updateMarker getting current zoom)
-            if (activeMarkerRef.current && activeMarkerRef.current.getMap() && typeof effectiveLat === 'number') {
-                const pos = activeMarkerRef.current.getPosition();
-                const title = activeMarkerRef.current.getTitle();
-                // This re-call is a bit of a patch. Better if createMarkerIcon is pure based on zoom.
-                // The current updateMarker already gets the zoom.
-            }
-
+          updateTruckPosition();
+          // Re-render marker if zoom changes its size representation (already handled by updateMarker getting current zoom)
+          if (
+            activeMarkerRef.current &&
+            activeMarkerRef.current.getMap() &&
+            typeof effectiveLat === "number"
+          ) {
+            const pos = activeMarkerRef.current.getPosition();
+            const title = activeMarkerRef.current.getTitle();
+            // This re-call is a bit of a patch. Better if createMarkerIcon is pure based on zoom.
+            // The current updateMarker already gets the zoom.
+          }
         });
 
         mapRef.current.addListener("dblclick", async (event) => {
@@ -1476,21 +1701,17 @@ const drawAiOptimalRoute = useCallback((responseData) => {
             closestRoutePointMarkerRef.current = null;
           }
           if (aiOptimizedRouteSegmentsRef.current.length > 0) {
-  aiOptimizedRouteSegmentsRef.current.forEach(segment => segment.setMap(null));
-  aiOptimizedRouteSegmentsRef.current = [];
-  setActiveAiOptimalRouteDetails(null);
-}
+            aiOptimizedRouteSegmentsRef.current.forEach((segment) =>
+              segment.setMap(null)
+            );
+            aiOptimizedRouteSegmentsRef.current = [];
+            setActiveAiOptimalRouteDetails(null);
+          }
 
-if (truckMarkerRef.current) {
+          if (truckMarkerRef.current) {
             truckMarkerRef.current.setMap(null);
             truckMarkerRef.current = null;
-        }
-
-
-
-
-
-
+          }
 
           const clickedLat = event.latLng.lat();
           const clickedLng = event.latLng.lng();
@@ -1515,125 +1736,151 @@ if (truckMarkerRef.current) {
             zIndex: 955,
           });
           setMapStatusMessage("Calculando ruta óptima con IA...");
-const userCurrentPosition = activeMarkerRef.current ? activeMarkerRef.current.getPosition() : null;
-let aiRouteData = null;
+          const userCurrentPosition = activeMarkerRef.current
+            ? activeMarkerRef.current.getPosition()
+            : null;
+          let aiRouteData = null;
 
-try {
-  aiRouteData = await fetchAiOptimalRoute(
-    userCurrentPosition ? { lat: userCurrentPosition.lat(), lng: userCurrentPosition.lng() } : null,
-    { lat: clickedLat, lng: clickedLng } // clickedLat/Lng es del evento de doble clic o del POI
-  );
+          try {
+            aiRouteData = await fetchAiOptimalRoute(
+              userCurrentPosition
+                ? {
+                    lat: userCurrentPosition.lat(),
+                    lng: userCurrentPosition.lng(),
+                  }
+                : null,
+              { lat: clickedLat, lng: clickedLng } // clickedLat/Lng es del evento de doble clic o del POI
+            );
 
-  if (aiRouteData) {
-    drawAiOptimalRoute(aiRouteData); // Llama a la nueva función para dibujar los segmentos
+            if (aiRouteData) {
+              drawAiOptimalRoute(aiRouteData); // Llama a la nueva función para dibujar los segmentos
 
-    // Actualizar marcadores de Parada A (subida) y Parada B (bajada) basados en la respuesta de IA
-    if (aiRouteData.recomendacion === "usar_transporte" && aiRouteData.parada_subida_coords && aiRouteData.parada_bajada_coords) {
+              // Actualizar marcadores de Parada A (subida) y Parada B (bajada) basados en la respuesta de IA
+              if (
+                aiRouteData.recomendacion === "usar_transporte" &&
+                aiRouteData.parada_subida_coords &&
+                aiRouteData.parada_bajada_coords
+              ) {
+                // Parada A (Subida) - truckMarkerRef
+                if (truckMarkerRef.current) truckMarkerRef.current.setMap(null);
+                const paradaSubidaLatLng = new window.google.maps.LatLng(
+                  aiRouteData.parada_subida_coords.lat,
+                  aiRouteData.parada_subida_coords.lng
+                );
+                const camionSubidaIcon = {
+                  /* tu SVG para camionIconSvgString */ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                    camionIconSvgString
+                  )}`,
+                  scaledSize: new window.google.maps.Size(35, 45),
+                  anchor: new window.google.maps.Point(17, 22),
+                };
+                truckMarkerRef.current = new window.google.maps.Marker({
+                  position: paradaSubidaLatLng,
+                  map: mapRef.current,
+                  icon: camionSubidaIcon,
+                  title: `Parada de Subida IA: ${
+                    aiRouteData.combi_nombre || "Combi"
+                  }`,
+                  zIndex: 970,
+                });
 
-      // Parada A (Subida) - truckMarkerRef
-      if (truckMarkerRef.current) truckMarkerRef.current.setMap(null);
-      const paradaSubidaLatLng = new window.google.maps.LatLng(aiRouteData.parada_subida_coords.lat, aiRouteData.parada_subida_coords.lng);
-      const camionSubidaIcon = { /* tu SVG para camionIconSvgString */ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconSvgString)}`, scaledSize: new window.google.maps.Size(35, 45), anchor: new window.google.maps.Point(17, 22) };
-      truckMarkerRef.current = new window.google.maps.Marker({
-        position: paradaSubidaLatLng,
-        map: mapRef.current,
-        icon: camionSubidaIcon,
-        title: `Parada de Subida IA: ${aiRouteData.combi_nombre || 'Combi'}`,
-        zIndex: 970
-      });
+                // Parada B (Bajada) - closestRoutePointMarkerRef
+                if (closestRoutePointMarkerRef.current)
+                  closestRoutePointMarkerRef.current.setMap(null);
+                const paradaBajaLatLng = new window.google.maps.LatLng(
+                  aiRouteData.parada_bajada_coords.lat,
+                  aiRouteData.parada_bajada_coords.lng
+                );
+                const camionBajadaIcon = {
+                  /* tu SVG para camionIconDownSvgString */ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                    camionIconDownSvgString
+                  )}`,
+                  scaledSize: new window.google.maps.Size(35, 45),
+                  anchor: new window.google.maps.Point(17, 22),
+                };
+                closestRoutePointMarkerRef.current =
+                  new window.google.maps.Marker({
+                    position: paradaBajaLatLng,
+                    map: mapRef.current,
+                    icon: camionBajadaIcon,
+                    title: `Parada de Bajada IA: ${
+                      aiRouteData.combi_nombre || "Combi"
+                    }`,
+                    zIndex: 960,
+                  });
 
-      // Parada B (Bajada) - closestRoutePointMarkerRef
-      if (closestRoutePointMarkerRef.current) closestRoutePointMarkerRef.current.setMap(null);
-      const paradaBajaLatLng = new window.google.maps.LatLng(aiRouteData.parada_bajada_coords.lat, aiRouteData.parada_bajada_coords.lng);
-      const camionBajadaIcon = { /* tu SVG para camionIconDownSvgString */ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(camionIconDownSvgString)}`, scaledSize: new window.google.maps.Size(35, 45), anchor: new window.google.maps.Point(17, 22) };
-      closestRoutePointMarkerRef.current = new window.google.maps.Marker({
-        position: paradaBajaLatLng,
-        map: mapRef.current,
-        icon: camionBajadaIcon,
-        title: `Parada de Bajada IA: ${aiRouteData.combi_nombre || 'Combi'}`,
-        zIndex: 960
-      });
+                // Ya no necesitamos drawConnectingWalkingRoutes porque la IA provee los segmentos
+                // Sin embargo, si quieres usar DirectionsService para estos segmentos (por estilo o ajuste fino):
+                // const snappedUser = userCurrentPosition ? await getRoadSnappedLocation(userCurrentPosition) : null;
+                // const snappedDestinoFinal = await getRoadSnappedLocation(clickedPositionGoogle);
+                // drawWalkingRoute(snappedUser, paradaSubidaLatLng, walkingToBusStopPolylineRef, '#00BFA5');
+                // drawWalkingRoute(paradaBajaLatLng, snappedDestinoFinal, walkingFromBusStopPolylineRef, '#FF6F00');
+              } else if (aiRouteData.recomendacion === "caminar") {
+                // No hay paradas de camión si es solo caminar, quitar marcadores de paradas si existían
+                if (truckMarkerRef.current) truckMarkerRef.current.setMap(null);
+                if (closestRoutePointMarkerRef.current)
+                  closestRoutePointMarkerRef.current.setMap(null);
+                // También limpia las polilíneas de caminata a/desde paradas
+                if (walkingToBusStopPolylineRef.current)
+                  walkingToBusStopPolylineRef.current.setMap(null);
+                if (walkingFromBusStopPolylineRef.current)
+                  walkingFromBusStopPolylineRef.current.setMap(null);
+              }
+            } else {
+              setMapStatusMessage(
+                "No se pudo generar la ruta con IA. Mostrando sugerencias normales."
+              );
+            }
+          } catch (aiError) {
+            console.error(
+              "[GoogleMaps dblclick/handlePoiRouteRequest] Error detallado en fetchAiOptimalRoute:",
+              aiError
+            );
+            setMapStatusMessage(
+              `Error ruta IA: ${aiError.message}. Mostrando sugerencias normales.`
+            );
+            // Aquí, podrías decidir si quieres colocar los marcadores de camión basados en las rutas predefinidas como fallback.
+            // ... tu lógica de fallback para camionBajada y updateTruckPosition() si la ruta AI falla ...
+          }
+          // --- FIN: Nueva Lógica para Ruta IA ---
 
-      // Ya no necesitamos drawConnectingWalkingRoutes porque la IA provee los segmentos
-      // Sin embargo, si quieres usar DirectionsService para estos segmentos (por estilo o ajuste fino):
-      // const snappedUser = userCurrentPosition ? await getRoadSnappedLocation(userCurrentPosition) : null;
-      // const snappedDestinoFinal = await getRoadSnappedLocation(clickedPositionGoogle);
-      // drawWalkingRoute(snappedUser, paradaSubidaLatLng, walkingToBusStopPolylineRef, '#00BFA5');
-      // drawWalkingRoute(paradaBajaLatLng, snappedDestinoFinal, walkingFromBusStopPolylineRef, '#FF6F00');
+          // Si la ruta AI falló y quieres colocar paradas basadas en rutas predefinidas:
+          if (!aiRouteData || aiRouteData.recomendacion !== "usar_transporte") {
+            // ... (tu lógica original para colocar closestRoutePointMarkerRef basada en doubleClickedRoutesPolylinesRef) ...
+            // ... (luego llamar a updateTruckPosition() para Parada A basada en predefinidas) ...
+            // ... (y luego tu lógica original para drawConnectingWalkingRoutes con estas paradas predefinidas) ...
+            updateTruckPosition(); // Re-calcular Parada A basada en rutas predefinidas visibles.
+            // Colocar Parada B basada en rutas predefinidas visibles y el destino (clickedPositionGoogle).
+            // ... (tu lógica existente para encontrar closestPointForCamionDown en rutas predefinidas y colocar closestRoutePointMarkerRef)
 
-    } else if (aiRouteData.recomendacion === "caminar") {
-       // No hay paradas de camión si es solo caminar, quitar marcadores de paradas si existían
-       if (truckMarkerRef.current) truckMarkerRef.current.setMap(null);
-       if (closestRoutePointMarkerRef.current) closestRoutePointMarkerRef.current.setMap(null);
-       // También limpia las polilíneas de caminata a/desde paradas
-       if (walkingToBusStopPolylineRef.current) walkingToBusStopPolylineRef.current.setMap(null);
-       if (walkingFromBusStopPolylineRef.current) walkingFromBusStopPolylineRef.current.setMap(null);
-    }
+            // Y luego dibujar las rutas peatonales con esas paradas de las rutas predefinidas
+            const exactUserPositionForFallback = activeMarkerRef.current
+              ? activeMarkerRef.current.getPosition()
+              : null;
+            const snappedUserLocationForFallback = exactUserPositionForFallback
+              ? await getRoadSnappedLocation(exactUserPositionForFallback)
+              : null;
+            const snappedDestinationLocationForFallback =
+              await getRoadSnappedLocation(clickedPositionGoogle); // clickedPositionGoogle es el destino
+            const truckStopAPositionForWalkingFallback =
+              truckMarkerRef.current && truckMarkerRef.current.getMap()
+                ? truckMarkerRef.current.getPosition()
+                : null;
+            const truckStopBPositionForWalkingFallback =
+              closestRoutePointMarkerRef.current &&
+              closestRoutePointMarkerRef.current.getMap()
+                ? closestRoutePointMarkerRef.current.getPosition()
+                : null;
 
-  } else {
-    setMapStatusMessage("No se pudo generar la ruta con IA. Mostrando sugerencias normales.");
-  }
-} catch (aiError) {
-  console.error("[GoogleMaps dblclick/handlePoiRouteRequest] Error detallado en fetchAiOptimalRoute:", aiError);
-  setMapStatusMessage(`Error ruta IA: ${aiError.message}. Mostrando sugerencias normales.`);
-  // Aquí, podrías decidir si quieres colocar los marcadores de camión basados en las rutas predefinidas como fallback.
-  // ... tu lógica de fallback para camionBajada y updateTruckPosition() si la ruta AI falla ...
-}
-// --- FIN: Nueva Lógica para Ruta IA ---
+            drawConnectingWalkingRoutes(
+              snappedUserLocationForFallback,
+              truckStopAPositionForWalkingFallback,
+              snappedDestinationLocationForFallback,
+              truckStopBPositionForWalkingFallback
+            );
+          }
 
-// Si la ruta AI falló y quieres colocar paradas basadas en rutas predefinidas:
-if (!aiRouteData || aiRouteData.recomendacion !== "usar_transporte") {
-    // ... (tu lógica original para colocar closestRoutePointMarkerRef basada en doubleClickedRoutesPolylinesRef) ...
-    // ... (luego llamar a updateTruckPosition() para Parada A basada en predefinidas) ...
-    // ... (y luego tu lógica original para drawConnectingWalkingRoutes con estas paradas predefinidas) ...
-    updateTruckPosition(); // Re-calcular Parada A basada en rutas predefinidas visibles.
-    // Colocar Parada B basada en rutas predefinidas visibles y el destino (clickedPositionGoogle).
-    // ... (tu lógica existente para encontrar closestPointForCamionDown en rutas predefinidas y colocar closestRoutePointMarkerRef)
-
-    // Y luego dibujar las rutas peatonales con esas paradas de las rutas predefinidas
-    const exactUserPositionForFallback = activeMarkerRef.current ? activeMarkerRef.current.getPosition() : null;
-    const snappedUserLocationForFallback = exactUserPositionForFallback ? await getRoadSnappedLocation(exactUserPositionForFallback) : null;
-    const snappedDestinationLocationForFallback = await getRoadSnappedLocation(clickedPositionGoogle); // clickedPositionGoogle es el destino
-    const truckStopAPositionForWalkingFallback = truckMarkerRef.current && truckMarkerRef.current.getMap() ? truckMarkerRef.current.getPosition() : null;
-    const truckStopBPositionForWalkingFallback = closestRoutePointMarkerRef.current && closestRoutePointMarkerRef.current.getMap() ? closestRoutePointMarkerRef.current.getPosition() : null;
-
-    drawConnectingWalkingRoutes(
-        snappedUserLocationForFallback, 
-        truckStopAPositionForWalkingFallback,
-        snappedDestinationLocationForFallback, 
-        truckStopBPositionForWalkingFallback
-    );
-
-}
-
-setTimeout(() => setMapStatusMessage(''), 7000);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+          setTimeout(() => setMapStatusMessage(""), 7000);
           doubleClickedRoutesPolylinesRef.current.forEach((polyline) =>
             polyline.setMap(null)
           );
@@ -1757,16 +2004,13 @@ setTimeout(() => setMapStatusMessage(''), 7000);
               scaledSize: new window.google.maps.Size(35, 45),
               anchor: new window.google.maps.Point(35 / 2, 45 / 2),
             };
-            closestRoutePointMarkerRef.current = new window.google.maps.Marker(
-              {
-                position: closestPointForCamionDown,
-                map: mapRef.current,
-                icon: camionDownIcon,
-                title:
-                  "Parada más cercana en ruta sugerida (Parada B - Bajada)",
-                zIndex: 960,
-              }
-            );
+            closestRoutePointMarkerRef.current = new window.google.maps.Marker({
+              position: closestPointForCamionDown,
+              map: mapRef.current,
+              icon: camionDownIcon,
+              title: "Parada más cercana en ruta sugerida (Parada B - Bajada)",
+              zIndex: 960,
+            });
           }
 
           updateTruckPosition();
@@ -1778,7 +2022,8 @@ setTimeout(() => setMapStatusMessage(''), 7000);
           const snappedUserLocation = exactUserPosition
             ? await getRoadSnappedLocation(exactUserPosition)
             : null;
-          const snappedClickedPosition = await getRoadSnappedLocation( // This is the dblclick location
+          const snappedClickedPosition = await getRoadSnappedLocation(
+            // This is the dblclick location
             clickedPositionGoogle
           );
 
@@ -1791,7 +2036,7 @@ setTimeout(() => setMapStatusMessage(''), 7000);
             closestRoutePointMarkerRef.current.getMap()
               ? closestRoutePointMarkerRef.current.getPosition()
               : null;
-          
+
           // For dblclick, destination is the clicked point.
           // Walking from user to stop A (truckMarkerRef)
           // Walking from stop B (closestRoutePointMarkerRef, near clicked point) to clicked point (snappedClickedPosition)
@@ -1799,37 +2044,46 @@ setTimeout(() => setMapStatusMessage(''), 7000);
             snappedUserLocation,
             truckStopAPositionForWalking,
             truckStopBPositionForWalking, // Start of walk from bus stop
-            snappedClickedPosition      // Destination: the point clicked on map
+            snappedClickedPosition // Destination: the point clicked on map
           );
 
           setTimeout(() => setMapStatusMessage(""), 7000);
         });
       }
-    } else { // Map already initialized
+    } else {
+      // Map already initialized
       const currentMapCenter = mapRef.current.getCenter();
       const currentMapZoom = mapRef.current.getZoom();
       let needsMapUpdate = false;
 
-      if (typeof effectiveLat === 'number' && typeof effectiveLng === 'number') {
-        if (!currentMapCenter ||
-            Math.abs(currentMapCenter.lat() - effectiveLat) > 0.000001 ||
-            Math.abs(currentMapCenter.lng() - effectiveLng) > 0.000001) {
+      if (
+        typeof effectiveLat === "number" &&
+        typeof effectiveLng === "number"
+      ) {
+        if (
+          !currentMapCenter ||
+          Math.abs(currentMapCenter.lat() - effectiveLat) > 0.000001 ||
+          Math.abs(currentMapCenter.lng() - effectiveLng) > 0.000001
+        ) {
           needsMapUpdate = true;
         }
         if (currentMapZoom !== effectiveZoom) {
           needsMapUpdate = true;
         }
-
-       
       }
     }
 
-    if (typeof effectiveLat === 'number' && typeof effectiveLng === 'number') {
-      const markerHeading = (usingExternalGps && isEffectiveLocationFromUser) ? 0 : (isEffectiveLocationFromUser ? heading : 0);
+    if (typeof effectiveLat === "number" && typeof effectiveLng === "number") {
+      const markerHeading =
+        usingExternalGps && isEffectiveLocationFromUser
+          ? 0
+          : isEffectiveLocationFromUser
+          ? heading
+          : 0;
       updateMarker(
         effectiveLat,
         effectiveLng,
-        (isExternalSourceForMarker && isEffectiveLocationFromUser), // True only if it's actual external GPS
+        isExternalSourceForMarker && isEffectiveLocationFromUser, // True only if it's actual external GPS
         markerHeading,
         markerData // Contains .isFallback if applicable
       );
@@ -1851,7 +2105,7 @@ setTimeout(() => setMapStatusMessage(''), 7000);
     getRoadSnappedLocation,
     heading,
     error, // Added error
-    mapStatusMessage // Added to ensure timeout clearing logic has access to current message
+    mapStatusMessage, // Added to ensure timeout clearing logic has access to current message
   ]);
 
   useEffect(() => {
@@ -1859,11 +2113,14 @@ setTimeout(() => setMapStatusMessage(''), 7000);
       if (showPredefinedRoutes && activePredefinedRouteDetails.length > 0) {
         setActivePredefinedRouteDetails([]);
       }
-      if (aiOptimizedRouteSegmentsRef.current.length > 0) { // <--- NUEVO
-  aiOptimizedRouteSegmentsRef.current.forEach(segment => segment.setMap(null)); // <--- NUEVO
-  aiOptimizedRouteSegmentsRef.current = []; // <--- NUEVO
-  setActiveAiOptimalRouteDetails(null); // <--- NUEVO
-}
+      if (aiOptimizedRouteSegmentsRef.current.length > 0) {
+        // <--- NUEVO
+        aiOptimizedRouteSegmentsRef.current.forEach((segment) =>
+          segment.setMap(null)
+        ); // <--- NUEVO
+        aiOptimizedRouteSegmentsRef.current = []; // <--- NUEVO
+        setActiveAiOptimalRouteDetails(null); // <--- NUEVO
+      }
       if (!showPredefinedRoutes) {
         predefinedPolylinesRef.current.forEach((polyline) =>
           polyline.setMap(null)
@@ -1946,22 +2203,22 @@ setTimeout(() => setMapStatusMessage(''), 7000);
         scaledSize: new window.google.maps.Size(32, 32),
         anchor: new window.google.maps.Point(16, 32),
       };
-        if (poiDefinition) {
-          const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
-          iconOptions = {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-              svgEmoji
-            )}`,
-            scaledSize: new window.google.maps.Size(32, 32),
-            anchor: new window.google.maps.Point(16, 16), // Center anchor for emoji
-          };
-        }
+      if (poiDefinition) {
+        const svgEmoji = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20">${poiDefinition.emoji}</text></svg>`;
+        iconOptions = {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+            svgEmoji
+          )}`,
+          scaledSize: new window.google.maps.Size(32, 32),
+          anchor: new window.google.maps.Point(16, 16), // Center anchor for emoji
+        };
+      }
 
-
-      if (!iconOptions.url) { // Ensure there is a URL for the icon
+      if (!iconOptions.url) {
+        // Ensure there is a URL for the icon
         // Fallback to default marker if no emoji/icon definition?
         // For now, skip if no icon.url
-        return; 
+        return;
       }
       const marker = new window.google.maps.Marker({
         position: { lat, lng },
@@ -1997,9 +2254,27 @@ setTimeout(() => setMapStatusMessage(''), 7000);
         d="m17.775 16.279l.879-.478l-.956-1.757l-.878.478q-.553.3-1.139.53l.728 1.862q.703-.275 1.366-.635M5.99 16.098q.652.381 1.346.677l.92.392l.784-1.84l-.92-.392q-.577-.247-1.12-.565zm6.65 1.624l.999-.05l-.1-1.998l-.999.05q-.627.032-1.255-.016l-.152 1.994q.754.057 1.507.02"
       ></path>
     </svg>`;
+      const svgHeart = `<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  width="1em"
+  height="1em"
+>
+  <path
+    fill="currentColor"
+    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+       2 5.42 4.42 3 7.5 3
+       c1.74 0 3.41.81 4.5 2.09
+       C13.09 3.81 14.76 3 16.5 3
+       19.58 3 22 5.42 22 8.5
+       c0 3.78-3.4 6.86-8.55 11.54
+       L12 21.35z"
+  ></path>
+</svg>`;
+
       const svgClose = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>`;
 
-    const infoWindowContent = `<style>
+      const infoWindowContent = `<style>
 .gm-style .gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; max-width: none !important; min-width: 0 !important; overflow: hidden !important; background: transparent !important; }
 .gm-style .gm-style-iw-d { overflow: hidden !important; }
 .gm-style-iw-wrap button[aria-label="Close"], .gm-style-iw-wrap button[aria-label="Cerrar"], .gm-style-iw button[aria-label="Close"], .gm-style-iw button[aria-label="Cerrar"], .gm-style-iw-close-button, .gm-style .gm-style-iw-t::after { display: none !important; }
@@ -2030,8 +2305,33 @@ setTimeout(() => setMapStatusMessage(''), 7000);
 .info-window-detail-label { font-weight: 600; color: #667eea; margin-right: 8px; min-width: 50px; flex-shrink: 0; }
 .info-window-detail-value { color: #4a5568; flex: 1; word-wrap: break-word; }
 .info-window-route-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3); }
+.info-window-favorito-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #F44336 0%, #E53935 100%);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
 .info-window-route-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4); background: linear-gradient(135deg, #5CB85C 0%, #9BC64B 100%); }
+.info-window-favorito-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(244, 67, 54, 0.4);
+  background: linear-gradient(135deg, #E53935 0%, #D32F2F 100%);
+}
+
 .info-window-route-button svg { width: 20px; height: 20px; }
+
 @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .info-window-custom-container { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 @media (max-width: 480px) {
@@ -2057,25 +2357,38 @@ setTimeout(() => setMapStatusMessage(''), 7000);
 .info-window-image:hover { transform: none; }
 .info-window-route-button:hover { transform: none; }
 }
+.info-window-favorito-button:hover { transform: none; }
+}
 </style><div class="info-window-custom-container" id="${id}-container"><div class="info-window-header"><h3 class="info-window-custom-title">${
-  lugar.nombre
-}</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${
-  imagenes[0]
-}" id="${id}-img" class="info-window-image" alt="Imagen de ${
-  lugar.nombre
-}" /></div>${
-  imagenes.length > 1
-    ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button></div>`
-    : ""
-}<button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button></div><p class="info-window-description">${
-  lugar.descripcion || "No hay descripción disponible."
-}</p><div class="info-window-details"><div class="info-window-detail-item"><span class="info-window-detail-label">Tipo:</span><span class="info-window-detail-value">${
-  lugar.tipo
-}</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Costo:</span><span class="info-window-detail-value">${
-  lugar.costo_entrada || "Gratis"
-}</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Horario:</span><span class="info-window-detail-value">${
-  lugar.horario || "No especificado"
-}</span></div></div></div></div>`;
+        lugar.nombre
+      }</h3><button id="${id}-custom-close-btn" class="info-window-custom-close-btn" aria-label="Cerrar1">${svgClose}</button></div><div class="info-window-body"><div id="${id}" class="info-window-image-gallery"><div class="info-window-image-wrapper"><img src="${
+        imagenes[0]
+      }" id="${id}-img" class="info-window-image" alt="Imagen de ${
+        lugar.nombre
+      }" /></div>${
+        imagenes.length > 1
+          ? `<div class="info-window-gallery-controls"><button id="${id}-prev" class="info-window-gallery-button" aria-label="Imagen anterior">${svgArrowLeft}</button><button id="${id}-next" class="info-window-gallery-button" aria-label="Siguiente imagen">${svgArrowRight}</button></div>`
+          : ""
+      }
+
+      <button id="${id}-route-btn" class="info-window-route-button" title="Trazar ruta a este lugar">${svgRoute} Buscar Transporte Público</button>
+      <button id="${id}-favorito-btn" class="info-window-favorito-button" title="Añadir a favoritos">${svgHeart}Guardar</button>
+
+  </div>
+
+
+      <p class="info-window-description">
+
+
+      	${
+          lugar.descripcion || "No hay descripción disponible."
+        }</p><div class="info-window-details"><div class="info-window-detail-item"><span class="info-window-detail-label">Tipo:</span><span class="info-window-detail-value">${
+        lugar.tipo
+      }</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Costo:</span><span class="info-window-detail-value">${
+        lugar.costo_entrada || "Gratis"
+      }</span></div><div class="info-window-detail-item"><span class="info-window-detail-label">Horario:</span><span class="info-window-detail-value">${
+        lugar.horario || "No especificado"
+      }</span></div></div></div></div>`;
       const infoWindow = new window.google.maps.InfoWindow({
         content: infoWindowContent,
         ariaLabel: lugar.nombre,
@@ -2097,6 +2410,27 @@ setTimeout(() => setMapStatusMessage(''), 7000);
             infoWindow.close();
           };
         }
+        // Botón para guardar rutas (este código debe estar dentro de tu función o componente React)
+        const corazonButton = document.getElementById(`${id}-favorito-btn`);
+        if (corazonButton) {
+          corazonButton.onclick = () => {
+            const auth = getAuth();
+            const user = auth.currentUser;
+            if (user) {
+              setRutaCoordenadas({
+                // Pasa lugar.ubicacion (asegúrate de que sea { lat, lng })
+                lat: lugar.ubicacion.lat,
+                lng: lugar.ubicacion.lng,
+              });
+              setRutaNombreLugar(lugar.nombre); // Pasa lugar.nombre al componente modal
+              setShowGuardarRutaModal(true); // Abre el modal
+            } else {
+              window.location.href = "/signup";
+            }
+          };
+        }
+
+        //Carrusel de imagenes
 
         if (imagenes.length > 1) {
           const prevButton = document.getElementById(`${id}-prev`);
@@ -2280,11 +2614,13 @@ setTimeout(() => setMapStatusMessage(''), 7000);
         {mapStatusMessage && (
           <div className={styles.mapOverlayMessage}>{mapStatusMessage}</div>
         )}
-        {!mapLoaded && !error && !mapStatusMessage && ( // Show loading only if no error and no other status
-          <div className={styles.loadingState}>
-            <div className={styles.spinner}></div>Cargando mapa...
-          </div>
-        )}
+        {!mapLoaded &&
+          !error &&
+          !mapStatusMessage && ( // Show loading only if no error and no other status
+            <div className={styles.loadingState}>
+              <div className={styles.spinner}></div>Cargando mapa...
+            </div>
+          )}
         <div
           id="map"
           className={styles.mapElement}
@@ -2358,6 +2694,15 @@ setTimeout(() => setMapStatusMessage(''), 7000);
             <FaMapMarkerAlt size={28} />
           )}
         </button>
+
+        {showGuardarRutaModal && (
+          <GuardarRuta
+            isOpen={showGuardarRutaModal}
+            onClose={() => setShowGuardarRutaModal(false)}
+            lugarCoordenadas={rutaCoordenadas} // { lat, lng }
+            nombreLugar={rutaNombreLugar} // String, por ejemplo "Museo de Historia"
+          />
+        )}
       </div>
     </div>
   );
