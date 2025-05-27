@@ -73,22 +73,18 @@ const accessToken =
 const rutatecnologico = rutas.rutatecnologico;
 const rutacerril = rutas.rutacerril;
 const geo = rutas.rutageo;
-const nieves = rutas.rutanieves; 
-const lomasChap=rutas.rutaLomasChap;
-const lomasgas=rutas.rutaLomasGas;
-const homex=rutas.rutahommex;// Asumo que esto es intencional, si no, debería ser rutas.ruranieves o similar
+const nieves = rutas.rutatecnologico; // Asumo que esto es intencional, si no, debería ser rutas.ruranieves o similar
 
 const ALL_PREDEFINED_ROUTES_CONFIG = [
- [
-  {data: rutatecnologico, color: "#0074D9",id: "tec",name: "Ruta Tecnológico", },
-  { data: rutacerril,color: "#2ECC40",id: "cerril",name: "Ruta Cerril",},
-  {data: geo, color: "#FF4136",id: "geo",name: "Ruta Geo",},
-  {data: nieves, color: "#B10DC9",id: "nieves",name: "Ruta Nieves",},
-  {data: lomasChap, color: "#FF851B",id: "chapu",name: "Ruta Lomas/Chapulapa",},
-  {data: lomasgas, color: "#7FDBFF",id: "Lomas",name: "Ruta Lomas/Gasolinera",},
-  {data: homex, color: "#01FF70", id: "homex",name: "Ruta Homex",},
-]
-
+  {
+    data: rutatecnologico,
+    color: "#0074D9",
+    id: "tec",
+    name: "Ruta Tecnológico",
+  },
+  { data: rutacerril, color: "#2ECC40", id: "cerril", name: "Ruta Cerril" },
+  { data: geo, color: "#FF4136", id: "geo", name: "Ruta Geo" },
+  { data: nieves, color: "#B10DC9", id: "nieves", name: "Ruta Nieves" },
 ];
 
 function deg2rad(deg) {
@@ -483,6 +479,18 @@ const drawAiOptimalRoute = useCallback((responseData) => {
   aiOptimizedRouteSegmentsRef.current = newSegments;
 
 }, [setActiveAiOptimalRouteDetails, setMapStatusMessage]);
+
+
+
+
+
+
+
+
+
+
+
+
   const getRoadSnappedLocation = useCallback((originalLatLng) => {
     return new Promise((resolve) => {
       if (
@@ -1477,6 +1485,13 @@ if (truckMarkerRef.current) {
             truckMarkerRef.current.setMap(null);
             truckMarkerRef.current = null;
         }
+
+
+
+
+
+
+
           const clickedLat = event.latLng.lat();
           const clickedLng = event.latLng.lng();
           const clickedPositionGoogle = new window.google.maps.LatLng(
@@ -1592,6 +1607,32 @@ if (!aiRouteData || aiRouteData.recomendacion !== "usar_transporte") {
 }
 
 setTimeout(() => setMapStatusMessage(''), 7000);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           doubleClickedRoutesPolylinesRef.current.forEach((polyline) =>
             polyline.setMap(null)
